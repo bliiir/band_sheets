@@ -10,11 +10,9 @@ function App() {
         <h1>Band Sheet Creator</h1>
         <p>Create and edit song structure sheets for your band</p>
       </header>
-      
       <main>
         <BandSheetEditor />
       </main>
-      
       <footer className="app-footer">
         <p>Band Sheet Creator - {new Date().getFullYear()}</p>
       </footer>
