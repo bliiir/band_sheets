@@ -1,4 +1,5 @@
-/* @tailwind base;
+@tailwind base;
 @tailwind components;
-@tailwind utilities; */
-@import "./components/BandSheetEditor.css";
+@tailwind utilities;
+@import './tailwind-custom.css';
+/* @import "./components/BandSheetEditor.css"; */

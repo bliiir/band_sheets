@@ -446,311 +446,132 @@ export default function BandSheetEditor() {
 
   // JSX
   return (
-    <div className="band-sheet-editor" style={{ display: 'flex', position: 'relative' }} onDragEnd={clearDrag}>
+    <div className="flex h-full min-h-screen bg-white relative" onDragEnd={clearDrag}>
       {/* Sidebar */}
-      <SavedSheetsPanel
-        open={sidebarOpen}
-        savedSheets={savedSheets}
-        onClose={() => setSidebarOpen(false)}
-        onDoubleClickSheet={loadSheet}
-        onUpdate={() => {
-          // Re-fetch all saved sheets from localStorage
-          const sheets = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('sheet_')) {
-              try {
-                const sheet = JSON.parse(localStorage.getItem(key));
-                sheets.push(sheet);
-              } catch (e) { /* ignore */ }
+      <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
+        <SavedSheetsPanel
+          open={sidebarOpen}
+          savedSheets={savedSheets}
+          onClose={() => setSidebarOpen(false)}
+          onDoubleClickSheet={loadSheet}
+          onUpdate={() => {
+            // Re-fetch all saved sheets from localStorage
+            const sheets = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key.startsWith('sheet_')) {
+                try {
+                  const sheet = JSON.parse(localStorage.getItem(key));
+                  sheets.push(sheet);
+                } catch (e) { /* ignore */ }
+              }
             }
-          }
-          sheets.sort((a, b) => b.id - a.id);
-          setSavedSheets(sheets);
-        }}
-      />
-
+            sheets.sort((a, b) => b.id - a.id);
+            setSavedSheets(sheets);
+          }}
+        />
+        {/* Mobile overlay backdrop */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 md:hidden z-10" onClick={() => setSidebarOpen(false)} />
+        )}
+      </div>
       {/* Main content area */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Sidebar open button */}
+      <div className="flex-1 min-w-0 relative">
+        {/* Sidebar open button (mobile only) */}
         {!sidebarOpen && (
           <button
-            style={{ margin: '16px 0 0 16px', background: 'none', border: 'none', fontSize: 28, cursor: 'pointer', color: '#888' }}
+            className="absolute top-4 left-4 z-10 p-2 rounded bg-white shadow hover:bg-gray-100 text-2xl text-gray-600 md:hidden"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open sidebar"
           >
-            ☰
+            <span className="sr-only">Open sidebar</span>
+            <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
         )}
-      {/* top bar */}
-      <div className="song-info-bar">
-        <input
-          className="title-input"
-          placeholder="Song Title"
-          value={songData.title}
-          onChange={(e) =>
-            setSongData((prev) => ({ ...prev, title: e.target.value }))
-          }
-        />
-        <input
-          className="artist-input"
-          placeholder="Artist"
-          value={songData.artist}
-          onChange={(e) =>
-            setSongData((prev) => ({ ...prev, artist: e.target.value }))
-          }
-        />
-        <div className="bpm-container">
+
+        {/* Song info bar */}
+        <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm">
           <input
-            className="bpm-input"
-            type="number"
-            placeholder="BPM"
-            value={songData.bpm}
-            onChange={(e) =>
-              setSongData((prev) => ({ ...prev, bpm: e.target.value }))
-            }
+            className="flex-1 min-w-[160px] px-3 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-lg font-semibold placeholder-gray-400"
+            placeholder="Song Title"
+            value={songData.title}
+            onChange={e => setSongData((prev) => ({ ...prev, title: e.target.value }))}
           />
-          <span>bpm</span>
+          <input
+            className="flex-1 min-w-[120px] px-3 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-base placeholder-gray-400"
+            placeholder="Artist"
+            value={songData.artist}
+            onChange={e => setSongData((prev) => ({ ...prev, artist: e.target.value }))}
+          />
+          <div className="flex items-center gap-2">
+            <input
+              className="w-20 px-2 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-base placeholder-gray-400"
+              type="number"
+              placeholder="BPM"
+              value={songData.bpm}
+              onChange={e => setSongData((prev) => ({ ...prev, bpm: e.target.value }))}
+            />
+            <span className="text-xs text-gray-500">bpm</span>
+          </div>
         </div>
 
-      </div>
+        {/* Sheet grid container */}
+        <div className="w-full mt-8 bg-white rounded-xl shadow p-0 border border-gray-200 overflow-x-auto">
+          {/* Sheet Header */}
+          <div className="grid grid-cols-5 px-4 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+            <div>Part</div>
+            <div>Bars</div>
+            <div>Lyrics</div>
+            <div>Notes</div>
+            <div className="text-center">Actions</div>
+          </div>
 
-      {/* sheet */}
-      <div className="band-sheet-container">
-        {/* Column Headers */}
-        <div className="band-sheet-header">
-          <div className="part-col">Part</div>
-          <div className="bars-col">Bars</div>
-          <div className="lyrics-col">Lyrics</div>
-          <div className="notes-col">Notes</div>
-          <div className="actions-col"></div>
-        </div>
+          {/* Sections */}
+          {/* (Old section/part rendering code removed; now handled by new grid layout above) */}
 
-        {sections.map((s, si) => (
-          <React.Fragment key={s.id}>
-            {/* Section drop zone before each section */}
-            <div
-               className="section-drop-zone section-drop-zone-style"
-              onDragOver={(e) => overSection(e, si)}
-            >
-              {dragInfo?.type === "section" && indicator?.index === si && (
-                <DropIndicator />
-              )}
-            </div>
-            {indicator?.type === "section" && indicator.index === si && (
-              <DropIndicator />
-            )}
-            {/* section header using grid layout */}
-            <div
-                className={`section-header-row grid-row section-header-row--energy-${s.energy}${s.energy > 5 ? " section-header-row--dark" : ""}`}
-                onDragOver={(e) => overSection(e, si)}
-                onDrop={dropSection}
-                // onContextMenu={(e) => handleContextMenu(e, "section", si)}
-                draggable={draggingSectionIndex === si}
-                onDragStart={draggingSectionIndex === si ? (e) => { startSectionDrag(e, si); if (e.dataTransfer) { const img = document.createElement('img'); img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4='; img.width = 1; img.height = 1; e.dataTransfer.setDragImage(img, 0, 0); } } : undefined}
-                onDragEnd={clearDrag}
-              >
-                {/* Title column: Section name */}
-                <div className="part-col section-name-cell">
-                  <input
-                    className="section-name-input"
-                    value={s.name}
-                    onChange={(e) =>
-                      setSections((prev) =>
-                        prev.map((section, idx) =>
-                          idx === si
-                            ? { ...section, name: e.target.value }
-                            : section,
-                        ),
-                      )
-                    }
-                    style={{
-                      color: s.energy > 5 ? "white" : "black",
-                      backgroundColor: "transparent",
-                    }}
-                  />
-                </div>
-                {/* Energy column: (empty for section header) */}
-                <div className="lyrics-col energy-slider-header"></div>
-                {/* Notes column: now contains energy slider */}
-                <div className="notes-col">
-                  <div className="energy-slider-container">
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      className="energy-slider"
-                      value={s.energy}
-                      onChange={(e) =>
-                        setSections((prev) =>
-                          prev.map((section, idx) =>
-                            idx === si
-                              ? {
-                                  ...section,
-                                  energy: parseInt(e.target.value, 10),
-                                }
-                              : section,
-                          ),
-                        )
-                      }
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                </div>
-                {/* Actions column: menu and grip */}
-                <div className="actions-col actions-cell section-actions">
-                  <button
-                    type="button"
-                    className={`menu-icon section-menu-icon${s.energy > 5 ? " section-menu-icon-white" : ""}`}
-                    aria-label="More options"
-                    title="More options"
-                    onClick={e => {
-                      e.stopPropagation();
-                      handleContextMenu(e, "section", si);
-                    }}
-                    style={{ verticalAlign: 'middle', marginRight: 4 }}
-                  >
-                    <MenuIcon />
-                  </button>
-                  <button
-                    type="button"
-                    className={`drag-icon section-drag-icon${s.energy > 5 ? " section-drag-icon-white" : ""}`}
-                    aria-label="Drag section"
-                    title="Drag section"
-                    tabIndex={-1}
-                    onMouseDown={() => setDraggingSectionIndex(si)}
-                    style={{ verticalAlign: 'middle' }}
-                  >
-                    <GripIcon className="section-grip-icon" />
-                  </button>
-                </div>
-            </div>
 
-            {/* part rows */}
-            {s.parts.map((p, pi) => (
-              <React.Fragment key={p.id}>
-                {/* Part drop zone before each part */}
-                <div
-                  className="part-drop-zone"
-                  onDragOver={(e) => {
-                    console.log('drag over drop zone', si, pi);
-                    e.preventDefault();
-                    overPart(e, si, pi);
-                  }}
-                  onDrop={(e) => {
-                    console.log('drop on drop zone', si, pi);
-                    e.preventDefault();
-                    dropPart(si);
-                  }}
-                >
-                  {dragInfo?.type === "part" && indicator?.si === si && indicator?.index === pi && <DropIndicator />}
-                </div>
-                <div
-                  key={p.id}
-                  className={`part-row grid-row${pi % 2 ? " odd-row" : " even-row"}${draggingPart?.si === si && draggingPart?.pi === pi ? " dragging-part" : ""}`}
-                  // onContextMenu={(e) => handleContextMenu(e, "part", si, pi)}
-                  onDragOver={dragInfo?.type === "section" ? (e) => overSection(e, si) : undefined}
-                  draggable={true}
-                  onDragStart={(e) => {
-                    if (partDragReady?.si === si && partDragReady?.pi === pi) {
-                      startPartDrag(e, si, pi);
-                      if (e.dataTransfer) {
-                        const img = document.createElement('img');
-                        img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=';
-                        img.width = 1;
-                        img.height = 1;
-                        e.dataTransfer.setDragImage(img, 0, 0);
-                      }
-                    } else {
-                      e.preventDefault();
-                    }
-                  }}
-                  onMouseUp={() => setPartDragReady(null)}
-                  onDragEnd={clearDrag}
-                >
-                  {cell(si, pi, "part", p.part, "part-cell")}
-                  {cell(si, pi, "bars", p.bars, "bars-cell")}
-                  {cell(si, pi, "lyrics", p.lyrics, "lyrics-cell")}
-                  {cell(si, pi, "notes", p.notes || "", "notes-cell")}
-                  <div className="actions-cell" >
-                    <button
-                      type="button"
-                      className="menu-icon part-menu-icon"
-                      aria-label="More options"
-                      title="More options"
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleContextMenu(e, "part", si, pi);
-                      }}
-                      style={{ verticalAlign: 'middle' }}
-                    >
-                      <MenuIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className="drag-icon part-drag-icon"
-                      aria-label="Drag row"
-                      title="Drag row"
-                      tabIndex={-1}
-                      onMouseDown={() => setPartDragReady({ si, pi })}
-                      onMouseUp={() => setPartDragReady(null)}
-                      style={{ verticalAlign: 'middle' }}
-                    >
-                      <GripIcon className="part-grip-icon" />
-                    </button>
-                  </div>
-                </div>
-              </React.Fragment>
-            ))}
-            {indicator?.type === "part" &&
-              indicator.si === si &&
-              indicator.index === s.parts.length && <DropIndicator />}
-          </React.Fragment>
-        ))}
+
         {indicator?.type === "section" &&
           indicator.index === sections.length && <DropIndicator />}
 
         {/* Add new section button at the bottom */}
-        <div className="add-section-container" onClick={addSection}>
-          <div className="add-section-plus">+</div>
-          <div className="add-section-text">Add Section</div>
+        <div className="flex flex-col items-center justify-center mt-6 cursor-pointer select-none group" onClick={addSection}>
+          <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
+          <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
         </div>
 
-      </div>
-      {/* Action buttons outside the sheet, right-aligned */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24, marginBottom: 8 }}>
-        <button
-          type="button"
-          className="new-sheet-button"
-          onClick={handleNewSheet}
-        >
-          New Sheet
-        </button>
-        <button
-          type="button"
-          className="save-button"
-          onClick={handleSave}
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          className="save-button"
-          style={{ backgroundColor: '#f39c12' }}
-          onClick={handleSaveAs}
-        >
-          Save As
-        </button>
-        <button
-          type="button"
-          className="export-button"
-          onClick={handleExport}
-        >
-          Export
-        </button>
-      </div>
+        {/* Action buttons row, right-aligned under the sheet */}
+        <div className="flex justify-end gap-3 mt-8 mb-2">
+          <button
+            type="button"
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition font-medium"
+            onClick={handleNewSheet}
+          >
+            New Sheet
+          </button>
+          <button
+            type="button"
+            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition font-medium"
+            onClick={handleSave}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            className="bg-yellow-400 text-gray-900 px-4 py-2 rounded shadow hover:bg-yellow-500 transition font-medium"
+            onClick={handleSaveAs}
+          >
+            Save As
+          </button>
+          <button
+            type="button"
+            className="bg-gray-700 text-white px-4 py-2 rounded shadow hover:bg-gray-900 transition font-medium"
+            onClick={handleExport}
+          >
+            Export
+          </button>
+        </div>
+
       </div>
       {/* Context Menu */}
       {contextMenu.visible && (
@@ -815,6 +636,7 @@ export default function BandSheetEditor() {
           )}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -107,40 +107,68 @@ export default function SavedSheetsPanel({
 
   return (
     <div
-      style={{
-        width: open ? 260 : 0,
-        transition: 'width 0.2s',
-        overflow: 'hidden',
-        background: '#f8f8f8',
-        borderRight: open ? '1px solid #ddd' : 'none',
-        position: 'relative',
-        zIndex: 10,
-      }}
+      className={`h-full flex flex-col transition-all duration-200 overflow-hidden bg-white shadow-lg rounded-r-2xl ${open ? 'w-[260px] border-r border-gray-200' : 'w-0 border-none'} relative z-30`}
     >
-      <div className="px-4 py-4 border-b border-gray-200 font-semibold flex items-center justify-between">
-        Saved Sheets
+      <div className="px-4 py-4 border-b border-gray-100 font-semibold flex items-center justify-between sticky top-0 bg-white z-20 shadow-sm">
+        <span className="tracking-wide text-lg text-gray-800">Saved Sheets</span>
         <button
-          className="bg-none border-none text-2xl cursor-pointer hover:text-red-500 transition-colors"
+          className="bg-transparent border-0 text-2xl cursor-pointer hover:text-red-500 transition-colors focus:outline-none p-1 rounded-full hover:bg-gray-100"
           onClick={onClose}
           aria-label="Close sidebar"
         >
           ×
         </button>
       </div>
-      <div className="max-h-[calc(100vh-60px)] overflow-y-auto">
-        {savedSheets.length === 0 && <div >No saved sheets</div>}
+      <div className="flex-1 overflow-y-auto pb-2">
+        {savedSheets.length === 0 && <div className="px-4 py-8 text-center text-gray-400 italic select-none">No saved sheets</div>}
         {savedSheets.map(sheet => (
           <div
             key={sheet.id}
-            style={{ padding: '12px 16px', borderBottom: '1px solid #eee', cursor: 'pointer' }}
+            className="group px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-2"
             onDoubleClick={() => onDoubleClickSheet(sheet.id)}
           >
-            <div style={{ fontWeight: 500 }}>{sheet.title || '(Untitled)'}</div>
-            <div style={{ fontSize: 12, color: '#999' }}>{sheet.artist || ''}</div>
-            <div style={{ fontSize: 11, color: '#bbb' }}>ID: {sheet.id}</div>
+            <div className="flex-1 min-w-0">
+              {editingId === sheet.id ? (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={editingValue}
+                  className="w-full font-medium text-base px-1 border-b border-blue-200 focus:border-blue-500 focus:bg-blue-50 outline-none bg-transparent transition-all rounded"
+                  onChange={e => setEditingValue(e.target.value)}
+                  onBlur={() => commitRename(sheet)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitRename(sheet);
+                    if (e.key === 'Escape') cancelRename();
+                  }}
+                />
+              ) : (
+                <div className="font-medium">
+                  {sheet.title || '(Untitled)'}
+                </div>
+              )}
+              <div className="text-xs text-gray-500">{sheet.artist || ''}</div>
+              <div className="text-[11px] text-gray-400">ID: {sheet.id}</div>
+            </div>
+            <button
+              className="bg-none border-none cursor-pointer p-1 ml-2 hover:bg-gray-200 rounded"
+              onClick={e => {
+                e.stopPropagation();
+                if (menuOpenId === sheet.id) {
+                  setMenuOpenId(null);
+                } else {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMenuOpenId(sheet.id);
+                  setMenuPos({ x: rect.right, y: rect.bottom });
+                }
+              }}
+              aria-label="Sheet menu"
+            >
+              <MenuIcon style={{ width: 20, height: 20, color: '#888' }} />
+            </button>
           </div>
         ))}
       </div>
+      {menuPortal}
     </div>
   );
 }
