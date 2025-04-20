@@ -1,5 +1,6 @@
 import React from 'react';
 import { EditingProvider } from './EditingContext';
+import { SheetDataProvider } from './SheetDataContext';
 
 /**
  * AppProviders component that wraps the application with all context providers
@@ -10,9 +11,11 @@ import { EditingProvider } from './EditingContext';
  */
 const AppProviders = ({ children }) => {
   return (
-    <EditingProvider>
-      {children}
-    </EditingProvider>
+    <SheetDataProvider>
+      <EditingProvider>
+        {children}
+      </EditingProvider>
+    </SheetDataProvider>
   );
 };
 
