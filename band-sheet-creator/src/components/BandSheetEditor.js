@@ -68,10 +68,6 @@ export default function BandSheetEditor() {
   }
 
   // ...existing state
-  const [draggingSectionIndex, setDraggingSectionIndex] = useState(null);
-  const [draggingPart, setDraggingPart] = useState(null);
-  const [partDragReady, setPartDragReady] = useState(null);
-  // State
   const [songData, setSongData] = useState({ title: "", artist: "", bpm: "" });
   const [sections, setSections] = useState([
   {
@@ -83,8 +79,6 @@ export default function BandSheetEditor() {
 ]);
   const [editing, setEditing] = useState(null); // {si,pi,field}
   const [editValue, setEditValue] = useState("");
-  const [dragInfo, setDragInfo] = useState(null); // { type:'section'|'part', si, pi }
-  const [indicator, setIndicator] = useState(null); // {type,index,si}
   const [idCounter, setIdCounter] = useState(() => Date.now());
 
   // Context menu state
@@ -95,10 +89,22 @@ export default function BandSheetEditor() {
     type: null, // 'section' or 'part'
     si: null,
     pi: null,
+    isNew: false, // Used for position adjustment
   });
   const contextMenuRef = useRef(null);
 
+  // Hover state tracking
+  const [hoverState, setHoverState] = useState({
+    type: null, // 'section' or 'part'
+    si: null,
+    pi: null
+  });
 
+  // Placeholder text for empty fields
+  const placeholders = {
+    lyrics: "Add lyrics here...",
+    notes: "Add notes here..."
+  };
 
   // Helper to get a unique ID
   const getNextId = () => {
@@ -115,51 +121,64 @@ export default function BandSheetEditor() {
       })))
     );
 
-  // Editing logic
-  const beginEdit = (si, pi, f) => {
-    setEditing({ si, pi, f });
-    setEditValue(String(sections[si].parts[pi][f] ?? ""));
+  // Editing logic for section and parts
+  const beginEdit = (si, pi, f, type = 'part') => {
+    setEditing({ si, pi, f, type });
+    
+    if (type === 'section') {
+      // For section fields
+      setEditValue(String(sections[si][f] ?? ""));
+    } else {
+      // For part fields
+      setEditValue(String(sections[si].parts[pi][f] ?? ""));
+    }
   };
 
   const saveEdit = () => {
     if (!editing) return;
-    const { si, pi, f } = editing;
-    updateSections((prev) => {
-      const next = prev.map((section, sidx) => {
-        if (sidx !== si) return section;
-        return {
-          ...section,
-          parts: section.parts.map((part, pidx) => {
-            if (pidx !== pi) return part;
-            return {
-              ...part,
-              [f]: f === "bars" ? parseInt(editValue || "0", 10) : editValue,
-            };
-          }),
-        };
+    const { si, pi, f, type } = editing;
+    
+    if (type === 'section') {
+      // For section fields
+      updateSections((prev) => {
+        const next = prev.map((section, sidx) => {
+          if (sidx !== si) return section;
+          return {
+            ...section,
+            [f]: f === "energy" ? parseInt(editValue || "5", 10) : editValue,
+          };
+        });
+        return next;
       });
-      return next;
-    });
+    } else {
+      // For part fields
+      updateSections((prev) => {
+        const next = prev.map((section, sidx) => {
+          if (sidx !== si) return section;
+          return {
+            ...section,
+            parts: section.parts.map((part, pidx) => {
+              if (pidx !== pi) return part;
+              return {
+                ...part,
+                [f]: f === "bars" ? parseInt(editValue || "0", 10) : editValue,
+              };
+            }),
+          };
+        });
+        return next;
+      });
+    }
+    
     setEditing(null);
   };
 
-  const isEditing = (si, pi, f) =>
-    editing && editing.si === si && editing.pi === pi && editing.f === f;
-
-  // Drag helpers
-  const gap = (e, idx) =>
-    e.clientY - e.currentTarget.getBoundingClientRect().top >
-      e.currentTarget.getBoundingClientRect().height / 2
-      ? idx + 1
-      : idx;
-
-  const clearDrag = () => {
-    setDragInfo(null);
-    setIndicator(null);
-    setDraggingSectionIndex(null);
-    setDraggingPart(null);
-    setPartDragReady(null);
-  };
+  const isEditing = (si, pi, f, type = 'part') =>
+    editing && 
+    editing.si === si && 
+    (type === 'section' ? true : editing.pi === pi) && 
+    editing.f === f &&
+    editing.type === type;
 
   // CRUD
   const addSection = () => {
@@ -212,74 +231,45 @@ export default function BandSheetEditor() {
     );
   };
 
-  // Drag handlers
-  const startSectionDrag = (e, si) => {
-    e.dataTransfer.effectAllowed = "move";
-    setDragInfo({ type: "section", si });
-  };
-
-  const overSection = (e, hoverSi) => {
-    if (dragInfo?.type !== "section") return;
-    e.preventDefault();
-    // If this is a drop zone before a section, set index directly
-    if (e.currentTarget.classList.contains('section-drop-zone')) {
-      setIndicator({ type: "section", index: hoverSi });
+  // Move section up or down
+  const moveSection = (si, direction) => {
+    if ((direction === 'up' && si === 0) || (direction === 'down' && si === sections.length - 1)) {
+      // Can't move first section up or last section down
       return;
     }
-    const g = gap(e, hoverSi);
-    setIndicator({ type: "section", index: g });
-  };
-
-  const dropSection = () => {
-    if (dragInfo?.type !== "section" || !indicator) return;
-    setSections((prev) => {
-      const arr = prev.slice();
-      const [moved] = arr.splice(dragInfo.si, 1);
-      let tgt = indicator.index;
-      if (dragInfo.si < tgt) tgt -= 1;
-      arr.splice(tgt, 0, moved);
-      return arr;
+    
+    setSections(prev => {
+      const newSections = [...prev];
+      const targetIndex = direction === 'up' ? si - 1 : si + 1;
+      
+      // Swap the sections
+      [newSections[si], newSections[targetIndex]] = [newSections[targetIndex], newSections[si]];
+      
+      return newSections;
     });
-    clearDrag();
   };
-
-  const startPartDrag = (e, si, pi) => {
-    e.stopPropagation();
-    e.dataTransfer.effectAllowed = "move";
-    setDragInfo({ type: "part", si, pi });
-    setDraggingPart({ si, pi });
-    console.log('startPartDrag', { si, pi });
-  };
-
-  const overPart = (e, si, hoverPi) => {
-    e.preventDefault(); // Always call preventDefault
-    if (dragInfo?.type !== "part" || dragInfo.si !== si) return;
-    // If this is a drop zone before a part, set index directly
-    if (e.currentTarget.classList.contains('part-drop-zone')) {
-      setIndicator({ type: "part", si, index: hoverPi });
-      console.log('overPart (drop zone)', { si, hoverPi });
+  
+  // Move part up or down within a section
+  const movePart = (si, pi, direction) => {
+    const section = sections[si];
+    if ((direction === 'up' && pi === 0) || (direction === 'down' && pi === section.parts.length - 1)) {
+      // Can't move first part up or last part down
       return;
     }
-    const g = gap(e, hoverPi);
-    setIndicator({ type: "part", si, index: g });
-    console.log('overPart (gap)', { si, hoverPi, g });
-  };
-
-  const dropPart = (si) => {
-    console.log('dropPart', { dragInfo, indicator, si });
-    if (dragInfo?.type !== "part" || !indicator || dragInfo.si !== si) return;
-    setSections((prev) =>
-      prev.map((section, idx) => {
-        if (idx !== si) return section;
-        const arr = section.parts.slice();
-        const [moved] = arr.splice(dragInfo.pi, 1);
-        let tgt = indicator.index;
-        if (dragInfo.pi < tgt) tgt -= 1;
-        arr.splice(tgt, 0, moved);
-        return { ...section, parts: arr };
-      }),
-    );
-    clearDrag();
+    
+    setSections(prev => {
+      return prev.map((section, sectionIndex) => {
+        if (sectionIndex !== si) return section;
+        
+        const newParts = [...section.parts];
+        const targetIndex = direction === 'up' ? pi - 1 : pi + 1;
+        
+        // Swap the parts
+        [newParts[pi], newParts[targetIndex]] = [newParts[targetIndex], newParts[pi]];
+        
+        return { ...section, parts: newParts };
+      });
+    });
   };
 
   // Cell renderer
@@ -326,30 +316,89 @@ export default function BandSheetEditor() {
   // Context menu handlers
   const handleContextMenu = (e, type, si, pi = null) => {
     e.preventDefault();
+    
+    // Initial positions
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // We'll adjust these after the menu is rendered
+    // Set a flag to indicate this is a new menu opening
     setContextMenu({
       visible: true,
-      x: e.clientX,
-      y: e.clientY,
+      x: x,
+      y: y,
       type,
       si,
       pi,
+      isNew: true, // Flag to trigger the position adjustment effect
     });
   };
 
   // Hide context menu on click elsewhere
   useEffect(() => {
-    const handleClick = (e) => {
+    const handleOutsideClick = (e) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
         setContextMenu((cm) => ({ ...cm, visible: false }));
       }
     };
-    if (contextMenu.visible) {
-      document.addEventListener("mousedown", handleClick);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
+    
+    // Handle menu positioning to ensure it stays within viewport
+    const adjustMenuPosition = () => {
+      if (contextMenuRef.current && contextMenu.isNew) {
+        const menu = contextMenuRef.current;
+        const menuRect = menu.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const margin = 10; // Margin from viewport edges (px)
+        
+        let adjustedX = contextMenu.x;
+        let adjustedY = contextMenu.y;
+        
+        // Check right edge
+        if (menuRect.right > viewportWidth - margin) {
+          adjustedX = viewportWidth - menuRect.width - margin;
+        }
+        
+        // Check bottom edge
+        if (menuRect.bottom > viewportHeight - margin) {
+          adjustedY = viewportHeight - menuRect.height - margin;
+        }
+        
+        // Check left edge
+        if (adjustedX < margin) {
+          adjustedX = margin;
+        }
+        
+        // Check top edge
+        if (adjustedY < margin) {
+          adjustedY = margin;
+        }
+        
+        // Update menu position if needed
+        if (adjustedX !== contextMenu.x || adjustedY !== contextMenu.y) {
+          setContextMenu(cm => ({
+            ...cm,
+            x: adjustedX,
+            y: adjustedY,
+            isNew: false // Reset the flag
+          }));
+        } else {
+          // No adjustment needed, just reset the flag
+          setContextMenu(cm => ({ ...cm, isNew: false }));
+        }
+      }
     };
-  }, [contextMenu.visible]);
+    
+    if (contextMenu.visible) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      // Adjust position after render
+      adjustMenuPosition();
+    }
+    
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [contextMenu.visible, contextMenu.x, contextMenu.y, contextMenu.isNew]);
 
   // Menu actions
   const handleMenuAction = (action) => {
@@ -372,6 +421,10 @@ export default function BandSheetEditor() {
         });
       } else if (action === "delete") {
         deleteSection(si);
+      } else if (action === "moveUp") {
+        moveSection(si, 'up');
+      } else if (action === "moveDown") {
+        moveSection(si, 'down');
       }
     } else if (type === "part") {
       if (action === "add") {
@@ -384,10 +437,24 @@ export default function BandSheetEditor() {
             const arr = section.parts.slice();
             arr.splice(pi + 1, 0, partToCopy);
             return { ...section, parts: arr };
-          }),
+          })
         );
       } else if (action === "delete") {
-        deletePart(si, pi);
+        setSections((prev) =>
+          prev.map((section, idx) => {
+            if (idx !== si) return section;
+            if (section.parts.length <= 1) {
+              // Don't allow deleting the last part
+              return section;
+            }
+            const parts = section.parts.filter((_, i) => i !== pi);
+            return { ...section, parts };
+          })
+        );
+      } else if (action === "moveUp") {
+        movePart(si, pi, 'up');
+      } else if (action === "moveDown") {
+        movePart(si, pi, 'down');
       }
     }
     setContextMenu((cm) => ({ ...cm, visible: false }));
@@ -442,6 +509,17 @@ export default function BandSheetEditor() {
 
   // Export handler that opens a print-friendly version in a new tab
   const handleExport = () => {
+    // Filter out placeholder text before exporting
+    const processedSections = sections.map(section => ({
+      ...section,
+      parts: section.parts.map(part => ({
+        ...part,
+        // Don't export empty strings for lyrics and notes
+        lyrics: part.lyrics || '',
+        notes: part.notes || ''
+      }))
+    }));
+    
     // Create a new window/tab
     const printWindow = window.open('', '_blank');
     
@@ -578,22 +656,22 @@ export default function BandSheetEditor() {
             </div>
             
             <!-- Sections -->
-            ${sections.map(section => `
+            ${processedSections.map((section, si) => `
               <div class="section-container">
                 <!-- Section header -->
                 <div class="section-header">
-                  <div class="section-name">${section.name || 'Untitled Section'}</div>
-                  <div class="section-energy">Energy: ${section.energy || '-'}</div>
+                  <div class="section-name">${section.name}</div>
+                  <div class="section-energy">Energy: ${section.energy}</div>
                 </div>
                 
                 <!-- Parts container -->
                 <div class="parts-container">
-                  ${section.parts.map(part => `
+                  ${section.parts.map((part, pi) => `
                     <div class="part-row">
-                      <div>${part.part || '-'}</div>
-                      <div>${part.bars || '-'}</div>
-                      <div class="lyrics">${part.lyrics || '-'}</div>
-                      <div class="notes">${part.notes || '-'}</div>
+                      <div>${part.part}</div>
+                      <div>${part.bars}</div>
+                      <div class="lyrics">${part.lyrics}</div>
+                      <div class="notes">${part.notes || ''}</div>
                       <div><!-- No actions in print view --></div>
                     </div>
                   `).join('')}
@@ -622,7 +700,7 @@ export default function BandSheetEditor() {
 
   // JSX
   return (
-    <div className="flex h-full min-h-screen bg-white relative" onDragEnd={clearDrag}>
+    <div className="flex h-full min-h-screen bg-white relative">
       {/* Vertical toolbar */}
       <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center py-4 z-30">
         <button 
@@ -731,15 +809,15 @@ export default function BandSheetEditor() {
         </div>
 
         {/* Sheet container */}
-        <div className="w-full mt-8 bg-white rounded-xl shadow border border-gray-200 overflow-x-auto">
+        <div className="mt-8 ml-4 mr-4 mb-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
           {/* Sheet header */}
-          <div className="grid grid-cols-[120px_60px_60px_1fr_12.5%_auto] gap-4 px-4 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+          <div className="grid grid-cols-[120px_60px_60px_1fr_12.5%_40px] gap-4 px-4 mb-2 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
             <div className="min-w-[120px]">Section</div>
             <div className="min-w-[60px]">Part</div>
             <div className="min-w-[60px]">Bars</div>
             <div>Lyrics</div>
             <div>Notes</div>
-            <div className="text-center min-w-[80px]">Actions</div>
+            <div className="min-w-[40px]"></div>
           </div>
 
           {/* Sections */}
@@ -747,35 +825,166 @@ export default function BandSheetEditor() {
              <div key={section.id} className="border-b border-gray-200">
               <div className="flex">
                 {/* Section header */}
-                <div className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between bg-gray-200">
+                <div 
+                  className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between bg-gray-200"
+                  onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
+                  onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
+                >
                   <div className="flex justify-between items-start">
-                    <div className="font-semibold flex-1">
-                      {section.name}
+                    <div 
+                      className={`font-semibold flex-1 ${isEditing(si, null, 'name', 'section') ? 'editing-cell' : 'cursor-pointer'}`}
+                      onClick={() => !isEditing(si, null, 'name', 'section') && beginEdit(si, null, 'name', 'section')}
+                    >
+                      {isEditing(si, null, 'name', 'section') ? (
+                        <input
+                          className="w-full bg-white rounded px-1 py-px text-sm"
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEdit();
+                            if (e.key === "Escape") setEditing(null);
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        section.name || "Untitled Section"
+                      )}
                     </div>
-                    <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
-                      <MenuIcon className="w-4 h-4 text-gray-500 hover:text-gray-700" />
-                    </div>
+                    {(hoverState.type === 'section' && hoverState.si === si) && (
+                      <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
+                        <MenuIcon className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs mt-2 self-start">
-                    Energy: {section.energy}
+                  <div 
+                    className={`text-xs mt-2 self-start ${isEditing(si, null, 'energy', 'section') ? 'editing-cell' : 'cursor-pointer'}`}
+                    onClick={() => !isEditing(si, null, 'energy', 'section') && beginEdit(si, null, 'energy', 'section')}
+                  >
+                    {isEditing(si, null, 'energy', 'section') ? (
+                      <div className="flex items-center">
+                        <span className="mr-1">Energy:</span>
+                        <input
+                          className="w-8 bg-white rounded px-1 py-px text-xs"
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEdit();
+                            if (e.key === "Escape") setEditing(null);
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      `Energy: ${section.energy}`
+                    )}
                   </div>
                 </div>
 
                 {/* Parts container */}
                 <div className="flex-1">
                   {section.parts.map((part, pi) => (
-                    <div key={part.id} className="grid grid-cols-[60px_60px_minmax(0,1fr)_12.5%_auto] gap-4 pl-4 pr-2 py-2 border-b border-gray-100 items-center last:border-b-0">
-                      <div className="min-w-[60px]">{part.part}</div>
-                      <div className="min-w-[60px]">{part.bars}</div>
-                      <div className="text-gray-500">{part.lyrics}</div>
-                      <div className="text-xs text-gray-500">{part.notes || "-"}</div>
-                      <div className="flex justify-end gap-3 min-w-[80px]">
-                        <div
-                          onClick={(e) => handleContextMenu(e, "part", si, pi)}
-                          className="cursor-pointer"
-                        >
-                          <MenuIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                        </div>
+                    <div 
+                      key={part.id} 
+                      className="grid grid-cols-[60px_60px_minmax(0,1fr)_12.5%_40px] gap-4 pl-4 pr-2 py-2 border-b border-gray-100 items-center last:border-b-0 h-[40px]"
+                      onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
+                      onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
+                    >
+                      <div 
+                        className={`min-w-[60px] ${isEditing(si, pi, 'part') ? 'editing-cell' : 'cursor-pointer'}`}
+                        onClick={() => !isEditing(si, pi, 'part') && beginEdit(si, pi, 'part')}
+                      >
+                        {isEditing(si, pi, 'part') ? (
+                          <input
+                            className="w-full bg-white rounded px-2 py-1 text-sm"
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={saveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveEdit();
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          part.part || "?"
+                        )}
+                      </div>
+                      <div 
+                        className={`min-w-[60px] ${isEditing(si, pi, 'bars') ? 'editing-cell' : 'cursor-pointer'}`}
+                        onClick={() => !isEditing(si, pi, 'bars') && beginEdit(si, pi, 'bars')}
+                      >
+                        {isEditing(si, pi, 'bars') ? (
+                          <input
+                            className="w-full bg-white rounded px-2 py-1 text-sm"
+                            type="number"
+                            min="1"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={saveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveEdit();
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          part.bars
+                        )}
+                      </div>
+                      <div 
+                        className={`text-gray-500 ${isEditing(si, pi, 'lyrics') ? 'editing-cell' : 'cursor-pointer'}`}
+                        onClick={() => !isEditing(si, pi, 'lyrics') && beginEdit(si, pi, 'lyrics')}
+                      >
+                        {isEditing(si, pi, 'lyrics') ? (
+                          <textarea
+                            className="w-full bg-white rounded px-2 py-1 text-sm h-[24px] overflow-y-auto resize-none"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={saveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          part.lyrics || <span className="text-gray-400 italic">{placeholders.lyrics}</span>
+                        )}
+                      </div>
+                      <div 
+                        className={`text-xs text-gray-500 ${isEditing(si, pi, 'notes') ? 'editing-cell' : 'cursor-pointer'}`}
+                        onClick={() => !isEditing(si, pi, 'notes') && beginEdit(si, pi, 'notes')}
+                      >
+                        {isEditing(si, pi, 'notes') ? (
+                          <textarea
+                            className="w-full bg-white rounded px-2 py-1 text-xs h-[24px] overflow-y-auto resize-none"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={saveEdit}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setEditing(null);
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          part.notes ? part.notes : <span className="text-gray-400 italic">{placeholders.notes}</span>
+                        )}
+                      </div>
+                      <div className="flex justify-center min-w-[40px]">
+                        {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
+                          <div
+                            onClick={(e) => handleContextMenu(e, "part", si, pi)}
+                            className="cursor-pointer"
+                          >
+                            <MenuIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -784,11 +993,10 @@ export default function BandSheetEditor() {
             </div>
            ))}
 
-        {indicator?.type === "section" &&
-          indicator.index === sections.length && <DropIndicator />}
+
 
         {/* Add new section button at the bottom */}
-        <div className="flex flex-col items-center justify-center mt-6 cursor-pointer select-none group" onClick={addSection}>
+        <div className="flex flex-col items-center justify-center mt-6 mb-4cursor-pointer select-none group" onClick={addSection}>
           <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
           <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
         </div>
@@ -808,39 +1016,75 @@ export default function BandSheetEditor() {
         >
           {contextMenu.type === "section" && (
             <>
+              {/* Only show Move Up if not the first section */}
+              {contextMenu.si > 0 && (
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("moveUp")}
+                >
+                  Move Up
+                </div>
+              )}
+              {/* Only show Move Down if not the last section */}
+              {contextMenu.si < sections.length - 1 && (
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("moveDown")}
+                >
+                  Move Down
+                </div>
+              )}
               <div
                 className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("duplicate")}
               >
-                Duplicate section
+                Duplicate Section
               </div>
               <div
                 className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
                 onClick={() => handleMenuAction("delete")}
               >
-                Delete section
+                Delete Section
               </div>
             </>
           )}
           {contextMenu.type === "part" && (
             <>
+              {/* Only show Move Up if not the first part */}
+              {contextMenu.pi > 0 && (
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("moveUp")}
+                >
+                  Move Up
+                </div>
+              )}
+              {/* Only show Move Down if not the last part */}
+              {contextMenu.pi < sections[contextMenu.si]?.parts.length - 1 && (
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("moveDown")}
+                >
+                  Move Down
+                </div>
+              )}
               <div
                 className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("add")}
               >
-                Add part
+                Add Part
               </div>
               <div
                 className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("duplicate")}
               >
-                Duplicate part
+                Duplicate Part
               </div>
               <div
                 className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
                 onClick={() => handleMenuAction("delete")}
               >
-                Delete part
+                Delete Part
               </div>
             </>
           )}
