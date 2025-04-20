@@ -17,18 +17,30 @@ export const getEnergyBackgroundColor = (energyLevel) => {
 /**
  * Calculates the width of the energy indicator line based on energy level
  * @param {number} energyLevel - Energy level from 1-10
- * @returns {string} CSS width value as percentage
+ * @returns {string} CSS width value as pixels or viewport width
  */
 export const getEnergyLineWidth = (energyLevel) => {
-  // Energy level 1 = 10% width (just the section column)
-  // Energy level 10 = 100% width (full row width)
-  const minWidth = 10; // Width percentage for energy level 1
-  const maxWidth = 100; // Width percentage for energy level 10
+  // For energy level 1, we want it to be the width of just the section column (120px)
+  // For energy level 10, we want the full width of the entire sheet (100vw)
   
-  // Calculate width percentage based on energy level
-  const widthPercentage = minWidth + ((maxWidth - minWidth) / 9) * (energyLevel - 1);
-  
-  return `${widthPercentage}%`;
+  if (energyLevel === 1) {
+    // Just the section column width
+    return '120px';
+  } else if (energyLevel === 10) {
+    // The full sheet width (using viewport width)
+    return '100vw';
+  } else {
+    // Calculate a proportional width between those extremes
+    // We'll use viewport width units (vw) for a smooth transition
+    // Assuming section column is roughly 12vw (120px)
+    const minWidth = 12; // section column in vw
+    const maxWidth = 100; // full sheet width in vw
+    
+    // Calculate proportional width
+    const widthVw = minWidth + ((maxWidth - minWidth) / 9) * (energyLevel - 1);
+    
+    return `${widthVw}vw`;
+  }
 };
 
 /**
