@@ -20,14 +20,81 @@ export default function BandSheetEditor() {
     const grayscaleValue = 235 - (energyLevel - 1) * 20; // 235 (very light) to 55 (very dark)
     return `rgb(${grayscaleValue}, ${grayscaleValue}, ${grayscaleValue})`;
   };
+  
+  // Adjust textarea height to fit content
+  const adjustTextareaHeight = (textarea) => {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(200, textarea.scrollHeight) + 'px';
+  };
+  
+  // Utility for chord transposition
+  const transposeChord = (chord, semitones) => {
+    if (!chord || semitones === 0) return chord;
+    
+    // Define the notes in order (including sharps/flats)
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const flatNotes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    
+    // Regular expression to find chord root notes
+    // Matches C, C#, Db, etc. at the start of a chord or after a space or slash
+    return chord.replace(/(?:^|\s|\/)([A-G][b#]?)/g, (match, rootNote) => {
+      const useFlats = rootNote.includes('b');
+      const noteArray = useFlats ? flatNotes : notes;
+      
+      // Clean the root note (remove any non-letter characters)
+      const cleanRoot = rootNote.charAt(0);
+      const accidental = rootNote.substring(1);
+      
+      // Find the current note index
+      let noteIndex;
+      if (accidental === '#') {
+        noteIndex = notes.indexOf(rootNote);
+      } else if (accidental === 'b') {
+        noteIndex = flatNotes.indexOf(rootNote);
+      } else {
+        noteIndex = notes.indexOf(cleanRoot);
+      }
+      
+      if (noteIndex === -1) return match; // If not found, return original
+      
+      // Calculate new index with modulo to wrap around
+      const newIndex = (noteIndex + semitones + 12) % 12;
+      
+      // Replace the root note but keep the rest of the match
+      return match.replace(rootNote, noteArray[newIndex]);
+    });
+  };
+  
+  // Generate chord display based on transpose value
+  const getTransposedChords = (chords, semitones) => {
+    if (!chords) return '';
+    
+    // Split by spaces or other common chord progression separators
+    const chordArray = chords.split(/([|\s-])/);
+    return chordArray.map(item => {
+      // Only transpose items that look like chords
+      if (/^[A-G][b#]?/.test(item)) {
+        return transposeChord(item, semitones);
+      }
+      return item;
+    }).join('');
+  };
 
   // Track the currently loaded sheet's ID
   const [currentSheetId, setCurrentSheetId] = useState(null);
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [savedSheets, setSavedSheets] = useState([]);
+  // Parts module state
+  const [partsModule, setPartsModule] = useState([]);
+  const [transposeValue, setTransposeValue] = useState(0);
+  const [editingPartIndex, setEditingPartIndex] = useState(null);
+  const [editingPartField, setEditingPartField] = useState(null);
+  const [partEditValue, setPartEditValue] = useState('');
 
   // Fetch saved sheets from localStorage
+  // Fetch saved sheets when sidebar opens
   useEffect(() => {
     if (sidebarOpen) {
       const sheets = [];
@@ -68,6 +135,14 @@ export default function BandSheetEditor() {
         setSections(sheet.sections);
         setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
       }
+      // Load parts module if available
+      if (sheet.partsModule) {
+        setPartsModule(sheet.partsModule);
+      } else {
+        // Initialize parts module from section parts if needed
+        initializePartsModule();
+      }
+      setTransposeValue(sheet.transposeValue || 0);
       setCurrentSheetId(sheet.id || null);
     } catch (e) {
       alert('Failed to load sheet');
@@ -84,6 +159,36 @@ export default function BandSheetEditor() {
     parts: [{ id: Date.now() + 1, part: "A", bars: 4, lyrics: "" }],
   },
 ]);
+  
+  // Initialize parts module when sections change or on first load
+  useEffect(() => {
+    if (sections.length > 0 && partsModule.length === 0) {
+      // Use a function for initialization to avoid direct dependency issues
+      const initPartsFromSections = () => {
+        // Extract unique part labels from all sections
+        const uniqueParts = new Set();
+        sections.forEach(section => {
+          section.parts.forEach(part => {
+            if (part.part) uniqueParts.add(part.part);
+          });
+        });
+        
+        // Create initial parts module entries
+        const initialParts = Array.from(uniqueParts).map(partLabel => ({
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          part: partLabel,
+          bars: sections.find(s => s.parts.find(p => p.part === partLabel))?.parts.find(p => p.part === partLabel)?.bars || 4,
+          chords: '',
+        }));
+        
+        if (initialParts.length > 0) {
+          setPartsModule(initialParts);
+        }
+      };
+      
+      initPartsFromSections();
+    }
+  }, [sections, partsModule.length]);
   const [editing, setEditing] = useState(null); // {si,pi,field}
   const [editValue, setEditValue] = useState("");
   const [idCounter, setIdCounter] = useState(() => Date.now());
@@ -151,6 +256,14 @@ export default function BandSheetEditor() {
       // For part fields
       setEditValue(String(sections[si].parts[pi][f] ?? ""));
     }
+    
+    // Wait for the textarea to be rendered, then adjust height
+    setTimeout(() => {
+      const activeTextarea = document.querySelector('.editing-cell textarea');
+      if (activeTextarea && (f === 'lyrics' || f === 'notes')) {
+        adjustTextareaHeight(activeTextarea);
+      }
+    }, 10);
   };
 
   const saveEdit = () => {
@@ -171,6 +284,12 @@ export default function BandSheetEditor() {
       });
     } else {
       // For part fields
+      let oldPartLabel = null;
+      if (f === 'part') {
+        // If we're editing the part label, store the old value for checking later
+        oldPartLabel = sections[si].parts[pi].part;
+      }
+      
       updateSections((prev) => {
         const next = prev.map((section, sidx) => {
           if (sidx !== si) return section;
@@ -187,17 +306,77 @@ export default function BandSheetEditor() {
         });
         return next;
       });
+      
+      // If we changed a part label, update the parts module
+      if (f === 'part' && oldPartLabel !== editValue) {
+        // Check if the old part label still exists anywhere in sections
+        const oldPartStillExists = sections.some(section => 
+          section.parts.some(part => 
+            part !== sections[si].parts[pi] && part.part === oldPartLabel
+          )
+        );
+        
+        // If old part doesn't exist anymore, remove it and add the new one
+        if (!oldPartStillExists) {
+          setTimeout(() => {
+            setPartsModule(prev => {
+              // Find the entry for the old part label
+              const oldPartEntry = prev.find(p => p.part === oldPartLabel);
+              // If found, update it; otherwise do nothing
+              if (oldPartEntry) {
+                const updatedParts = prev.filter(p => p.part !== oldPartLabel);
+                // Add new entry with the updated label but same content
+                updatedParts.push({
+                  ...oldPartEntry,
+                  id: Date.now(), // New ID
+                  part: editValue, // New part label
+                  bars: sections[si].parts[pi].bars // Update bars too
+                });
+                return updatedParts;
+              }
+              return prev;
+            });
+          }, 0);
+        } else {
+          // If old part still exists elsewhere and the new one doesn't,
+          // add the new part to the module
+          const newPartExists = partsModule.some(p => p.part === editValue);
+          if (!newPartExists) {
+            setTimeout(() => {
+              setPartsModule(prev => [
+                ...prev,
+                {
+                  id: Date.now(),
+                  part: editValue,
+                  bars: sections[si].parts[pi].bars,
+                  chords: ''
+                }
+              ]);
+            }, 0);
+          }
+        }
+      }
     }
     
     setEditing(null);
   };
 
-  const isEditing = (si, pi, f, type = 'part') =>
-    editing && 
-    editing.si === si && 
-    (type === 'section' ? true : editing.pi === pi) && 
-    editing.f === f &&
-    editing.type === type;
+  const isEditing = (si, pi, f, type = 'part') => {
+    if (type === 'partsModule') {
+      return editing && 
+        editing.type === 'partsModule' && 
+        editing.si === pi && 
+        editing.f === f;
+    }
+    
+    return editing && 
+      editing.si === si && 
+      (type === 'section' ? true : editing.pi === pi) && 
+      editing.f === f &&
+      editing.type === type;
+  };
+  
+  console.log('Current editing state:', editing); // Debugging
 
   // CRUD
   const addSection = () => {
@@ -220,13 +399,19 @@ export default function BandSheetEditor() {
 
   const addPart = (si) => {
     const newId = getNextId();
-    setSections((prev) =>
-      prev.map((section, idx) => {
+    let newPartLabel = '';
+    
+    setSections((prev) => {
+      const updatedSections = prev.map((section, idx) => {
         if (idx !== si) return section;
         const p = section.parts;
         const next = String.fromCharCode(
           (p[p.length - 1]?.part.charCodeAt(0) ?? 64) + 1,
         );
+        
+        // Store the new part label to use outside this function
+        newPartLabel = next;
+        
         return {
           ...section,
           parts: [
@@ -234,20 +419,65 @@ export default function BandSheetEditor() {
             { id: newId, part: next, bars: 4, lyrics: "" },
           ],
         };
-      }),
-    );
+      });
+      
+      // After updating sections, add this part to the parts module if it doesn't exist
+      setTimeout(() => {
+        addPartToModule(newPartLabel, 4);
+      }, 0);
+      
+      return updatedSections;
+    });
+  };
+  
+  // Add a part to the parts module if it doesn't exist yet
+  const addPartToModule = (partLabel, bars = 4) => {
+    setPartsModule(prev => {
+      // Check if this part label already exists
+      const partExists = prev.some(p => p.part === partLabel);
+      if (partExists) return prev; // Don't add duplicates
+      
+      // Add the new part
+      const newPart = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        part: partLabel,
+        bars,
+        chords: ''
+      };
+      
+      return [...prev, newPart];
+    });
   };
 
   const deletePart = (si, pi) => {
-    setSections((prev) =>
-      prev.map((section, idx) => {
-        if (idx !== si) return section;
-        return {
-          ...section,
-          parts: section.parts.filter((_, pidx) => pidx !== pi),
-        };
-      }),
-    );
+    // Get the part label before deleting
+    const partToDelete = sections[si].parts[pi].part;
+    
+    setSections(prev => {
+      // Create the new sections array with the part removed
+      const updatedSections = [...prev];
+      updatedSections[si] = {
+        ...updatedSections[si],
+        parts: updatedSections[si].parts.filter((_, pidx) => pidx !== pi)
+      };
+      
+      // Check if this part still exists in any section after the deletion
+      const partStillExists = updatedSections.some(section => 
+        section.parts.some(part => part.part === partToDelete)
+      );
+      
+      // If the part is no longer used in any section, remove it from parts module
+      if (!partStillExists) {
+        // Use setTimeout to ensure state updates happen after the sections update
+        setTimeout(() => {
+          setPartsModule(prevPartsModule => 
+            prevPartsModule.filter(p => p.part !== partToDelete)
+          );
+        }, 0);
+      }
+      
+      return updatedSections;
+    });
   };
 
   // Move section up or down
@@ -461,17 +691,7 @@ export default function BandSheetEditor() {
           })
         );
       } else if (action === "delete") {
-        setSections((prev) =>
-          prev.map((section, idx) => {
-            if (idx !== si) return section;
-            if (section.parts.length <= 1) {
-              // Don't allow deleting the last part
-              return section;
-            }
-            const parts = section.parts.filter((_, i) => i !== pi);
-            return { ...section, parts };
-          })
-        );
+        deletePart(si, pi);
       } else if (action === "moveUp") {
         movePart(si, pi, 'up');
       } else if (action === "moveDown") {
@@ -527,7 +747,16 @@ export default function BandSheetEditor() {
         parts: [{ id: newId + 1, part: 'A', bars: 4, lyrics: '' }],
       },
     ]);
-    setIdCounter(newId + 2);
+    setPartsModule([
+      {
+        id: newId + 2,
+        part: 'A',
+        bars: 4,
+        chords: '',
+      }
+    ]);
+    setTransposeValue(0);
+    setIdCounter(newId + 3);
     setCurrentSheetId(null);
   };
 
@@ -538,12 +767,44 @@ export default function BandSheetEditor() {
     localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
     return id;
   }
+  
+  // Initialize or refresh parts module based on current sections
+  const initializePartsModule = () => {
+    if (!sections || sections.length === 0) return;
+    
+    // Extract unique part labels from all sections
+    const uniqueParts = new Set();
+    sections.forEach(section => {
+      section.parts.forEach(part => {
+        if (part.part) uniqueParts.add(part.part);
+      });
+    });
+    
+    // Create parts module entries for each unique part
+    const newPartsModule = Array.from(uniqueParts).map(partLabel => ({
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      part: partLabel,
+      bars: sections.find(s => s.parts.find(p => p.part === partLabel))?.parts.find(p => p.part === partLabel)?.bars || 4,
+      chords: '',
+    }));
+    
+    // Preserve existing chords from current parts module
+    const updatedPartsModule = newPartsModule.map(newPart => {
+      const existingPart = partsModule.find(p => p.part === newPart.part);
+      if (existingPart && existingPart.chords) {
+        return { ...newPart, chords: existingPart.chords };
+      }
+      return newPart;
+    });
+    
+    setPartsModule(updatedPartsModule);
+  };
 
   // Save handler
   const handleSave = () => {
     // If currentSheetId is set, overwrite that sheet
     const id = currentSheetId || Date.now();
-    const sheetToSave = { ...songData, sections, id };
+    const sheetToSave = { ...songData, sections, partsModule, transposeValue, id };
     localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
     setCurrentSheetId(id);
     alert(`Sheet saved! (id: ${id})`);
@@ -552,7 +813,7 @@ export default function BandSheetEditor() {
   // Save As handler
   const handleSaveAs = () => {
     const id = Date.now();
-    const sheetToSave = { ...songData, sections, id };
+    const sheetToSave = { ...songData, sections, partsModule, transposeValue, id };
     localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
     setCurrentSheetId(id);
     alert(`Sheet saved as new! (id: ${id})`);
@@ -918,7 +1179,7 @@ export default function BandSheetEditor() {
                   {section.parts.map((part, pi) => (
                     <div 
                       key={part.id} 
-                      className="flex h-[40px] border-b border-gray-100 last:border-b-0"
+                      className="flex min-h-[40px] border-b border-gray-100 last:border-b-0"
                       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
                       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
                     >
@@ -967,16 +1228,25 @@ export default function BandSheetEditor() {
                           part.bars
                         )}
                       </div>
-                      
-                      <div 
-                        className="flex-1 px-2 py-2 text-gray-500 cursor-pointer flex items-center"
+                                            <div 
+                        className="flex-1 px-2 py-2 text-gray-500 cursor-pointer overflow-y-auto"
                         onClick={() => !isEditing(si, pi, 'lyrics') && beginEdit(si, pi, 'lyrics')}
                       >
                         {isEditing(si, pi, 'lyrics') ? (
                           <textarea
-                            className="w-full bg-white rounded px-2 py-1 text-sm h-[24px] overflow-y-auto resize-none"
+                            className="w-full bg-white rounded px-2 py-1 text-sm min-h-[48px] resize-vertical overflow-y-auto"
                             value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            onChange={(e) => {
+                              setEditValue(e.target.value);
+                              // Auto-resize the textarea
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                            }}
+                            onFocus={(e) => {
+                              // Auto-resize on focus too
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                            }}
                             onBlur={saveEdit}
                             onKeyDown={(e) => {
                               if (e.key === "Escape") setEditing(null);
@@ -984,19 +1254,31 @@ export default function BandSheetEditor() {
                             autoFocus
                           />
                         ) : (
-                          part.lyrics || <span className="text-gray-400 italic">{placeholders.lyrics}</span>
+                          <div className="whitespace-pre-line max-h-[120px] overflow-y-auto">
+                            {part.lyrics || <span className="text-gray-400 italic">{placeholders.lyrics}</span>}
+                          </div>
                         )}
                       </div>
                       
                       <div 
-                        className="w-[200px] min-w-[200px] px-2 py-2 text-xs text-gray-500 cursor-pointer flex items-center"
+                        className="w-[200px] min-w-[200px] px-2 py-2 text-xs text-gray-500 cursor-pointer overflow-y-auto"
                         onClick={() => !isEditing(si, pi, 'notes') && beginEdit(si, pi, 'notes')}
                       >
                         {isEditing(si, pi, 'notes') ? (
                           <textarea
-                            className="w-full bg-white rounded px-2 py-1 text-xs h-[24px] overflow-y-auto resize-none"
+                            className="w-full bg-white rounded px-2 py-1 text-xs min-h-[48px] resize-vertical overflow-y-auto"
                             value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            onChange={(e) => {
+                              setEditValue(e.target.value);
+                              // Auto-resize the textarea
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                            }}
+                            onFocus={(e) => {
+                              // Auto-resize on focus too
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                            }}
                             onBlur={saveEdit}
                             onKeyDown={(e) => {
                               if (e.key === "Escape") setEditing(null);
@@ -1004,7 +1286,9 @@ export default function BandSheetEditor() {
                             autoFocus
                           />
                         ) : (
-                          part.notes ? part.notes : <span className="text-gray-400 italic">{placeholders.notes}</span>
+                          <div className="whitespace-pre-line max-h-[120px] overflow-y-auto">
+                            {part.notes ? part.notes : <span className="text-gray-400 italic">{placeholders.notes}</span>}
+                          </div>
                         )}
                       </div>
                       
@@ -1031,7 +1315,221 @@ export default function BandSheetEditor() {
           </div>
 
           {/* No action buttons needed here since they are in the toolbar */}
+        </div>
 
+        {/* Parts Module */}
+        <div className="mt-6 mb-6 ml-4 mr-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
+          <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-bold">Chord progressions</h2>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Transpose:</label>
+              <div className="flex items-center">
+                <button 
+                  className="px-2 py-1 bg-gray-200 rounded-l hover:bg-gray-300 text-gray-700 font-bold"
+                  onClick={() => setTransposeValue(prev => Math.max(-12, prev - 1))}
+                >
+                  -
+                </button>
+                <span className="w-10 text-center">{transposeValue > 0 ? `+${transposeValue}` : transposeValue}</span>
+                <button 
+                  className="px-2 py-1 bg-gray-200 rounded-r hover:bg-gray-300 text-gray-700 font-bold"
+                  onClick={() => setTransposeValue(prev => Math.min(12, prev + 1))}
+                >
+                  +
+                </button>
+              </div>
+              <button 
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm ml-2"
+                onClick={initializePartsModule}
+              >
+                Refresh Parts
+              </button>
+            </div>
+          </div>
+          
+          {/* Parts table header */}
+          <div className="flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+            <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center">Part</div>
+            <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">Bars</div>
+            <div className="flex-1 px-2 py-2 flex items-center">Original Chords</div>
+            <div className="flex-1 px-2 py-2 flex items-center">Transposed Chords</div>
+            <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center"></div>
+          </div>
+          
+          {/* Parts list */}
+          {partsModule.map((partItem, index) => (
+            <div key={partItem.id} className="flex min-h-[40px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+              {/* Part */}
+              <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center font-semibold">
+                {editingPartIndex === index && editingPartField === 'part' ? (
+                  <input
+                    className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
+                    type="text"
+                    value={partEditValue}
+                    onChange={(e) => setPartEditValue(e.target.value)}
+                    onBlur={() => {
+                      // Save edit
+                      if (partEditValue) {
+                        const updatedParts = [...partsModule];
+                        updatedParts[index] = {...updatedParts[index], part: partEditValue};
+                        setPartsModule(updatedParts);
+                      }
+                      setEditingPartIndex(null);
+                      setEditingPartField(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        // Save edit
+                        if (partEditValue) {
+                          const updatedParts = [...partsModule];
+                          updatedParts[index] = {...updatedParts[index], part: partEditValue};
+                          setPartsModule(updatedParts);
+                        }
+                        setEditingPartIndex(null);
+                        setEditingPartField(null);
+                      }
+                      if (e.key === "Escape") {
+                        setEditingPartIndex(null);
+                        setEditingPartField(null);
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setEditingPartIndex(index);
+                      setEditingPartField('part');
+                      setPartEditValue(partItem.part || '');
+                    }}
+                  >
+                    {partItem.part}
+                  </div>
+                )}
+              </div>
+              
+              {/* Bars */}
+              <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">
+                {editingPartIndex === index && editingPartField === 'bars' ? (
+                  <input
+                    className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
+                    type="number"
+                    min="1"
+                    value={partEditValue}
+                    onChange={(e) => setPartEditValue(e.target.value)}
+                    onBlur={() => {
+                      // Save edit
+                      const updatedParts = [...partsModule];
+                      updatedParts[index] = {...updatedParts[index], bars: parseInt(partEditValue) || 4};
+                      setPartsModule(updatedParts);
+                      setEditingPartIndex(null);
+                      setEditingPartField(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        // Save edit
+                        const updatedParts = [...partsModule];
+                        updatedParts[index] = {...updatedParts[index], bars: parseInt(partEditValue) || 4};
+                        setPartsModule(updatedParts);
+                        setEditingPartIndex(null);
+                        setEditingPartField(null);
+                      }
+                      if (e.key === "Escape") {
+                        setEditingPartIndex(null);
+                        setEditingPartField(null);
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setEditingPartIndex(index);
+                      setEditingPartField('bars');
+                      setPartEditValue(partItem.bars.toString());
+                    }}
+                  >
+                    {partItem.bars}
+                  </div>
+                )}
+              </div>
+              
+              {/* Chords */}
+              <div className="flex-1 px-2 py-2 overflow-y-auto">
+                {editingPartIndex === index && editingPartField === 'chords' ? (
+                  <textarea
+                    className="w-full bg-white rounded px-2 py-1 text-sm min-h-[40px] resize-vertical border border-gray-300"
+                    value={partEditValue}
+                    onChange={(e) => {
+                      setPartEditValue(e.target.value);
+                      // Auto-resize the textarea
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                    }}
+                    onFocus={(e) => {
+                      // Auto-resize on focus too
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+                    }}
+                    onBlur={() => {
+                      // Save edit
+                      const updatedParts = [...partsModule];
+                      updatedParts[index] = {...updatedParts[index], chords: partEditValue};
+                      setPartsModule(updatedParts);
+                      setEditingPartIndex(null);
+                      setEditingPartField(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setEditingPartIndex(null);
+                        setEditingPartField(null);
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <div 
+                    className="cursor-pointer whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100"
+                    onClick={() => {
+                      setEditingPartIndex(index);
+                      setEditingPartField('chords');
+                      setPartEditValue(partItem.chords || '');
+                    }}
+                  >
+                    {partItem.chords || <span className="text-gray-400 italic">Click to add chords...</span>}
+                  </div>
+                )}
+              </div>
+              
+              {/* Transposed Chords */}
+              <div className="flex-1 px-2 py-2 overflow-y-auto">
+                <div className="font-mono whitespace-pre-wrap max-h-[120px] overflow-y-auto">
+                  {partItem.chords ? getTransposedChords(partItem.chords, transposeValue) : 
+                    <span className="text-gray-400 italic">Transposed chords will appear here</span>
+                  }
+                </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center">
+                <button 
+                  className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-100 rounded"
+                  onClick={() => {
+                    // Don't allow manual deletion from parts module anymore
+                    // Parts should only be managed through the main sheet
+                    alert('Parts are automatically managed based on the sheet structure. Delete the part from the sheet if needed.');
+                  }}
+                  title="Remove part"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+          
+          {/* No add part button - parts are added automatically when editing the sheet */}
         </div>
         {/* Context Menu */}
         {contextMenu.visible && (
