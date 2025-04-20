@@ -6,8 +6,10 @@ import SongInfoBar from './SongInfoBar';
 import SheetHeader from './SheetHeader';
 import Section from './Section';
 import ContextMenu from './ContextMenu';
+import EnergyDialog from './EnergyDialog';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
+import { useUIState } from '../contexts/UIStateContext';
 import { exportToPDF } from '../services/ExportService';
 import { saveSheet, getSheetById, getAllSheets, createNewSheet } from '../services/SheetStorageService';
 import { getTransposedChords } from '../services/ChordService';
@@ -35,9 +37,17 @@ export default function BandSheetEditor() {
     saveEdit: contextSaveEdit
   } = useEditing();
   
-  // Sidebar state - will move to UIContext later
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [savedSheets, setSavedSheets] = useState([]);
+  // Use UIStateContext for UI-related state
+  const {
+    // Sidebar state
+    sidebarOpen, setSidebarOpen, savedSheets, setSavedSheets,
+    // Context menu state
+    contextMenu, setContextMenu, showContextMenu, hideContextMenu,
+    // Hover state
+    hoverState, setHoverState, setHover, clearHover,
+    // Energy dialog state
+    energyDialog, setEnergyDialog, openEnergyDialog, closeEnergyDialog
+  } = useUIState();
   
   // Fetch saved sheets from localStorage
   // Fetch saved sheets when sidebar opens
@@ -127,28 +137,9 @@ export default function BandSheetEditor() {
     }
   }, [sections, partsModule?.length]);
 
-  // Note: editing state now comes from the context at the top of the component
+  // Note: UI state (context menu, energy dialog, hover state) now comes from UIStateContext
+  // Only keep component-specific state that isn't managed by contexts
   const [idCounter, setIdCounter] = useState(() => Date.now());
-  const [energyDialog, setEnergyDialog] = useState({ open: false, sectionIndex: null, currentValue: 5 });
-
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState({
-    visible: false,
-    x: 0,
-    y: 0,
-    type: null, // 'section' or 'part'
-    si: null,
-    pi: null,
-    isNew: false, // Used for position adjustment
-  });
-  // contextMenuRef no longer needed - handled by ContextMenu component
-
-  // Hover state tracking
-  const [hoverState, setHoverState] = useState({
-    type: null, // 'section' or 'part'
-    si: null,
-    pi: null
-  });
 
   // Placeholder text for empty fields
   const placeholders = {
@@ -490,19 +481,10 @@ export default function BandSheetEditor() {
   };
 
 
-  // Context menu handlers
+  // Context menu handler - delegates to UIStateContext's showContextMenu
   const handleContextMenu = (e, type, si, pi = null) => {
-    e.preventDefault();
-    
-    // Set position and make context menu visible
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      type,
-      si,
-      pi,
-    });
+    // Use the showContextMenu function from UIStateContext
+    showContextMenu(e, type, si, pi);
   };
   
   // Get context menu items based on context type
@@ -631,35 +613,7 @@ export default function BandSheetEditor() {
     setContextMenu((cm) => ({ ...cm, visible: false }));
   };
 
-  // Energy dialog handlers
-  const openEnergyDialog = (sectionIndex) => {
-    setEnergyDialog({
-      open: true,
-      sectionIndex,
-      currentValue: sections[sectionIndex].energy
-    });
-    setContextMenu(null); // Close the context menu
-  };
-
-  const closeEnergyDialog = () => {
-    setEnergyDialog({ ...energyDialog, open: false });
-  };
-
-  const handleEnergyChange = (e) => {
-    setEnergyDialog({ ...energyDialog, currentValue: parseInt(e.target.value) });
-  };
-
-  const saveEnergyLevel = () => {
-    if (energyDialog.sectionIndex !== null) {
-      const updatedSections = [...sections];
-      updatedSections[energyDialog.sectionIndex] = {
-        ...updatedSections[energyDialog.sectionIndex],
-        energy: energyDialog.currentValue
-      };
-      setSections(updatedSections);
-    }
-    closeEnergyDialog();
-  };
+  // Note: Energy dialog functions have been moved to the EnergyDialog component
 
   // New Sheet handler
   const handleNewSheet = () => {
@@ -680,7 +634,6 @@ export default function BandSheetEditor() {
   };
 
 
-  // Note: We now use contextInitializePartsModule from SheetDataContext instead
 
   // Save handler
   const handleSave = () => {
@@ -976,63 +929,10 @@ export default function BandSheetEditor() {
           
           {/* No add part button - parts are added automatically when editing the sheet */}
         </div>
-        {/* Context Menu */}
-        <ContextMenu
-          visible={contextMenu.visible}
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(cm => ({ ...cm, visible: false }))}
-          menuItems={getContextMenuItems()}
-        />
-        {/* Energy Level Dialog */}
-        {energyDialog.open && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-              <h3 className="text-lg font-bold mb-4">Set Energy Level</h3>
-              
-              <div className="mb-6">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Low Energy (1)</span>
-                  <span>High Energy (10)</span>
-                </div>
-                
-                <input 
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={energyDialog.currentValue}
-                  onChange={handleEnergyChange}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-                
-                <div className="text-center font-semibold text-lg mt-2">
-                  {energyDialog.currentValue}
-                </div>
-                
-                {/* Preview of the section color */}
-                <div 
-                  className="w-full h-10 mt-4 rounded border border-gray-300"
-                  style={{ backgroundColor: getEnergyBackgroundColor(energyDialog.currentValue) }}
-                ></div>
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <button 
-                  onClick={closeEnergyDialog}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={saveEnergyLevel}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Context Menu - now gets state from UIStateContext */}
+        <ContextMenu menuItems={getContextMenuItems()} />
+        {/* Energy Dialog component - extracted to its own file */}
+        <EnergyDialog />
       </div>
 
     </div>

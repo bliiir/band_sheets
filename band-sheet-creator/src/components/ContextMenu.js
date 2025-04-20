@@ -1,22 +1,20 @@
 import React, { useRef, useEffect } from 'react';
+import { useUIState } from '../contexts/UIStateContext';
 
 /**
  * ContextMenu component for displaying contextual actions
+ * Uses UIStateContext for state management instead of props
  * 
  * @param {Object} props - Component props
- * @param {boolean} props.visible - Whether the menu is visible
- * @param {number} props.x - X position of the menu
- * @param {number} props.y - Y position of the menu
- * @param {function} props.onClose - Function to call when the menu should close
  * @param {Array} props.menuItems - Array of menu item objects with label, action, and optional disabled/danger props
  */
-const ContextMenu = ({ 
-  visible, 
-  x, 
-  y, 
-  onClose, 
-  menuItems = []
-}) => {
+const ContextMenu = ({ menuItems = [] }) => {
+  // Get context menu state from UIStateContext
+  const { contextMenu, hideContextMenu } = useUIState();
+  const { visible, x, y } = contextMenu || {};
+  
+  // Use hideContextMenu from UIStateContext as the onClose handler
+  const onClose = hideContextMenu;
   const menuRef = useRef(null);
   const isNewRef = useRef(true);
 
