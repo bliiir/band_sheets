@@ -1,13 +1,19 @@
 // src/App.js
 import React from 'react';
 import BandSheetEditor from './components/BandSheetEditor';
+import Logo from './assets/logo3.png';
 
 function App() {
   return (
     <div className="flex flex-col min-h-screen w-full">
-      <header className="bg-gray-800 text-white p-6 text-center">
-        <h1 className="m-0 text-2xl font-bold">Band Sheet Creator</h1>
-        <p className="mt-1 opacity-80">Create and edit song structure sheets for your band</p>
+      <header className="bg-gray-800 text-white p-4 flex items-center">
+        <div className="flex-shrink-0 mr-6">
+          <img src={Logo} alt="Band Sheet Creator" className="h-12" />
+        </div>
+        <div className="text-left flex-1">
+          <span className="text-xl font-bold mr-6">Band Sheet Creator</span>
+          <span className="opacity-80">Create and edit song structure sheets for your band</span>
+        </div>
       </header>
       <main className="flex-1 min-w-0 min-h-0 m-0 p-0 bg-white">
         <BandSheetEditor />
