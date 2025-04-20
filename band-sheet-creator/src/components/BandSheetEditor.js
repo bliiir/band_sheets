@@ -25,11 +25,16 @@ export default function BandSheetEditor() {
   // Parts module state
   const [partsModule, setPartsModule] = useState([]);
   const [transposeValue, setTransposeValue] = useState(0);
-  // Parts module editing state
-  // These will be refactored to use the EditingContext in the next phase
+  
+  // Temporary backward compatibility variables 
+  // These will be defined but not directly used, to prevent runtime errors
+  // during the transition to EditingContext
   const [editingPartIndex, setEditingPartIndex] = useState(null);
   const [editingPartField, setEditingPartField] = useState(null);
   const [partEditValue, setPartEditValue] = useState('');
+  
+  // Parts module editing state is now handled by EditingContext
+  // We'll check if editing.type === 'partsModule' to determine if a part module is being edited
 
   // Fetch saved sheets from localStorage
   // Fetch saved sheets when sidebar opens
@@ -296,11 +301,37 @@ export default function BandSheetEditor() {
   const isEditing = (si, pi, f, type = 'part') => {
     if (type === 'partsModule') {
       // Special case for parts module editing
-      return contextIsEditing(pi, null, f, 'partsModule');
+      return contextIsEditing(si, null, f, 'partsModule');
     }
     
     // Use the context's isEditing function for everything else
     return contextIsEditing(si, pi, f, type);
+  };
+  
+  // Helper function for beginning editing of parts module items
+  const beginPartModuleEdit = (index, field, initialValue) => {
+    beginEdit(index, null, field, 'partsModule');
+    setEditValue(initialValue || '');
+  };
+  
+  // Helper function for saving parts module edits
+  const savePartModuleEdit = (index, field) => {
+    const updatedParts = [...partsModule];
+    
+    if (field === 'part' || field === 'bars') {
+      updatedParts[index] = {
+        ...updatedParts[index],
+        [field]: field === 'bars' ? parseInt(editValue || '0', 10) : editValue
+      };
+    } else if (field === 'chords') {
+      updatedParts[index] = {
+        ...updatedParts[index],
+        chords: editValue
+      };
+    }
+    
+    setPartsModule(updatedParts);
+    setEditing(null); // Clear editing state
   };
   
   // Debugging if needed can be done through browser devtools
@@ -823,36 +854,31 @@ export default function BandSheetEditor() {
             <div key={partItem.id} className="flex min-h-[40px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
               {/* Part */}
               <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center font-semibold">
-                {editingPartIndex === index && editingPartField === 'part' ? (
+                {isEditing(index, null, 'part', 'partsModule') ? (
                   <input
                     className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
                     type="text"
-                    value={partEditValue}
-                    onChange={(e) => setPartEditValue(e.target.value)}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => {
                       // Save edit
-                      if (partEditValue) {
-                        const updatedParts = [...partsModule];
-                        updatedParts[index] = {...updatedParts[index], part: partEditValue};
-                        setPartsModule(updatedParts);
+                      if (editValue) {
+                        savePartModuleEdit(index, 'part');
+                      } else {
+                        setEditing(null); // Cancel edit if empty
                       }
-                      setEditingPartIndex(null);
-                      setEditingPartField(null);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         // Save edit
-                        if (partEditValue) {
-                          const updatedParts = [...partsModule];
-                          updatedParts[index] = {...updatedParts[index], part: partEditValue};
-                          setPartsModule(updatedParts);
+                        if (editValue) {
+                          savePartModuleEdit(index, 'part');
+                        } else {
+                          setEditing(null);
                         }
-                        setEditingPartIndex(null);
-                        setEditingPartField(null);
                       }
                       if (e.key === "Escape") {
-                        setEditingPartIndex(null);
-                        setEditingPartField(null);
+                        setEditing(null);
                       }
                     }}
                     autoFocus
@@ -860,11 +886,7 @@ export default function BandSheetEditor() {
                 ) : (
                   <div 
                     className="cursor-pointer"
-                    onClick={() => {
-                      setEditingPartIndex(index);
-                      setEditingPartField('part');
-                      setPartEditValue(partItem.part || '');
-                    }}
+                    onClick={() => beginPartModuleEdit(index, 'part', partItem.part || '')}
                   >
                     {partItem.part}
                   </div>
@@ -873,33 +895,24 @@ export default function BandSheetEditor() {
               
               {/* Bars */}
               <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">
-                {editingPartIndex === index && editingPartField === 'bars' ? (
+                {isEditing(index, null, 'bars', 'partsModule') ? (
                   <input
                     className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
                     type="number"
                     min="1"
-                    value={partEditValue}
-                    onChange={(e) => setPartEditValue(e.target.value)}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => {
-                      // Save edit
-                      const updatedParts = [...partsModule];
-                      updatedParts[index] = {...updatedParts[index], bars: parseInt(partEditValue) || 4};
-                      setPartsModule(updatedParts);
-                      setEditingPartIndex(null);
-                      setEditingPartField(null);
+                      // Save edit - default to 4 bars if value is invalid
+                      savePartModuleEdit(index, 'bars');
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         // Save edit
-                        const updatedParts = [...partsModule];
-                        updatedParts[index] = {...updatedParts[index], bars: parseInt(partEditValue) || 4};
-                        setPartsModule(updatedParts);
-                        setEditingPartIndex(null);
-                        setEditingPartField(null);
+                        savePartModuleEdit(index, 'bars');
                       }
                       if (e.key === "Escape") {
-                        setEditingPartIndex(null);
-                        setEditingPartField(null);
+                        setEditing(null);
                       }
                     }}
                     autoFocus
@@ -907,11 +920,7 @@ export default function BandSheetEditor() {
                 ) : (
                   <div 
                     className="cursor-pointer"
-                    onClick={() => {
-                      setEditingPartIndex(index);
-                      setEditingPartField('bars');
-                      setPartEditValue(partItem.bars.toString());
-                    }}
+                    onClick={() => beginPartModuleEdit(index, 'bars', partItem.bars.toString())}
                   >
                     {partItem.bars}
                   </div>
@@ -920,12 +929,12 @@ export default function BandSheetEditor() {
               
               {/* Chords */}
               <div className="flex-1 px-2 py-2 overflow-y-auto">
-                {editingPartIndex === index && editingPartField === 'chords' ? (
+                {isEditing(index, null, 'chords', 'partsModule') ? (
                   <textarea
                     className="w-full bg-white rounded px-2 py-1 text-sm min-h-[40px] resize-vertical border border-gray-300"
-                    value={partEditValue}
+                    value={editValue}
                     onChange={(e) => {
-                      setPartEditValue(e.target.value);
+                      setEditValue(e.target.value);
                       // Auto-resize the textarea
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
@@ -937,16 +946,11 @@ export default function BandSheetEditor() {
                     }}
                     onBlur={() => {
                       // Save edit
-                      const updatedParts = [...partsModule];
-                      updatedParts[index] = {...updatedParts[index], chords: partEditValue};
-                      setPartsModule(updatedParts);
-                      setEditingPartIndex(null);
-                      setEditingPartField(null);
+                      savePartModuleEdit(index, 'chords');
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Escape") {
-                        setEditingPartIndex(null);
-                        setEditingPartField(null);
+                        setEditing(null);
                       }
                     }}
                     autoFocus
@@ -954,11 +958,7 @@ export default function BandSheetEditor() {
                 ) : (
                   <div 
                     className="cursor-pointer whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100"
-                    onClick={() => {
-                      setEditingPartIndex(index);
-                      setEditingPartField('chords');
-                      setPartEditValue(partItem.chords || '');
-                    }}
+                    onClick={() => beginPartModuleEdit(index, 'chords', partItem.chords || '')}
                   >
                     {partItem.chords || <span className="text-gray-400 italic">Click to add chords...</span>}
                   </div>
