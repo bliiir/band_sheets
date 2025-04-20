@@ -2,6 +2,7 @@
 import React from 'react';
 import BandSheetEditor from './components/BandSheetEditor';
 import Logo from './assets/logo3.png';
+import AppProviders from './contexts/AppProviders';
 
 function App() {
   return (
@@ -16,7 +17,9 @@ function App() {
         </div>
       </header>
       <main className="flex-1 min-w-0 min-h-0 m-0 p-0 bg-white">
-        <BandSheetEditor />
+        <AppProviders>
+          <BandSheetEditor />
+        </AppProviders>
       </main>
       <footer className="p-4 text-center text-gray-500 text-xs bg-gray-100 mt-auto">
         <p>Band Sheet Creator - {new Date().getFullYear()}</p>

@@ -1,85 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ReactComponent as GripIcon } from "../assets/grip.svg";
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
-import { ReactComponent as FolderIcon } from "../assets/folder.svg";
-import { ReactComponent as FilePlusIcon } from "../assets/file_plus.svg";
-import { ReactComponent as SaveIcon } from "../assets/save.svg";
-import { ReactComponent as SaveAllIcon } from "../assets/save_all.svg";
-import { ReactComponent as DownloadIcon } from "../assets/download.svg";
-import SavedSheetsPanel from './SavedSheetsPanel';
+import Toolbar from './Toolbar';
+import Sidebar from './Sidebar';
+import SongInfoBar from './SongInfoBar';
+import SheetHeader from './SheetHeader';
+import Section from './Section';
+import ContextMenu from './ContextMenu';
+import { useEditing } from '../contexts/EditingContext';
+import { exportToPDF } from '../services/ExportService';
+import { saveSheet, getSheetById, getAllSheets, createNewSheet } from '../services/SheetStorageService';
+import { getTransposedChords } from '../services/ChordService';
+import { getEnergyBackgroundColor, adjustTextareaHeight } from '../services/StyleService';
 
-
-const DropIndicator = () => (
-  <div className="drop-indicator" />
-);
 
 export default function BandSheetEditor() {
-  // Function to get background color based on energy level
-  const getEnergyBackgroundColor = (energyLevel) => {
-    // Convert energy level (1-10) to CSS gray scale (very light to very dark)
-    const grayscaleValue = 235 - (energyLevel - 1) * 20; // 235 (very light) to 55 (very dark)
-    return `rgb(${grayscaleValue}, ${grayscaleValue}, ${grayscaleValue})`;
-  };
-  
-  // Adjust textarea height to fit content
-  const adjustTextareaHeight = (textarea) => {
-    if (!textarea) return;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(200, textarea.scrollHeight) + 'px';
-  };
-  
-  // Utility for chord transposition
-  const transposeChord = (chord, semitones) => {
-    if (!chord || semitones === 0) return chord;
-    
-    // Define the notes in order (including sharps/flats)
-    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const flatNotes = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-    
-    // Regular expression to find chord root notes
-    // Matches C, C#, Db, etc. at the start of a chord or after a space or slash
-    return chord.replace(/(?:^|\s|\/)([A-G][b#]?)/g, (match, rootNote) => {
-      const useFlats = rootNote.includes('b');
-      const noteArray = useFlats ? flatNotes : notes;
-      
-      // Clean the root note (remove any non-letter characters)
-      const cleanRoot = rootNote.charAt(0);
-      const accidental = rootNote.substring(1);
-      
-      // Find the current note index
-      let noteIndex;
-      if (accidental === '#') {
-        noteIndex = notes.indexOf(rootNote);
-      } else if (accidental === 'b') {
-        noteIndex = flatNotes.indexOf(rootNote);
-      } else {
-        noteIndex = notes.indexOf(cleanRoot);
-      }
-      
-      if (noteIndex === -1) return match; // If not found, return original
-      
-      // Calculate new index with modulo to wrap around
-      const newIndex = (noteIndex + semitones + 12) % 12;
-      
-      // Replace the root note but keep the rest of the match
-      return match.replace(rootNote, noteArray[newIndex]);
-    });
-  };
-  
-  // Generate chord display based on transpose value
-  const getTransposedChords = (chords, semitones) => {
-    if (!chords) return '';
-    
-    // Split by spaces or other common chord progression separators
-    const chordArray = chords.split(/([|\s-])/);
-    return chordArray.map(item => {
-      // Only transpose items that look like chords
-      if (/^[A-G][b#]?/.test(item)) {
-        return transposeChord(item, semitones);
-      }
-      return item;
-    }).join('');
-  };
+
+
 
   // Track the currently loaded sheet's ID
   const [currentSheetId, setCurrentSheetId] = useState(null);
@@ -97,56 +33,54 @@ export default function BandSheetEditor() {
   // Fetch saved sheets when sidebar opens
   useEffect(() => {
     if (sidebarOpen) {
-      const sheets = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('sheet_')) {
-          try {
-            const sheet = JSON.parse(localStorage.getItem(key));
-            sheets.push(sheet);
-          } catch (e) { /* ignore */ }
-        }
-      }
-      // Sort by id descending (most recent first)
-      sheets.sort((a, b) => b.id - a.id);
+      // Use the storage service to fetch all sheets
+      const sheets = getAllSheets();
       setSavedSheets(sheets);
     }
   }, [sidebarOpen]);
 
   // Load a sheet by id
   function loadSheet(id) {
-    const raw = localStorage.getItem(`sheet_${id}`);
-    if (!raw) return;
-    try {
-      const sheet = JSON.parse(raw);
-      setSongData({ title: sheet.title || '', artist: sheet.artist || '', bpm: sheet.bpm || '' });
-      if (!sheet.sections || sheet.sections.length === 0) {
-        const newId = Date.now();
-        setSections([
-          {
-            id: newId,
-            name: "Verse 1",
-            energy: 5,
-            parts: [{ id: newId + 1, part: "A", bars: 4, lyrics: "" }],
-          },
-        ]);
-        setIdCounter(newId + 2);
-      } else {
-        setSections(sheet.sections);
-        setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
-      }
-      // Load parts module if available
-      if (sheet.partsModule) {
-        setPartsModule(sheet.partsModule);
-      } else {
-        // Initialize parts module from section parts if needed
-        initializePartsModule();
-      }
-      setTransposeValue(sheet.transposeValue || 0);
-      setCurrentSheetId(sheet.id || null);
-    } catch (e) {
+    const sheet = getSheetById(id);
+    if (!sheet) {
       alert('Failed to load sheet');
+      return;
     }
+    
+    // Set song metadata
+    setSongData({ 
+      title: sheet.title || '', 
+      artist: sheet.artist || '', 
+      bpm: sheet.bpm || '' 
+    });
+    
+    // Set sections or create default if none exist
+    if (!sheet.sections || sheet.sections.length === 0) {
+      const newId = Date.now();
+      setSections([
+        {
+          id: newId,
+          name: "Verse 1",
+          energy: 5,
+          parts: [{ id: newId + 1, part: "A", bars: 4, lyrics: "" }],
+        },
+      ]);
+      setIdCounter(newId + 2);
+    } else {
+      setSections(sheet.sections);
+      setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
+    }
+    
+    // Load parts module if available
+    if (sheet.partsModule) {
+      setPartsModule(sheet.partsModule);
+    } else {
+      // Initialize parts module from section parts if needed
+      initializePartsModule();
+    }
+    
+    setTransposeValue(sheet.transposeValue || 0);
+    setCurrentSheetId(sheet.id || null);
   }
 
   // ...existing state
@@ -189,8 +123,8 @@ export default function BandSheetEditor() {
       initPartsFromSections();
     }
   }, [sections, partsModule.length]);
-  const [editing, setEditing] = useState(null); // {si,pi,field}
-  const [editValue, setEditValue] = useState("");
+
+  const { editing, setEditing, editValue, setEditValue, isEditing: contextIsEditing } = useEditing();
   const [idCounter, setIdCounter] = useState(() => Date.now());
   const [energyDialog, setEnergyDialog] = useState({ open: false, sectionIndex: null, currentValue: 5 });
 
@@ -204,7 +138,7 @@ export default function BandSheetEditor() {
     pi: null,
     isNew: false, // Used for position adjustment
   });
-  const contextMenuRef = useRef(null);
+  // contextMenuRef no longer needed - handled by ContextMenu component
 
   // Hover state tracking
   const [hoverState, setHoverState] = useState({
@@ -217,16 +151,6 @@ export default function BandSheetEditor() {
   const placeholders = {
     lyrics: "Add lyrics here...",
     notes: "Add notes here..."
-  };
-  
-  // Define common widths for consistent columns
-  const columnWidths = {
-    section: "w-[120px] min-w-[120px]",
-    part: "w-[60px] min-w-[60px]",
-    bars: "w-[60px] min-w-[60px]",
-    lyrics: "flex-1",
-    notes: "w-[200px] min-w-[200px]",
-    actions: "w-[40px] min-w-[40px]"
   };
   
 
@@ -245,17 +169,21 @@ export default function BandSheetEditor() {
       })))
     );
 
-  // Editing logic for section and parts
+  // Editing logic for section and parts - beginEdit now calls the context function
   const beginEdit = (si, pi, f, type = 'part') => {
-    setEditing({ si, pi, f, type });
+    let initialValue = "";
     
     if (type === 'section') {
       // For section fields
-      setEditValue(String(sections[si][f] ?? ""));
+      initialValue = String(sections[si][f] ?? "");
     } else {
       // For part fields
-      setEditValue(String(sections[si].parts[pi][f] ?? ""));
+      initialValue = String(sections[si].parts[pi][f] ?? "");
     }
+    
+    // Use the context function to begin editing
+    contextIsEditing(si, pi, f, type) || setEditValue(initialValue);
+    setEditing({ type, si, pi, f });
     
     // Wait for the textarea to be rendered, then adjust height
     setTimeout(() => {
@@ -268,6 +196,7 @@ export default function BandSheetEditor() {
 
   const saveEdit = () => {
     if (!editing) return;
+    // Use editing state from the context
     const { si, pi, f, type } = editing;
     
     if (type === 'section') {
@@ -521,133 +450,95 @@ export default function BandSheetEditor() {
     });
   };
 
-  // Cell renderer
-  const cell = (si, pi, f, v, cls) => {
-    const ed = isEditing(si, pi, f);
-    return (
-      <div className={cls + (ed ? " editing-cell" : "")} onClick={() => !ed && beginEdit(si, pi, f)}>
-        {ed ? (
-          f === "lyrics" ? (
-            <textarea
-              className="lyrics-textarea"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={saveEdit}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") setEditing(null);
-                // Allow Enter key for new lines in lyrics
-              }}
-              autoFocus
-            />
-          ) : (
-            <input
-              className={`cell-input${f === "bars" ? " cell-input--bars" : " cell-input--other"}`}
-              type={f === "bars" ? "number" : "text"}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={saveEdit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEdit();
-                if (e.key === "Escape") setEditing(null);
-              }}
-              autoFocus
-            />
-          )
-        ) : (
-          <div className={f === "lyrics" ? "lyrics-display" : "cell-display"}>
-            {v}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Context menu handlers
   const handleContextMenu = (e, type, si, pi = null) => {
     e.preventDefault();
     
-    // Initial positions
-    let x = e.clientX;
-    let y = e.clientY;
-    
-    // We'll adjust these after the menu is rendered
-    // Set a flag to indicate this is a new menu opening
+    // Set position and make context menu visible
     setContextMenu({
       visible: true,
-      x: x,
-      y: y,
+      x: e.clientX,
+      y: e.clientY,
       type,
       si,
       pi,
-      isNew: true, // Flag to trigger the position adjustment effect
     });
   };
-
-  // Hide context menu on click elsewhere
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
-        setContextMenu((cm) => ({ ...cm, visible: false }));
-      }
-    };
+  
+  // Get context menu items based on context type
+  const getContextMenuItems = () => {
+    const { type, si, pi } = contextMenu;
+    const menuItems = [];
     
-    // Handle menu positioning to ensure it stays within viewport
-    const adjustMenuPosition = () => {
-      if (contextMenuRef.current && contextMenu.isNew) {
-        const menu = contextMenuRef.current;
-        const menuRect = menu.getBoundingClientRect();
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const margin = 10; // Margin from viewport edges (px)
-        
-        let adjustedX = contextMenu.x;
-        let adjustedY = contextMenu.y;
-        
-        // Check right edge
-        if (menuRect.right > viewportWidth - margin) {
-          adjustedX = viewportWidth - menuRect.width - margin;
-        }
-        
-        // Check bottom edge
-        if (menuRect.bottom > viewportHeight - margin) {
-          adjustedY = viewportHeight - menuRect.height - margin;
-        }
-        
-        // Check left edge
-        if (adjustedX < margin) {
-          adjustedX = margin;
-        }
-        
-        // Check top edge
-        if (adjustedY < margin) {
-          adjustedY = margin;
-        }
-        
-        // Update menu position if needed
-        if (adjustedX !== contextMenu.x || adjustedY !== contextMenu.y) {
-          setContextMenu(cm => ({
-            ...cm,
-            x: adjustedX,
-            y: adjustedY,
-            isNew: false // Reset the flag
-          }));
-        } else {
-          // No adjustment needed, just reset the flag
-          setContextMenu(cm => ({ ...cm, isNew: false }));
-        }
+    if (type === 'section') {
+      // Only show Move Up if not the first section
+      if (si > 0) {
+        menuItems.push({
+          label: 'Move Up',
+          action: () => handleMenuAction('moveUp')
+        });
       }
-    };
-    
-    if (contextMenu.visible) {
-      document.addEventListener("mousedown", handleOutsideClick);
-      // Adjust position after render
-      adjustMenuPosition();
+      
+      // Only show Move Down if not the last section
+      if (si < sections.length - 1) {
+        menuItems.push({
+          label: 'Move Down',
+          action: () => handleMenuAction('moveDown')
+        });
+      }
+      
+      menuItems.push({
+        label: 'Set Energy Level',
+        action: () => handleMenuAction('setEnergyLevel')
+      });
+      
+      menuItems.push({
+        label: 'Duplicate Section',
+        action: () => handleMenuAction('duplicate')
+      });
+      
+      menuItems.push({
+        label: 'Delete Section',
+        action: () => handleMenuAction('delete'),
+        danger: true
+      });
+    } else if (type === 'part') {
+      // Only show Move Up if not the first part
+      if (pi > 0) {
+        menuItems.push({
+          label: 'Move Up',
+          action: () => handleMenuAction('moveUp')
+        });
+      }
+      
+      // Only show Move Down if not the last part
+      if (pi < sections[si]?.parts.length - 1) {
+        menuItems.push({
+          label: 'Move Down',
+          action: () => handleMenuAction('moveDown')
+        });
+      }
+      
+      menuItems.push({
+        label: 'Add Part',
+        action: () => handleMenuAction('add')
+      });
+      
+      menuItems.push({
+        label: 'Duplicate Part',
+        action: () => handleMenuAction('duplicate')
+      });
+      
+      menuItems.push({
+        label: 'Delete Part',
+        action: () => handleMenuAction('delete'),
+        danger: true
+      });
     }
     
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-    };
-  }, [contextMenu.visible, contextMenu.x, contextMenu.y, contextMenu.isNew]);
+    return menuItems;
+  };
 
   // Menu actions
   const handleMenuAction = (action) => {
@@ -736,38 +627,20 @@ export default function BandSheetEditor() {
     if (window.confirm('Do you want to save your current sheet before starting a new one?')) {
       handleSave();
     }
-    // Reset songData and sections to initial state
-    setSongData({ title: '', artist: '', bpm: '' });
-    const newId = Date.now();
-    setSections([
-      {
-        id: newId,
-        name: 'Verse 1',
-        energy: 5,
-        parts: [{ id: newId + 1, part: 'A', bars: 4, lyrics: '' }],
-      },
-    ]);
-    setPartsModule([
-      {
-        id: newId + 2,
-        part: 'A',
-        bars: 4,
-        chords: '',
-      }
-    ]);
-    setTransposeValue(0);
-    setIdCounter(newId + 3);
+    
+    // Create a new sheet using the service
+    const newSheet = createNewSheet();
+    
+    // Update component state with the new sheet data
+    setSongData({ title: newSheet.title, artist: newSheet.artist, bpm: newSheet.bpm });
+    setSections(newSheet.sections);
+    setPartsModule(newSheet.partsModule);
+    setTransposeValue(newSheet.transposeValue);
+    setIdCounter(newSheet.nextIdCounter);
     setCurrentSheetId(null);
   };
 
-  // Save sheet abstraction (localStorage for now)
-  function saveSheet(sheetData) {
-    const id = sheetData.id || Date.now();
-    const sheetToSave = { ...sheetData, id };
-    localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
-    return id;
-  }
-  
+
   // Initialize or refresh parts module based on current sections
   const initializePartsModule = () => {
     if (!sections || sections.length === 0) return;
@@ -802,284 +675,67 @@ export default function BandSheetEditor() {
 
   // Save handler
   const handleSave = () => {
-    // If currentSheetId is set, overwrite that sheet
-    const id = currentSheetId || Date.now();
-    const sheetToSave = { ...songData, sections, partsModule, transposeValue, id };
-    localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
-    setCurrentSheetId(id);
-    alert(`Sheet saved! (id: ${id})`);
+    // Prepare sheet data
+    const sheetData = { 
+      ...songData, 
+      sections, 
+      partsModule, 
+      transposeValue, 
+      id: currentSheetId 
+    };
+    
+    // Use service to save
+    const savedSheet = saveSheet(sheetData, false);
+    setCurrentSheetId(savedSheet.id);
+    alert(`Sheet saved! (id: ${savedSheet.id})`);
   };
 
   // Save As handler
   const handleSaveAs = () => {
-    const id = Date.now();
-    const sheetToSave = { ...songData, sections, partsModule, transposeValue, id };
-    localStorage.setItem(`sheet_${id}`, JSON.stringify(sheetToSave));
-    setCurrentSheetId(id);
-    alert(`Sheet saved as new! (id: ${id})`);
+    // Prepare sheet data
+    const sheetData = { 
+      ...songData, 
+      sections, 
+      partsModule, 
+      transposeValue 
+    };
+    
+    // Use service to save as new sheet
+    const savedSheet = saveSheet(sheetData, true);
+    setCurrentSheetId(savedSheet.id);
+    alert(`Sheet saved as new! (id: ${savedSheet.id})`);
   };
 
-  // Export handler that opens a print-friendly version in a new tab
+  // Export handler that uses the ExportService to generate a print-friendly version
   const handleExport = () => {
-    // Filter out placeholder text before exporting
-    const processedSections = sections.map(section => ({
-      ...section,
-      parts: section.parts.map(part => ({
-        ...part,
-        // Don't export empty strings for lyrics and notes
-        lyrics: part.lyrics || '',
-        notes: part.notes || ''
-      }))
-    }));
-    
-    // Create a new window/tab
-    const printWindow = window.open('', '_blank');
-    
-    // Generate the print-friendly HTML
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${songData.title || 'Untitled'} - Band Sheet</title>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              line-height: 1.4;
-              color: #333;
-              max-width: 900px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            h1 {
-              font-size: 24px;
-              margin-bottom: 5px;
-            }
-            .meta {
-              display: flex;
-              gap: 20px;
-              margin-bottom: 25px;
-              font-size: 14px;
-              color: #555;
-            }
-            /* Sheet container */
-            .sheet-container {
-              border: 1px solid #ddd;
-              border-radius: 8px;
-              overflow: hidden;
-            }
-            /* Sheet header row */
-            .sheet-header {
-              display: grid;
-              grid-template-columns: 120px 60px 60px 1fr 12.5% auto;
-              gap: 10px;
-              padding: 8px 16px;
-              background-color: #f8f8f8;
-              border-bottom: 1px solid #ddd;
-              font-weight: bold;
-              font-size: 14px;
-            }
-            /* Section container */
-            .section-container {
-              display: flex;
-              border-bottom: 1px solid #ddd;
-            }
-            .section-container:last-child {
-              border-bottom: none;
-            }
-            /* Section header */
-            .section-header {
-              width: 120px;
-              min-width: 120px;
-              padding: 12px 8px;
-              background-color: #f0f0f0;
-              border-right: 1px solid #ddd;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-            }
-            .section-name {
-              font-weight: bold;
-            }
-            .section-energy {
-              font-size: 12px;
-              margin-top: 8px;
-              color: #666;
-            }
-            /* Parts container */
-            .parts-container {
-              flex: 1;
-            }
-            /* Part row */
-            .part-row {
-              display: grid;
-              grid-template-columns: 60px 60px 1fr 12.5% auto;
-              gap: 10px;
-              padding: 8px 16px;
-              border-bottom: 1px solid #eee;
-              align-items: center;
-            }
-            .part-row:last-child {
-              border-bottom: none;
-            }
-            /* Column styles */
-            .lyrics {
-              white-space: pre-line;
-            }
-            .notes {
-              font-size: 12px;
-              color: #666;
-            }
-            @media print {
-              body {
-                padding: 0;
-                margin: 0;
-              }
-              button {
-                display: none;
-              }
-              .no-print {
-                display: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>${songData.title || 'Untitled'}</h1>
-          <div class="meta">
-            ${songData.artist ? `<div><strong>Artist:</strong> ${songData.artist}</div>` : ''}
-            ${songData.bpm ? `<div><strong>BPM:</strong> ${songData.bpm}</div>` : ''}
-            <div class="no-print">
-              <button onclick="window.print()" style="padding: 5px 10px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                Print PDF
-              </button>
-            </div>
-          </div>
-          
-          <div class="sheet-container">
-            <!-- Sheet header -->
-            <div class="sheet-header">
-              <div>Section</div>
-              <div>Part</div>
-              <div>Bars</div>
-              <div>Lyrics</div>
-              <div>Notes</div>
-              <div><!-- Actions placeholder --></div>
-            </div>
-            
-            <!-- Sections -->
-            ${processedSections.map((section, si) => `
-              <div class="section-container">
-                <!-- Section header -->
-                <div class="section-header">
-                  <div class="section-name">${section.name}</div>
-                  <div class="section-energy">Energy: ${section.energy}</div>
-                </div>
-                
-                <!-- Parts container -->
-                <div class="parts-container">
-                  ${section.parts.map((part, pi) => `
-                    <div class="part-row">
-                      <div>${part.part}</div>
-                      <div>${part.bars}</div>
-                      <div class="lyrics">${part.lyrics}</div>
-                      <div class="notes">${part.notes || ''}</div>
-                      <div><!-- No actions in print view --></div>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </body>
-      </html>
-    `;
-    
-    // Write the content to the new window
-    printWindow.document.open();
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    
-    // Automatically trigger print when content is loaded
-    printWindow.onload = function() {
-      // Give a moment for styles to apply
-      setTimeout(() => {
-        // printWindow.print();
-        // Keep the window/tab open for the user to manually print
-      }, 250);
-    };
+    exportToPDF(songData, sections, transposeValue);
   };
 
   // JSX
   return (
     <div className="flex h-full min-h-screen bg-white relative">
-      {/* Vertical toolbar */}
-      <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center py-4 z-30">
-        <button 
-          className={`p-2 rounded-md mb-2 transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          title="Saved Sheets"
-        >
-          <FolderIcon className="w-6 h-6" />
-        </button>
-        <button 
-          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
-          onClick={handleNewSheet}
-          title="New Sheet"
-        >
-          <FilePlusIcon className="w-6 h-6" />
-        </button>
-        <button 
-          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
-          onClick={handleSave}
-          title="Save"
-        >
-          <SaveIcon className="w-6 h-6" />
-        </button>
-        <button 
-          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
-          onClick={handleSaveAs}
-          title="Save As"
-        >
-          <SaveAllIcon className="w-6 h-6" />
-        </button>
-        <button 
-          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
-          onClick={handleExport}
-          title="Download"
-        >
-          <DownloadIcon className="w-6 h-6" />
-        </button>
-      </div>
+      {/* Toolbar Component */}
+      <Toolbar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        handleNewSheet={handleNewSheet}
+        handleSave={handleSave}
+        handleSaveAs={handleSaveAs}
+        handleExport={handleExport}
+      />
       
       {/* Sidebar */}
-      <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
-        <SavedSheetsPanel
-          open={sidebarOpen}
-          savedSheets={savedSheets}
-          onClose={() => setSidebarOpen(false)}
-          onDoubleClickSheet={loadSheet}
-          onUpdate={() => {
-            // Re-fetch all saved sheets from localStorage
-            const sheets = [];
-            for (let i = 0; i < localStorage.length; i++) {
-              const key = localStorage.key(i);
-              if (key.startsWith('sheet_')) {
-                try {
-                  const sheet = JSON.parse(localStorage.getItem(key));
-                  sheets.push(sheet);
-                } catch (e) { /* ignore */ }
-              }
-            }
-            sheets.sort((a, b) => b.id - a.id);
-            setSavedSheets(sheets);
-          }}
-        />
-        {/* Mobile overlay backdrop */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-30 md:hidden z-10" onClick={() => setSidebarOpen(false)} />
-        )}
-      </div>
+      <Sidebar 
+        sidebarOpen={sidebarOpen}
+        savedSheets={savedSheets}
+        setSidebarOpen={setSidebarOpen}
+        loadSheet={loadSheet}
+        fetchSavedSheets={() => {
+          // Use the storage service to get all sheets
+          const sheets = getAllSheets();
+          setSavedSheets(sheets);
+        }}
+      />
       {/* Main content area */}
       <div className="flex-1 min-w-0 relative">
         {/* Sidebar open button (mobile only) */}
@@ -1095,218 +751,31 @@ export default function BandSheetEditor() {
         )}
 
         {/* Song info bar */}
-        <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm">
-          <input
-            className="flex-1 min-w-[160px] px-3 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-lg font-semibold placeholder-gray-400"
-            placeholder="Song Title"
-            value={songData.title}
-            onChange={e => setSongData((prev) => ({ ...prev, title: e.target.value }))}
-          />
-          <input
-            className="flex-1 min-w-[120px] px-3 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-base placeholder-gray-400"
-            placeholder="Artist"
-            value={songData.artist}
-            onChange={e => setSongData((prev) => ({ ...prev, artist: e.target.value }))}
-          />
-          <div className="flex items-center gap-2">
-            <input
-              className="w-20 px-2 py-2 rounded border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-base placeholder-gray-400"
-              type="number"
-              placeholder="BPM"
-              value={songData.bpm}
-              onChange={e => setSongData((prev) => ({ ...prev, bpm: e.target.value }))}
-            />
-            <span className="text-xs text-gray-500">bpm</span>
-          </div>
-        </div>
+        <SongInfoBar songData={songData} setSongData={setSongData} />
 
         {/* Sheet container */}
         <div className="mt-8 ml-4 mr-4 mb-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
           {/* Sheet header row */}
-          <div className="flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
-            <div className="w-[120px] min-w-[120px] px-4 py-2 flex items-center">Section</div>
-            <div className="w-[60px] min-w-[60px] px-4 py-2 flex items-center">Part</div>
-            <div className="w-[60px] min-w-[60px] px-2 py-2 flex items-center">Bars</div>
-            <div className="flex-1 px-2 py-2 flex items-center">Lyrics</div>
-            <div className="w-[200px] min-w-[200px] px-2 py-2 flex items-center">Notes</div>
-            <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center"></div>
-          </div>
+          <SheetHeader />
 
           {/* Sections */}
           {sections.map((section, si) => (
-            <div key={section.id} className="border-b border-gray-200">
-              <div className="flex">
-                {/* Section header */}
-                <div 
-                  className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between"
-                  style={{ backgroundColor: getEnergyBackgroundColor(section.energy) }}
-                  onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
-                  onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
-                >
-                  <div className="flex justify-between items-start">
-                    <div 
-                      className={`font-semibold flex-1 ${isEditing(si, null, 'name', 'section') ? 'editing-cell' : 'cursor-pointer'}`}
-                      onClick={() => !isEditing(si, null, 'name', 'section') && beginEdit(si, null, 'name', 'section')}
-                    >
-                      {isEditing(si, null, 'name', 'section') ? (
-                        <input
-                          className="w-full bg-white rounded px-1 py-px text-sm"
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={saveEdit}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit();
-                            if (e.key === "Escape") setEditing(null);
-                          }}
-                          autoFocus
-                        />
-                      ) : (
-                        section.name || "Untitled Section"
-                      )}
-                    </div>
-                    {(hoverState.type === 'section' && hoverState.si === si) && (
-                      <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
-                        <MenuIcon className="w-4 h-4 text-gray-500 hover:text-gray-700" />
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-
-                {/* Parts container */}
-                <div className="flex-1">
-                  {section.parts.map((part, pi) => (
-                    <div 
-                      key={part.id} 
-                      className="flex min-h-[40px] border-b border-gray-100 last:border-b-0"
-                      onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
-                      onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
-                    >
-                      {/* Using the exact same widths as the header */}
-                      <div 
-                        className="w-[60px] min-w-[60px] px-4 py-2 cursor-pointer flex items-center"
-                        onClick={() => !isEditing(si, pi, 'part') && beginEdit(si, pi, 'part')}
-                      >
-                        {isEditing(si, pi, 'part') ? (
-                          <input
-                            className="w-full bg-white rounded px-2 py-1 text-sm"
-                            type="text"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={saveEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEdit();
-                              if (e.key === "Escape") setEditing(null);
-                            }}
-                            autoFocus
-                          />
-                        ) : (
-                          part.part || "?"
-                        )}
-                      </div>
-                      
-                      <div 
-                        className="w-[60px] min-w-[60px] px-2 py-2 cursor-pointer flex items-center"
-                        onClick={() => !isEditing(si, pi, 'bars') && beginEdit(si, pi, 'bars')}
-                      >
-                        {isEditing(si, pi, 'bars') ? (
-                          <input
-                            className="w-full bg-white rounded px-2 py-1 text-sm"
-                            type="number"
-                            min="1"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            onBlur={saveEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveEdit();
-                              if (e.key === "Escape") setEditing(null);
-                            }}
-                            autoFocus
-                          />
-                        ) : (
-                          part.bars
-                        )}
-                      </div>
-                                            <div 
-                        className="flex-1 px-2 py-2 text-gray-500 cursor-pointer overflow-y-auto"
-                        onClick={() => !isEditing(si, pi, 'lyrics') && beginEdit(si, pi, 'lyrics')}
-                      >
-                        {isEditing(si, pi, 'lyrics') ? (
-                          <textarea
-                            className="w-full bg-white rounded px-2 py-1 text-sm min-h-[48px] resize-vertical overflow-y-auto"
-                            value={editValue}
-                            onChange={(e) => {
-                              setEditValue(e.target.value);
-                              // Auto-resize the textarea
-                              e.target.style.height = 'auto';
-                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                            }}
-                            onFocus={(e) => {
-                              // Auto-resize on focus too
-                              e.target.style.height = 'auto';
-                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                            }}
-                            onBlur={saveEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setEditing(null);
-                            }}
-                            autoFocus
-                          />
-                        ) : (
-                          <div className="whitespace-pre-line max-h-[120px] overflow-y-auto">
-                            {part.lyrics || <span className="text-gray-400 italic">{placeholders.lyrics}</span>}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div 
-                        className="w-[200px] min-w-[200px] px-2 py-2 text-xs text-gray-500 cursor-pointer overflow-y-auto"
-                        onClick={() => !isEditing(si, pi, 'notes') && beginEdit(si, pi, 'notes')}
-                      >
-                        {isEditing(si, pi, 'notes') ? (
-                          <textarea
-                            className="w-full bg-white rounded px-2 py-1 text-xs min-h-[48px] resize-vertical overflow-y-auto"
-                            value={editValue}
-                            onChange={(e) => {
-                              setEditValue(e.target.value);
-                              // Auto-resize the textarea
-                              e.target.style.height = 'auto';
-                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                            }}
-                            onFocus={(e) => {
-                              // Auto-resize on focus too
-                              e.target.style.height = 'auto';
-                              e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                            }}
-                            onBlur={saveEdit}
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") setEditing(null);
-                            }}
-                            autoFocus
-                          />
-                        ) : (
-                          <div className="whitespace-pre-line max-h-[120px] overflow-y-auto">
-                            {part.notes ? part.notes : <span className="text-gray-400 italic">{placeholders.notes}</span>}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center">
-                        {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
-                          <div
-                            onClick={(e) => handleContextMenu(e, "part", si, pi)}
-                            className="cursor-pointer"
-                          >
-                            <MenuIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <Section
+              key={section.id}
+              section={section}
+              sectionIndex={si}
+              hoverState={hoverState}
+              setHoverState={setHoverState}
+              handleContextMenu={handleContextMenu}
+              isEditing={isEditing}
+              beginEdit={beginEdit}
+              saveEdit={saveEdit}
+              editValue={editValue}
+              setEditValue={setEditValue}
+              placeholders={placeholders}
+              getEnergyBackgroundColor={getEnergyBackgroundColor}
+              setEditing={setEditing}
+            />
           ))}
           {/* Add new section button at the bottom */}
           <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={addSection}>
@@ -1532,97 +1001,13 @@ export default function BandSheetEditor() {
           {/* No add part button - parts are added automatically when editing the sheet */}
         </div>
         {/* Context Menu */}
-        {contextMenu.visible && (
-          <div
-            ref={contextMenuRef}
-            className="fixed bg-white border border-gray-300 rounded shadow-lg z-[1000] min-w-[160px] py-1"
-            style={{
-              top: contextMenu.y,
-              left: contextMenu.x
-            }}
-          >
-            {contextMenu.type === "section" && (
-              <>
-                {/* Only show Move Up if not the first section */}
-                {contextMenu.si > 0 && (
-                  <div
-                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleMenuAction("moveUp")}
-                  >
-                    Move Up
-                  </div>
-                )}
-                {/* Only show Move Down if not the last section */}
-                {contextMenu.si < sections.length - 1 && (
-                  <div
-                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleMenuAction("moveDown")}
-                  >
-                    Move Down
-                  </div>
-                )}
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("setEnergyLevel")}
-                >
-                  Set Energy Level
-                </div>
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("duplicate")}
-                >
-                  Duplicate Section
-                </div>
-                <div
-                  className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
-                  onClick={() => handleMenuAction("delete")}
-                >
-                  Delete Section
-                </div>
-              </>
-            )}
-            {contextMenu.type === "part" && (
-              <>
-                {/* Only show Move Up if not the first part */}
-                {contextMenu.pi > 0 && (
-                  <div
-                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleMenuAction("moveUp")}
-                  >
-                    Move Up
-                  </div>
-                )}
-                {/* Only show Move Down if not the last part */}
-                {contextMenu.pi < sections[contextMenu.si]?.parts.length - 1 && (
-                  <div
-                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleMenuAction("moveDown")}
-                  >
-                    Move Down
-                  </div>
-                )}
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("add")}
-                >
-                  Add Part
-                </div>
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("duplicate")}
-                >
-                  Duplicate Part
-                </div>
-                <div
-                  className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
-                  onClick={() => handleMenuAction("delete")}
-                >
-                  Delete Part
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        <ContextMenu
+          visible={contextMenu.visible}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(cm => ({ ...cm, visible: false }))}
+          menuItems={getContextMenuItems()}
+        />
         {/* Energy Level Dialog */}
         {energyDialog.open && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
