@@ -440,9 +440,184 @@ export default function BandSheetEditor() {
     alert(`Sheet saved as new! (id: ${id})`);
   };
 
-  // Export handler for clarity
+  // Export handler that opens a print-friendly version in a new tab
   const handleExport = () => {
-    console.log({ ...songData, sections });
+    // Create a new window/tab
+    const printWindow = window.open('', '_blank');
+    
+    // Generate the print-friendly HTML
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${songData.title || 'Untitled'} - Band Sheet</title>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.4;
+              color: #333;
+              max-width: 900px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 5px;
+            }
+            .meta {
+              display: flex;
+              gap: 20px;
+              margin-bottom: 25px;
+              font-size: 14px;
+              color: #555;
+            }
+            /* Sheet container */
+            .sheet-container {
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              overflow: hidden;
+            }
+            /* Sheet header row */
+            .sheet-header {
+              display: grid;
+              grid-template-columns: 120px 60px 60px 1fr 12.5% auto;
+              gap: 10px;
+              padding: 8px 16px;
+              background-color: #f8f8f8;
+              border-bottom: 1px solid #ddd;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            /* Section container */
+            .section-container {
+              display: flex;
+              border-bottom: 1px solid #ddd;
+            }
+            .section-container:last-child {
+              border-bottom: none;
+            }
+            /* Section header */
+            .section-header {
+              width: 120px;
+              min-width: 120px;
+              padding: 12px 8px;
+              background-color: #f0f0f0;
+              border-right: 1px solid #ddd;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+            }
+            .section-name {
+              font-weight: bold;
+            }
+            .section-energy {
+              font-size: 12px;
+              margin-top: 8px;
+              color: #666;
+            }
+            /* Parts container */
+            .parts-container {
+              flex: 1;
+            }
+            /* Part row */
+            .part-row {
+              display: grid;
+              grid-template-columns: 60px 60px 1fr 12.5% auto;
+              gap: 10px;
+              padding: 8px 16px;
+              border-bottom: 1px solid #eee;
+              align-items: center;
+            }
+            .part-row:last-child {
+              border-bottom: none;
+            }
+            /* Column styles */
+            .lyrics {
+              white-space: pre-line;
+            }
+            .notes {
+              font-size: 12px;
+              color: #666;
+            }
+            @media print {
+              body {
+                padding: 0;
+                margin: 0;
+              }
+              button {
+                display: none;
+              }
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>${songData.title || 'Untitled'}</h1>
+          <div class="meta">
+            ${songData.artist ? `<div><strong>Artist:</strong> ${songData.artist}</div>` : ''}
+            ${songData.bpm ? `<div><strong>BPM:</strong> ${songData.bpm}</div>` : ''}
+            <div class="no-print">
+              <button onclick="window.print()" style="padding: 5px 10px; background: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Print PDF
+              </button>
+            </div>
+          </div>
+          
+          <div class="sheet-container">
+            <!-- Sheet header -->
+            <div class="sheet-header">
+              <div>Section</div>
+              <div>Part</div>
+              <div>Bars</div>
+              <div>Lyrics</div>
+              <div>Notes</div>
+              <div><!-- Actions placeholder --></div>
+            </div>
+            
+            <!-- Sections -->
+            ${sections.map(section => `
+              <div class="section-container">
+                <!-- Section header -->
+                <div class="section-header">
+                  <div class="section-name">${section.name || 'Untitled Section'}</div>
+                  <div class="section-energy">Energy: ${section.energy || '-'}</div>
+                </div>
+                
+                <!-- Parts container -->
+                <div class="parts-container">
+                  ${section.parts.map(part => `
+                    <div class="part-row">
+                      <div>${part.part || '-'}</div>
+                      <div>${part.bars || '-'}</div>
+                      <div class="lyrics">${part.lyrics || '-'}</div>
+                      <div class="notes">${part.notes || '-'}</div>
+                      <div><!-- No actions in print view --></div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Write the content to the new window
+    printWindow.document.open();
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Automatically trigger print when content is loaded
+    printWindow.onload = function() {
+      // Give a moment for styles to apply
+      setTimeout(() => {
+        // printWindow.print();
+        // Keep the window/tab open for the user to manually print
+      }, 250);
+    };
   };
 
   // JSX
@@ -555,37 +730,58 @@ export default function BandSheetEditor() {
           </div>
         </div>
 
-        {/* Sheet grid container */}
-        <div className="w-full mt-8 bg-white rounded-xl shadow p-0 border border-gray-200 overflow-x-auto">
-          {/* Sheet Header */}
-          <div className="grid grid-cols-5 px-4 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
-            <div>Part</div>
-            <div>Bars</div>
+        {/* Sheet container */}
+        <div className="w-full mt-8 bg-white rounded-xl shadow border border-gray-200 overflow-x-auto">
+          {/* Sheet header */}
+          <div className="grid grid-cols-[120px_60px_60px_1fr_12.5%_auto] gap-4 px-4 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+            <div className="min-w-[120px]">Section</div>
+            <div className="min-w-[60px]">Part</div>
+            <div className="min-w-[60px]">Bars</div>
             <div>Lyrics</div>
             <div>Notes</div>
-            <div className="text-center">Actions</div>
+            <div className="text-center min-w-[80px]">Actions</div>
           </div>
 
-           {/* Sections */}
-           {sections.map((section, si) => (
-             <React.Fragment key={section.id}>
-               {/* Section header row */}
-               <div className="col-span-5 flex items-center bg-gray-200 pl-4 pr-8 py-2 border-b border-gray-300 font-semibold">
-                 <span className="flex-1">{section.name}</span>
-                 <span className="ml-4 text-xs text-gray-500">Energy: {section.energy}</span>
-                 {/* Add section actions here if needed */}
-               </div>
-               {/* Part rows */}
-               {section.parts.map((part, pi) => (
-                 <div key={part.id} className="grid grid-cols-5 px-4 py-2 border-b border-gray-100 items-center">
-                   <div>{part.part}</div>
-                   <div>{part.bars}</div>
-                   <div>{part.lyrics}</div>
-                   <div className="text-xs text-gray-500">-</div>
-                   <div className="text-center"> {/* Actions here if needed */} </div>
-                 </div>
-               ))}
-             </React.Fragment>
+          {/* Sections */}
+          {sections.map((section, si) => (
+             <div key={section.id} className="border-b border-gray-200">
+              <div className="flex">
+                {/* Section header */}
+                <div className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between bg-gray-200">
+                  <div className="flex justify-between items-start">
+                    <div className="font-semibold flex-1">
+                      {section.name}
+                    </div>
+                    <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
+                      <MenuIcon className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+                    </div>
+                  </div>
+                  <div className="text-xs mt-2 self-start">
+                    Energy: {section.energy}
+                  </div>
+                </div>
+
+                {/* Parts container */}
+                <div className="flex-1">
+                  {section.parts.map((part, pi) => (
+                    <div key={part.id} className="grid grid-cols-[60px_60px_minmax(0,1fr)_12.5%_auto] gap-4 pl-4 pr-2 py-2 border-b border-gray-100 items-center last:border-b-0">
+                      <div className="min-w-[60px]">{part.part}</div>
+                      <div className="min-w-[60px]">{part.bars}</div>
+                      <div className="text-gray-500">{part.lyrics}</div>
+                      <div className="text-xs text-gray-500">{part.notes || "-"}</div>
+                      <div className="flex justify-end gap-3 min-w-[80px]">
+                        <div
+                          onClick={(e) => handleContextMenu(e, "part", si, pi)}
+                          className="cursor-pointer"
+                        >
+                          <MenuIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
            ))}
 
         {indicator?.type === "section" &&
