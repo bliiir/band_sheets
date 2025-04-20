@@ -105,6 +105,17 @@ export default function BandSheetEditor() {
     lyrics: "Add lyrics here...",
     notes: "Add notes here..."
   };
+  
+  // Define common widths for consistent columns
+  const columnWidths = {
+    section: "w-[120px] min-w-[120px]",
+    part: "w-[60px] min-w-[60px]",
+    bars: "w-[60px] min-w-[60px]",
+    lyrics: "flex-1",
+    notes: "w-[200px] min-w-[200px]",
+    actions: "w-[40px] min-w-[40px]"
+  };
+  
 
   // Helper to get a unique ID
   const getNextId = () => {
@@ -810,19 +821,19 @@ export default function BandSheetEditor() {
 
         {/* Sheet container */}
         <div className="mt-8 ml-4 mr-4 mb-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
-          {/* Sheet header */}
-          <div className="grid grid-cols-[120px_60px_60px_1fr_12.5%_40px] gap-4 px-4 mb-2 py-2 border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
-            <div className="min-w-[120px]">Section</div>
-            <div className="min-w-[60px]">Part</div>
-            <div className="min-w-[60px]">Bars</div>
-            <div>Lyrics</div>
-            <div>Notes</div>
-            <div className="min-w-[40px]"></div>
+          {/* Sheet header row */}
+          <div className="flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+            <div className="w-[120px] min-w-[120px] px-4 py-2 flex items-center">Section</div>
+            <div className="w-[60px] min-w-[60px] px-4 py-2 flex items-center">Part</div>
+            <div className="w-[60px] min-w-[60px] px-2 py-2 flex items-center">Bars</div>
+            <div className="flex-1 px-2 py-2 flex items-center">Lyrics</div>
+            <div className="w-[200px] min-w-[200px] px-2 py-2 flex items-center">Notes</div>
+            <div className="w-[40px] min-w-[40px] px-2 py-2 flex items-center"></div>
           </div>
 
           {/* Sections */}
           {sections.map((section, si) => (
-             <div key={section.id} className="border-b border-gray-200">
+            <div key={section.id} className="border-b border-gray-200">
               <div className="flex">
                 {/* Section header */}
                 <div 
@@ -891,12 +902,13 @@ export default function BandSheetEditor() {
                   {section.parts.map((part, pi) => (
                     <div 
                       key={part.id} 
-                      className="grid grid-cols-[60px_60px_minmax(0,1fr)_12.5%_40px] gap-4 pl-4 pr-2 py-2 border-b border-gray-100 items-center last:border-b-0 h-[40px]"
+                      className="flex h-[40px] border-b border-gray-100 last:border-b-0"
                       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
                       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
                     >
+                      {/* Using the exact same widths as the header */}
                       <div 
-                        className={`min-w-[60px] ${isEditing(si, pi, 'part') ? 'editing-cell' : 'cursor-pointer'}`}
+                        className="w-[60px] min-w-[60px] px-4 py-2 cursor-pointer flex items-center"
                         onClick={() => !isEditing(si, pi, 'part') && beginEdit(si, pi, 'part')}
                       >
                         {isEditing(si, pi, 'part') ? (
@@ -916,8 +928,9 @@ export default function BandSheetEditor() {
                           part.part || "?"
                         )}
                       </div>
+                      
                       <div 
-                        className={`min-w-[60px] ${isEditing(si, pi, 'bars') ? 'editing-cell' : 'cursor-pointer'}`}
+                        className="w-[60px] min-w-[60px] px-2 py-2 cursor-pointer flex items-center"
                         onClick={() => !isEditing(si, pi, 'bars') && beginEdit(si, pi, 'bars')}
                       >
                         {isEditing(si, pi, 'bars') ? (
@@ -938,8 +951,9 @@ export default function BandSheetEditor() {
                           part.bars
                         )}
                       </div>
+                      
                       <div 
-                        className={`text-gray-500 ${isEditing(si, pi, 'lyrics') ? 'editing-cell' : 'cursor-pointer'}`}
+                        className="flex-1 px-2 py-2 text-gray-500 cursor-pointer flex items-center"
                         onClick={() => !isEditing(si, pi, 'lyrics') && beginEdit(si, pi, 'lyrics')}
                       >
                         {isEditing(si, pi, 'lyrics') ? (
@@ -957,8 +971,9 @@ export default function BandSheetEditor() {
                           part.lyrics || <span className="text-gray-400 italic">{placeholders.lyrics}</span>
                         )}
                       </div>
+                      
                       <div 
-                        className={`text-xs text-gray-500 ${isEditing(si, pi, 'notes') ? 'editing-cell' : 'cursor-pointer'}`}
+                        className="w-[200px] min-w-[200px] px-2 py-2 text-xs text-gray-500 cursor-pointer flex items-center"
                         onClick={() => !isEditing(si, pi, 'notes') && beginEdit(si, pi, 'notes')}
                       >
                         {isEditing(si, pi, 'notes') ? (
@@ -976,7 +991,8 @@ export default function BandSheetEditor() {
                           part.notes ? part.notes : <span className="text-gray-400 italic">{placeholders.notes}</span>
                         )}
                       </div>
-                      <div className="flex justify-center min-w-[40px]">
+                      
+                      <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center">
                         {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
                           <div
                             onClick={(e) => handleContextMenu(e, "part", si, pi)}
@@ -991,12 +1007,12 @@ export default function BandSheetEditor() {
                 </div>
               </div>
             </div>
-           ))}
+          ))}
 
 
 
         {/* Add new section button at the bottom */}
-        <div className="flex flex-col items-center justify-center mt-6 mb-4cursor-pointer select-none group" onClick={addSection}>
+        <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={addSection}>
           <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
           <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
         </div>
