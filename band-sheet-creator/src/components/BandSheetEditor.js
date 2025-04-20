@@ -1,18 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-
 import { ReactComponent as GripIcon } from "../assets/grip.svg";
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
+import { ReactComponent as FolderIcon } from "../assets/folder.svg";
+import { ReactComponent as FilePlusIcon } from "../assets/file_plus.svg";
+import { ReactComponent as SaveIcon } from "../assets/save.svg";
+import { ReactComponent as SaveAllIcon } from "../assets/save_all.svg";
+import { ReactComponent as DownloadIcon } from "../assets/download.svg";
 import SavedSheetsPanel from './SavedSheetsPanel';
-// import { ReactComponent as TrashIcon } from "../assets/trash.svg";
-// import { ReactComponent as CopyPlusIcon } from "../assets/copy_plus.svg";
-// import { ReactComponent as ListPlusIcon } from "../assets/list_plus.svg";
 
-/**
- * BandSheetEditor – full compile‑ready file
- * Sections each have their own header bar with: ⇅ title energy + ×
- * Part rows list: Part | Bars | Lyrics | ⇅ + ×
- * Drag‑and‑drop: reorder sections and rows within a section
- */
 
 const DropIndicator = () => (
   <div className="drop-indicator" />
@@ -51,20 +46,41 @@ export default function BandSheetEditor() {
     try {
       const sheet = JSON.parse(raw);
       setSongData({ title: sheet.title || '', artist: sheet.artist || '', bpm: sheet.bpm || '' });
-      setSections(sheet.sections || []);
-      setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
+      if (!sheet.sections || sheet.sections.length === 0) {
+        const newId = Date.now();
+        setSections([
+          {
+            id: newId,
+            name: "Verse 1",
+            energy: 5,
+            parts: [{ id: newId + 1, part: "A", bars: 4, lyrics: "" }],
+          },
+        ]);
+        setIdCounter(newId + 2);
+      } else {
+        setSections(sheet.sections);
+        setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
+      }
       setCurrentSheetId(sheet.id || null);
     } catch (e) {
       alert('Failed to load sheet');
     }
   }
+
   // ...existing state
   const [draggingSectionIndex, setDraggingSectionIndex] = useState(null);
   const [draggingPart, setDraggingPart] = useState(null);
   const [partDragReady, setPartDragReady] = useState(null);
   // State
   const [songData, setSongData] = useState({ title: "", artist: "", bpm: "" });
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState([
+  {
+    id: Date.now(),
+    name: "Verse 1",
+    energy: 5,
+    parts: [{ id: Date.now() + 1, part: "A", bars: 4, lyrics: "" }],
+  },
+]);
   const [editing, setEditing] = useState(null); // {si,pi,field}
   const [editValue, setEditValue] = useState("");
   const [dragInfo, setDragInfo] = useState(null); // { type:'section'|'part', si, pi }
@@ -82,22 +98,7 @@ export default function BandSheetEditor() {
   });
   const contextMenuRef = useRef(null);
 
-  // Only add the initial section on mount
-  useEffect(() => {
-    if (sections.length === 0) {
-      setSections([
-        {
-          id: idCounter,
-          name: "Verse 1",
-          energy: 5,
-          parts: [{ id: idCounter + 1, part: "A", bars: 4, lyrics: "" }],
-        },
-      ]);
-      setIdCounter((id) => id + 2);
-      setCurrentSheetId(null);
-    }
-    // eslint-disable-next-line
-  }, []);
+
 
   // Helper to get a unique ID
   const getNextId = () => {
@@ -447,6 +448,45 @@ export default function BandSheetEditor() {
   // JSX
   return (
     <div className="flex h-full min-h-screen bg-white relative" onDragEnd={clearDrag}>
+      {/* Vertical toolbar */}
+      <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center py-4 z-30">
+        <button 
+          className={`p-2 rounded-md mb-2 transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          title="Saved Sheets"
+        >
+          <FolderIcon className="w-6 h-6" />
+        </button>
+        <button 
+          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+          onClick={handleNewSheet}
+          title="New Sheet"
+        >
+          <FilePlusIcon className="w-6 h-6" />
+        </button>
+        <button 
+          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+          onClick={handleSave}
+          title="Save"
+        >
+          <SaveIcon className="w-6 h-6" />
+        </button>
+        <button 
+          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+          onClick={handleSaveAs}
+          title="Save As"
+        >
+          <SaveAllIcon className="w-6 h-6" />
+        </button>
+        <button 
+          className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+          onClick={handleExport}
+          title="Download"
+        >
+          <DownloadIcon className="w-6 h-6" />
+        </button>
+      </div>
+      
       {/* Sidebar */}
       <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
         <SavedSheetsPanel
@@ -526,10 +566,27 @@ export default function BandSheetEditor() {
             <div className="text-center">Actions</div>
           </div>
 
-          {/* Sections */}
-          {/* (Old section/part rendering code removed; now handled by new grid layout above) */}
-
-
+           {/* Sections */}
+           {sections.map((section, si) => (
+             <React.Fragment key={section.id}>
+               {/* Section header row */}
+               <div className="col-span-5 flex items-center bg-gray-200 pl-4 pr-8 py-2 border-b border-gray-300 font-semibold">
+                 <span className="flex-1">{section.name}</span>
+                 <span className="ml-4 text-xs text-gray-500">Energy: {section.energy}</span>
+                 {/* Add section actions here if needed */}
+               </div>
+               {/* Part rows */}
+               {section.parts.map((part, pi) => (
+                 <div key={part.id} className="grid grid-cols-5 px-4 py-2 border-b border-gray-100 items-center">
+                   <div>{part.part}</div>
+                   <div>{part.bars}</div>
+                   <div>{part.lyrics}</div>
+                   <div className="text-xs text-gray-500">-</div>
+                   <div className="text-center"> {/* Actions here if needed */} </div>
+                 </div>
+               ))}
+             </React.Fragment>
+           ))}
 
         {indicator?.type === "section" &&
           indicator.index === sections.length && <DropIndicator />}
@@ -540,69 +597,29 @@ export default function BandSheetEditor() {
           <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
         </div>
 
-        {/* Action buttons row, right-aligned under the sheet */}
-        <div className="flex justify-end gap-3 mt-8 mb-2">
-          <button
-            type="button"
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition font-medium"
-            onClick={handleNewSheet}
-          >
-            New Sheet
-          </button>
-          <button
-            type="button"
-            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition font-medium"
-            onClick={handleSave}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            className="bg-yellow-400 text-gray-900 px-4 py-2 rounded shadow hover:bg-yellow-500 transition font-medium"
-            onClick={handleSaveAs}
-          >
-            Save As
-          </button>
-          <button
-            type="button"
-            className="bg-gray-700 text-white px-4 py-2 rounded shadow hover:bg-gray-900 transition font-medium"
-            onClick={handleExport}
-          >
-            Export
-          </button>
-        </div>
+        {/* No action buttons needed here since they are in the toolbar */}
 
       </div>
       {/* Context Menu */}
       {contextMenu.visible && (
         <div
           ref={contextMenuRef}
-          className="custom-context-menu"
+          className="fixed bg-white border border-gray-300 rounded shadow-lg z-[1000] min-w-[160px] py-1"
           style={{
-            position: "fixed",
             top: contextMenu.y,
-            left: contextMenu.x,
-            background: "#fff",
-            border: "1px solid #ccc",
-            borderRadius: 4,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            zIndex: 1000,
-            minWidth: 160,
-            padding: "4px 0",
+            left: contextMenu.x
           }}
         >
           {contextMenu.type === "section" && (
             <>
               <div
-                className="context-menu-item"
-                style={{ padding: "8px 16px", cursor: "pointer" }}
+                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("duplicate")}
               >
                 Duplicate section
               </div>
               <div
-                className="context-menu-item"
-                style={{ padding: "8px 16px", cursor: "pointer", color: "#e74c3c" }}
+                className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
                 onClick={() => handleMenuAction("delete")}
               >
                 Delete section
@@ -612,22 +629,19 @@ export default function BandSheetEditor() {
           {contextMenu.type === "part" && (
             <>
               <div
-                className="context-menu-item"
-                style={{ padding: "8px 16px", cursor: "pointer" }}
+                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("add")}
               >
                 Add part
               </div>
               <div
-                className="context-menu-item"
-                style={{ padding: "8px 16px", cursor: "pointer" }}
+                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleMenuAction("duplicate")}
               >
                 Duplicate part
               </div>
               <div
-                className="context-menu-item"
-                style={{ padding: "8px 16px", cursor: "pointer", color: "#e74c3c" }}
+                className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
                 onClick={() => handleMenuAction("delete")}
               >
                 Delete part
