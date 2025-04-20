@@ -14,6 +14,13 @@ const DropIndicator = () => (
 );
 
 export default function BandSheetEditor() {
+  // Function to get background color based on energy level
+  const getEnergyBackgroundColor = (energyLevel) => {
+    // Convert energy level (1-10) to CSS gray scale (very light to very dark)
+    const grayscaleValue = 235 - (energyLevel - 1) * 20; // 235 (very light) to 55 (very dark)
+    return `rgb(${grayscaleValue}, ${grayscaleValue}, ${grayscaleValue})`;
+  };
+
   // Track the currently loaded sheet's ID
   const [currentSheetId, setCurrentSheetId] = useState(null);
   // Sidebar state
@@ -80,6 +87,7 @@ export default function BandSheetEditor() {
   const [editing, setEditing] = useState(null); // {si,pi,field}
   const [editValue, setEditValue] = useState("");
   const [idCounter, setIdCounter] = useState(() => Date.now());
+  const [energyDialog, setEnergyDialog] = useState({ open: false, sectionIndex: null, currentValue: 5 });
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({
@@ -436,6 +444,8 @@ export default function BandSheetEditor() {
         moveSection(si, 'up');
       } else if (action === "moveDown") {
         moveSection(si, 'down');
+      } else if (action === "setEnergyLevel") {
+        openEnergyDialog(si);
       }
     } else if (type === "part") {
       if (action === "add") {
@@ -471,7 +481,37 @@ export default function BandSheetEditor() {
     setContextMenu((cm) => ({ ...cm, visible: false }));
   };
 
-    // New Sheet handler
+  // Energy dialog handlers
+  const openEnergyDialog = (sectionIndex) => {
+    setEnergyDialog({
+      open: true,
+      sectionIndex,
+      currentValue: sections[sectionIndex].energy
+    });
+    setContextMenu(null); // Close the context menu
+  };
+
+  const closeEnergyDialog = () => {
+    setEnergyDialog({ ...energyDialog, open: false });
+  };
+
+  const handleEnergyChange = (e) => {
+    setEnergyDialog({ ...energyDialog, currentValue: parseInt(e.target.value) });
+  };
+
+  const saveEnergyLevel = () => {
+    if (energyDialog.sectionIndex !== null) {
+      const updatedSections = [...sections];
+      updatedSections[energyDialog.sectionIndex] = {
+        ...updatedSections[energyDialog.sectionIndex],
+        energy: energyDialog.currentValue
+      };
+      setSections(updatedSections);
+    }
+    closeEnergyDialog();
+  };
+
+  // New Sheet handler
   const handleNewSheet = () => {
     if (window.confirm('Do you want to save your current sheet before starting a new one?')) {
       handleSave();
@@ -828,7 +868,7 @@ export default function BandSheetEditor() {
             <div className="w-[60px] min-w-[60px] px-2 py-2 flex items-center">Bars</div>
             <div className="flex-1 px-2 py-2 flex items-center">Lyrics</div>
             <div className="w-[200px] min-w-[200px] px-2 py-2 flex items-center">Notes</div>
-            <div className="w-[40px] min-w-[40px] px-2 py-2 flex items-center"></div>
+            <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center"></div>
           </div>
 
           {/* Sections */}
@@ -837,7 +877,8 @@ export default function BandSheetEditor() {
               <div className="flex">
                 {/* Section header */}
                 <div 
-                  className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between bg-gray-200"
+                  className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between"
+                  style={{ backgroundColor: getEnergyBackgroundColor(section.energy) }}
                   onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
                   onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
                 >
@@ -869,32 +910,7 @@ export default function BandSheetEditor() {
                       </div>
                     )}
                   </div>
-                  <div 
-                    className={`text-xs mt-2 self-start ${isEditing(si, null, 'energy', 'section') ? 'editing-cell' : 'cursor-pointer'}`}
-                    onClick={() => !isEditing(si, null, 'energy', 'section') && beginEdit(si, null, 'energy', 'section')}
-                  >
-                    {isEditing(si, null, 'energy', 'section') ? (
-                      <div className="flex items-center">
-                        <span className="mr-1">Energy:</span>
-                        <input
-                          className="w-8 bg-white rounded px-1 py-px text-xs"
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={saveEdit}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit();
-                            if (e.key === "Escape") setEditing(null);
-                          }}
-                          autoFocus
-                        />
-                      </div>
-                    ) : (
-                      `Energy: ${section.energy}`
-                    )}
-                  </div>
+
                 </div>
 
                 {/* Parts container */}
@@ -1008,105 +1024,158 @@ export default function BandSheetEditor() {
               </div>
             </div>
           ))}
+          {/* Add new section button at the bottom */}
+          <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={addSection}>
+            <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
+            <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
+          </div>
 
+          {/* No action buttons needed here since they are in the toolbar */}
 
-
-        {/* Add new section button at the bottom */}
-        <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={addSection}>
-          <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
-          <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
         </div>
-
-        {/* No action buttons needed here since they are in the toolbar */}
-
+        {/* Context Menu */}
+        {contextMenu.visible && (
+          <div
+            ref={contextMenuRef}
+            className="fixed bg-white border border-gray-300 rounded shadow-lg z-[1000] min-w-[160px] py-1"
+            style={{
+              top: contextMenu.y,
+              left: contextMenu.x
+            }}
+          >
+            {contextMenu.type === "section" && (
+              <>
+                {/* Only show Move Up if not the first section */}
+                {contextMenu.si > 0 && (
+                  <div
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleMenuAction("moveUp")}
+                  >
+                    Move Up
+                  </div>
+                )}
+                {/* Only show Move Down if not the last section */}
+                {contextMenu.si < sections.length - 1 && (
+                  <div
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleMenuAction("moveDown")}
+                  >
+                    Move Down
+                  </div>
+                )}
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("setEnergyLevel")}
+                >
+                  Set Energy Level
+                </div>
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("duplicate")}
+                >
+                  Duplicate Section
+                </div>
+                <div
+                  className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
+                  onClick={() => handleMenuAction("delete")}
+                >
+                  Delete Section
+                </div>
+              </>
+            )}
+            {contextMenu.type === "part" && (
+              <>
+                {/* Only show Move Up if not the first part */}
+                {contextMenu.pi > 0 && (
+                  <div
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleMenuAction("moveUp")}
+                  >
+                    Move Up
+                  </div>
+                )}
+                {/* Only show Move Down if not the last part */}
+                {contextMenu.pi < sections[contextMenu.si]?.parts.length - 1 && (
+                  <div
+                    className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleMenuAction("moveDown")}
+                  >
+                    Move Down
+                  </div>
+                )}
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("add")}
+                >
+                  Add Part
+                </div>
+                <div
+                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleMenuAction("duplicate")}
+                >
+                  Duplicate Part
+                </div>
+                <div
+                  className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
+                  onClick={() => handleMenuAction("delete")}
+                >
+                  Delete Part
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {/* Energy Level Dialog */}
+        {energyDialog.open && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+              <h3 className="text-lg font-bold mb-4">Set Energy Level</h3>
+              
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>Low Energy (1)</span>
+                  <span>High Energy (10)</span>
+                </div>
+                
+                <input 
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={energyDialog.currentValue}
+                  onChange={handleEnergyChange}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                
+                <div className="text-center font-semibold text-lg mt-2">
+                  {energyDialog.currentValue}
+                </div>
+                
+                {/* Preview of the section color */}
+                <div 
+                  className="w-full h-10 mt-4 rounded border border-gray-300"
+                  style={{ backgroundColor: getEnergyBackgroundColor(energyDialog.currentValue) }}
+                ></div>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <button 
+                  onClick={closeEnergyDialog}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveEnergyLevel}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      {/* Context Menu */}
-      {contextMenu.visible && (
-        <div
-          ref={contextMenuRef}
-          className="fixed bg-white border border-gray-300 rounded shadow-lg z-[1000] min-w-[160px] py-1"
-          style={{
-            top: contextMenu.y,
-            left: contextMenu.x
-          }}
-        >
-          {contextMenu.type === "section" && (
-            <>
-              {/* Only show Move Up if not the first section */}
-              {contextMenu.si > 0 && (
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("moveUp")}
-                >
-                  Move Up
-                </div>
-              )}
-              {/* Only show Move Down if not the last section */}
-              {contextMenu.si < sections.length - 1 && (
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("moveDown")}
-                >
-                  Move Down
-                </div>
-              )}
-              <div
-                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleMenuAction("duplicate")}
-              >
-                Duplicate Section
-              </div>
-              <div
-                className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
-                onClick={() => handleMenuAction("delete")}
-              >
-                Delete Section
-              </div>
-            </>
-          )}
-          {contextMenu.type === "part" && (
-            <>
-              {/* Only show Move Up if not the first part */}
-              {contextMenu.pi > 0 && (
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("moveUp")}
-                >
-                  Move Up
-                </div>
-              )}
-              {/* Only show Move Down if not the last part */}
-              {contextMenu.pi < sections[contextMenu.si]?.parts.length - 1 && (
-                <div
-                  className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleMenuAction("moveDown")}
-                >
-                  Move Down
-                </div>
-              )}
-              <div
-                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleMenuAction("add")}
-              >
-                Add Part
-              </div>
-              <div
-                className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleMenuAction("duplicate")}
-              >
-                Duplicate Part
-              </div>
-              <div
-                className="px-4 py-2 cursor-pointer text-red-500 hover:bg-gray-100"
-                onClick={() => handleMenuAction("delete")}
-              >
-                Delete Part
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+
     </div>
   );
 }
