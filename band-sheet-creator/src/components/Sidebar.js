@@ -1,13 +1,22 @@
 import React from 'react';
 import SavedSheetsPanel from './SavedSheetsPanel';
+import { getAllSheets } from '../services/SheetStorageService';
+import { useUIState } from '../contexts/UIStateContext';
 
 const Sidebar = ({ 
   sidebarOpen, 
   savedSheets, 
   setSidebarOpen, 
-  loadSheet, 
-  fetchSavedSheets 
+  loadSheet 
 }) => {
+  // Get UI state methods
+  const { setSavedSheets } = useUIState();
+  
+  // Fetch saved sheets directly using the service
+  const fetchSavedSheets = () => {
+    const sheets = getAllSheets();
+    setSavedSheets(sheets);
+  };
   return (
     <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
       <SavedSheetsPanel

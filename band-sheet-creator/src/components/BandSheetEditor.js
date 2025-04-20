@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import { ReactComponent as MenuIcon } from "../assets/menu.svg";
+import React, { useEffect } from "react";
 import Toolbar from './Toolbar';
 import Sidebar from './Sidebar';
 import SongInfoBar from './SongInfoBar';
@@ -10,136 +9,64 @@ import EnergyDialog from './EnergyDialog';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
-import { exportToPDF } from '../services/ExportService';
-import { saveSheet, getSheetById, getAllSheets, createNewSheet } from '../services/SheetStorageService';
-import { getTransposedChords } from '../services/ChordService';
-import { getEnergyBackgroundColor, adjustTextareaHeight } from '../services/StyleService';
+import { getEnergyBackgroundColor } from '../services/StyleService';
 
 
 export default function BandSheetEditor() {
-  // Use SheetDataContext directly for all sheet data
+  // Use SheetDataContext for all sheet data and operations
   const { 
-    sections, setSections,
+    sections,
     songData, setSongData,
-    partsModule, setPartsModule,
+    partsModule,
     transposeValue, setTransposeValue,
-    currentSheetId, setCurrentSheetId,
-    // Use the context's version of initializePartsModule, renamed to avoid conflicts
-    initializePartsModule: contextInitializePartsModule
+    getNextId,
+    // Operations
+    addSection,
+    deleteSection,
+    moveSection,
+    duplicateSection,
+    addPart,
+    deletePart,
+    movePart,
+    duplicatePart,
+    initializePartsModule,
+    // Sheet operations
+    loadSheet,
+    saveCurrentSheet,
+    exportSheet,
+    getTransposedChordsForPart
   } = useSheetData();
   
   // Use EditingContext for editing state
   const { 
-    editing, setEditing, 
-    editValue, setEditValue, 
-    isEditing: contextIsEditing, 
-    beginEdit: contextBeginEdit,
-    saveEdit: contextSaveEdit
+    isEditing,
+    beginEdit,
+    saveEdit
   } = useEditing();
   
   // Use UIStateContext for UI-related state
   const {
     // Sidebar state
     sidebarOpen, setSidebarOpen, savedSheets, setSavedSheets,
+    openSidebar, closeSidebar,
     // Context menu state
-    contextMenu, setContextMenu, showContextMenu, hideContextMenu,
+    contextMenu, showContextMenu, hideContextMenu,
     // Hover state
-    hoverState, setHoverState, setHover, clearHover,
+    hoverState,
     // Energy dialog state
-    energyDialog, setEnergyDialog, openEnergyDialog, closeEnergyDialog
+    openEnergyDialog
   } = useUIState();
   
-  // Fetch saved sheets from localStorage
   // Fetch saved sheets when sidebar opens
   useEffect(() => {
     if (sidebarOpen) {
-      // Use the storage service to fetch all sheets
-      const sheets = getAllSheets();
-      setSavedSheets(sheets);
+      // This will be moved to Sidebar component
     }
   }, [sidebarOpen]);
 
-  // Load a sheet by id
-  function loadSheet(id) {
-    const sheet = getSheetById(id);
-    if (!sheet) {
-      alert('Failed to load sheet');
-      return;
-    }
-    
-    // Set song metadata from sheet
-    setSongData({ 
-      title: sheet.title || '', 
-      artist: sheet.artist || '', 
-      bpm: sheet.bpm || '' 
-    });
-    
-    // Set sections or create default if none exist
-    if (!sheet.sections || sheet.sections.length === 0) {
-      const newId = Date.now();
-      setSections([
-        {
-          id: newId,
-          name: "Verse 1",
-          energy: 5,
-          parts: [{ id: newId + 1, part: "A", bars: 4, lyrics: "" }],
-        },
-      ]);
-      setIdCounter(newId + 2);
-    } else {
-      setSections(sheet.sections);
-      setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
-    }
-    
-    // Update current sheet ID
-    setCurrentSheetId(id);
-    setSidebarOpen(false); // Close sidebar after loading
-    
-    // Load parts module if available
-    if (sheet.partsModule) {
-      setPartsModule(sheet.partsModule);
-    } else {
-      // No parts module provided, generate one based on section parts
-      contextInitializePartsModule();
-    }
-    
-    setTransposeValue(sheet.transposeValue || 0);
-    setCurrentSheetId(sheet.id || null);
-  }
+  // This function is moved to SheetDataContext
 
-  // Initialize parts module when sections change or on first load
-  useEffect(() => {
-    if (sections?.length > 0 && partsModule?.length === 0) {
-      // Use a function for initialization to avoid direct dependency issues
-      const initPartsFromSections = () => {
-        // Extract unique part labels from all sections
-        const uniqueParts = new Set();
-        sections.forEach(section => {
-          section.parts.forEach(part => {
-            if (part.part) uniqueParts.add(part.part);
-          });
-        });
-        
-        // Create initial parts module entries
-        const initialParts = Array.from(uniqueParts).map(partLabel => ({
-          id: Date.now() + Math.floor(Math.random() * 1000),
-          part: partLabel,
-          bars: sections.find(s => s.parts.find(p => p.part === partLabel))?.parts.find(p => p.part === partLabel)?.bars || 4,
-          chords: ''
-        }));
-        
-        if (initialParts.length > 0) {
-          setPartsModule(initialParts);
-        }
-      };
-      
-      initPartsFromSections();
-    }
-  }, [sections, partsModule?.length]);
-
-  // Note: UI state (context menu, energy dialog, hover state) now comes from UIStateContext
-  // Only keep component-specific state that isn't managed by contexts
-  const [idCounter, setIdCounter] = useState(() => Date.now());
+  // This initialization is now handled by SheetDataContext
 
   // Placeholder text for empty fields
   const placeholders = {
@@ -147,338 +74,14 @@ export default function BandSheetEditor() {
     notes: "Add notes here..."
   };
   
-
-  // Helper to get a unique ID
-  const getNextId = () => {
-    setIdCounter((id) => id + 1);
-    return idCounter + 1;
-  };
-
-  // Helper to update sections using a callback, creating new references for all objects
-  // This ensures React will detect the changes and trigger re-renders appropriately
-  const updateSections = (cb) => {
-    // Create a properly cloned version of sections with new references
-    const createNewReferences = (prev) => 
-      prev.map((s) => ({
-        ...s,
-        parts: s.parts.map((p) => ({ ...p })),
-      }));
-    
-    // Update context state (which is now our source of truth)
-    setSections((prev) => cb(createNewReferences(prev)));
-  };
-
-  // Editing logic for section and parts - beginEdit now calls the context function
-  const beginEdit = (si, pi, f, type = 'part') => {
-    let initialValue = "";
-    
-    if (type === 'section') {
-      // For section fields
-      initialValue = String(sections[si][f] ?? "");
-    } else {
-      // For part fields
-      initialValue = String(sections[si].parts[pi][f] ?? "");
-    }
-    
-    // Use the context function to begin editing
-    contextIsEditing(si, pi, f, type) || setEditValue(initialValue);
-    setEditing({ type, si, pi, f });
-    
-    // Wait for the textarea to be rendered, then adjust height
-    setTimeout(() => {
-      const activeTextarea = document.querySelector('.editing-cell textarea');
-      if (activeTextarea && (f === 'lyrics' || f === 'notes')) {
-        adjustTextareaHeight(activeTextarea);
-      }
-    }, 10);
-  };
-
-  const saveEdit = () => {
-    if (!editing) return;
-    // Use editing state from the context
-    const { si, pi, f, type } = editing;
-    
-    if (type === 'section') {
-      // For section fields
-      updateSections((prev) => {
-        const next = prev.map((section, sidx) => {
-          if (sidx !== si) return section;
-          return {
-            ...section,
-            [f]: f === "energy" ? parseInt(editValue || "5", 10) : editValue,
-          };
-        });
-        return next;
-      });
-    } else {
-      // For part fields
-      let oldPartLabel = null;
-      if (f === 'part') {
-        // If we're editing the part label, store the old value for checking later
-        oldPartLabel = sections[si].parts[pi].part;
-      }
-      
-      updateSections((prev) => {
-        const next = prev.map((section, sidx) => {
-          if (sidx !== si) return section;
-          return {
-            ...section,
-            parts: section.parts.map((part, pidx) => {
-              if (pidx !== pi) return part;
-              return {
-                ...part,
-                [f]: f === "bars" ? parseInt(editValue || "0", 10) : editValue,
-              };
-            }),
-          };
-        });
-        return next;
-      });
-      
-      // If we changed a part label, update the parts module
-      if (f === 'part' && oldPartLabel !== editValue) {
-        // Check if the old part label still exists anywhere in sections
-        const oldPartStillExists = sections.some(section => 
-          section.parts.some(part => 
-            part !== sections[si].parts[pi] && part.part === oldPartLabel
-          )
-        );
-        
-        // If old part doesn't exist anymore, remove it and add the new one
-        if (!oldPartStillExists) {
-          setTimeout(() => {
-            setPartsModule(prev => {
-              // Find the entry for the old part label
-              const oldPartEntry = prev.find(p => p.part === oldPartLabel);
-              // If found, update it; otherwise do nothing
-              if (oldPartEntry) {
-                const updatedParts = prev.filter(p => p.part !== oldPartLabel);
-                // Add new entry with the updated label but same content
-                updatedParts.push({
-                  ...oldPartEntry,
-                  id: Date.now(), // New ID
-                  part: editValue, // New part label
-                  bars: sections[si].parts[pi].bars // Update bars too
-                });
-                return updatedParts;
-              }
-              return prev;
-            });
-          }, 0);
-        } else {
-          // If old part still exists elsewhere and the new one doesn't,
-          // add the new part to the module
-          const newPartExists = partsModule?.some(p => p.part === editValue) || false;
-          if (!newPartExists) {
-            setTimeout(() => {
-              setPartsModule(prev => [
-                ...prev,
-                {
-                  id: Date.now(),
-                  part: editValue,
-                  bars: sections[si].parts[pi].bars,
-                  chords: ''
-                }
-              ]);
-            }, 0);
-          }
-        }
-      }
-    }
-    
-    setEditing(null);
-  };
-
-  // Now we just delegate to the contextIsEditing function
-  const isEditing = (si, pi, f, type = 'part') => {
-    if (type === 'partsModule') {
-      // Special case for parts module editing
-      return contextIsEditing(si, null, f, 'partsModule');
-    }
-    
-    // Use the context's isEditing function for everything else
-    return contextIsEditing(si, pi, f, type);
-  };
-  
   // Helper function for beginning editing of parts module items
   const beginPartModuleEdit = (index, field, initialValue) => {
     beginEdit(index, null, field, 'partsModule');
-    setEditValue(initialValue || '');
-  };
-  
-  // Helper function for saving parts module edits
-  const savePartModuleEdit = (index, field) => {
-    const updatedParts = [...partsModule];
-    
-    if (field === 'part' || field === 'bars') {
-      updatedParts[index] = {
-        ...updatedParts[index],
-        [field]: field === 'bars' ? parseInt(editValue || '0', 10) : editValue
-      };
-    } else if (field === 'chords') {
-      updatedParts[index] = {
-        ...updatedParts[index],
-        chords: editValue
-      };
-    }
-    
-    setPartsModule(updatedParts);
-    setEditing(null); // Clear editing state
   };
   
   // Debugging if needed can be done through browser devtools
 
-  // CRUD
-  const addSection = () => {
-    const newId = getNextId();
-    const partId = getNextId();
-    const newSection = {
-      id: newId,
-      name: "New Section",
-      energy: 5,
-      parts: [{ id: partId, part: "A", bars: 4, lyrics: "" }],
-    };
-    
-    // Update sections in context
-    setSections((prev) => [...prev, newSection]);
-  };
-
-  const deleteSection = (si) => {
-    // Use context directly
-    setSections((prev) => prev.filter((_, idx) => idx !== si));
-  };
-
-  const addPart = (si) => {
-    const newId = getNextId();
-    let newPartLabel = '';
-    
-    // Create a function to handle the section update logic
-    const updateSectionWithNewPart = (prev) => {
-      const updatedSections = prev.map((section, idx) => {
-        if (idx !== si) return section;
-        const p = section.parts;
-        const next = String.fromCharCode(
-          (p[p.length - 1]?.part.charCodeAt(0) ?? 64) + 1,
-        );
-        
-        // Store the new part label to use outside this function
-        newPartLabel = next;
-        
-        return {
-          ...section,
-          parts: [
-            ...section.parts,
-            { id: newId, part: next, bars: 4, lyrics: "" },
-          ],
-        };
-      });
-      
-      return updatedSections;
-    };
-    
-    // Update sections in context
-    setSections(updateSectionWithNewPart);
-    
-    // After updating sections, add this part to the parts module if it doesn't exist
-    setTimeout(() => {
-      addPartToModule(newPartLabel, 4);
-    }, 0);
-  };
-  
-  // Add a part to the parts module if it doesn't exist yet
-  const addPartToModule = (partLabel, bars = 4) => {
-    // Create a function to handle the parts module update logic
-    const updatePartsModule = (prev) => {
-      // Check if this part label already exists
-      const partExists = prev.some(p => p.part === partLabel);
-      if (partExists) return prev; // Don't add duplicates
-      
-      // Add the new part
-      const newPart = {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        part: partLabel,
-        bars,
-        chords: ''
-      };
-      
-      return [...prev, newPart];
-    };
-    
-    // Update parts module in context
-    setPartsModule(updatePartsModule);
-  };
-
-  const deletePart = (si, pi) => {
-    // Get the part label before deleting
-    const partToDelete = sections[si].parts[pi].part;
-    
-    setSections(prev => {
-      // Create the new sections array with the part removed
-      const updatedSections = [...prev];
-      updatedSections[si] = {
-        ...updatedSections[si],
-        parts: updatedSections[si].parts.filter((_, pidx) => pidx !== pi)
-      };
-      
-      // Check if this part still exists in any section after the deletion
-      const partStillExists = updatedSections.some(section => 
-        section.parts.some(part => part.part === partToDelete)
-      );
-      
-      // If the part is no longer used in any section, remove it from parts module
-      if (!partStillExists) {
-        // Use setTimeout to ensure state updates happen after the sections update
-        setTimeout(() => {
-          setPartsModule(prevPartsModule => 
-            prevPartsModule.filter(p => p.part !== partToDelete)
-          );
-        }, 0);
-      }
-      
-      return updatedSections;
-    });
-  };
-
-  // Move section up or down
-  const moveSection = (si, direction) => {
-    if ((direction === 'up' && si === 0) || (direction === 'down' && si === sections.length - 1)) {
-      // Can't move first section up or last section down
-      return;
-    }
-    
-    setSections(prev => {
-      const newSections = [...prev];
-      const targetIndex = direction === 'up' ? si - 1 : si + 1;
-      
-      // Swap the sections
-      [newSections[si], newSections[targetIndex]] = [newSections[targetIndex], newSections[si]];
-      
-      return newSections;
-    });
-  };
-  
-  // Move part up or down within a section
-  const movePart = (si, pi, direction) => {
-    const section = sections[si];
-    if ((direction === 'up' && pi === 0) || (direction === 'down' && pi === section.parts.length - 1)) {
-      // Can't move first part up or last part down
-      return;
-    }
-    
-    setSections(prev => {
-      return prev.map((section, sectionIndex) => {
-        if (sectionIndex !== si) return section;
-        
-        const newParts = [...section.parts];
-        const targetIndex = direction === 'up' ? pi - 1 : pi + 1;
-        
-        // Swap the parts
-        [newParts[pi], newParts[targetIndex]] = [newParts[targetIndex], newParts[pi]];
-        
-        return { ...section, parts: newParts };
-      });
-    });
-  };
+  // These operations are now handled by SheetDataContext
 
 
   // Context menu handler - delegates to UIStateContext's showContextMenu
@@ -566,20 +169,7 @@ export default function BandSheetEditor() {
     const { type, si, pi } = contextMenu;
     if (type === "section") {
       if (action === "duplicate") {
-        const newId = getNextId();
-        setSections((prev) => {
-          const sectionToCopy = {
-            ...prev[si],
-            id: newId,
-            parts: prev[si].parts.map((p) => ({
-              ...p,
-              id: getNextId(),
-            })),
-          };
-          const arr = prev.slice();
-          arr.splice(si + 1, 0, sectionToCopy);
-          return arr;
-        });
+        duplicateSection(si);
       } else if (action === "delete") {
         deleteSection(si);
       } else if (action === "moveUp") {
@@ -593,15 +183,7 @@ export default function BandSheetEditor() {
       if (action === "add") {
         addPart(si);
       } else if (action === "duplicate") {
-        setSections((prev) =>
-          prev.map((section, idx) => {
-            if (idx !== si) return section;
-            const partToCopy = { ...section.parts[pi], id: getNextId() };
-            const arr = section.parts.slice();
-            arr.splice(pi + 1, 0, partToCopy);
-            return { ...section, parts: arr };
-          })
-        );
+        duplicatePart(si, pi);
       } else if (action === "delete") {
         deletePart(si, pi);
       } else if (action === "moveUp") {
@@ -610,7 +192,7 @@ export default function BandSheetEditor() {
         movePart(si, pi, 'down');
       }
     }
-    setContextMenu((cm) => ({ ...cm, visible: false }));
+    hideContextMenu();
   };
 
   // Note: Energy dialog functions have been moved to the EnergyDialog component
@@ -621,57 +203,25 @@ export default function BandSheetEditor() {
       handleSave();
     }
     
-    // Create a new sheet using the service
-    const newSheet = createNewSheet();
-    
-    // Update component state with the new sheet data
-    setSongData({ title: newSheet.title, artist: newSheet.artist, bpm: newSheet.bpm });
-    setSections(newSheet.sections);
-    setPartsModule(newSheet.partsModule);
-    setTransposeValue(newSheet.transposeValue);
-    setIdCounter(newSheet.nextIdCounter);
-    setCurrentSheetId(null);
+    // Create a new sheet using the context function
+    const newSheet = createNewSheetData();
   };
-
-
 
   // Save handler
   const handleSave = () => {
-    // Prepare sheet data
-    const sheetData = { 
-      ...songData, 
-      sections, 
-      partsModule, 
-      transposeValue, 
-      id: currentSheetId 
-    };
-    
-    // Use service to save
-    const savedSheet = saveSheet(sheetData, false);
-    setCurrentSheetId(savedSheet.id);
+    const savedSheet = saveCurrentSheet(false);
     alert(`Sheet saved! (id: ${savedSheet.id})`);
   };
 
   // Save As handler
   const handleSaveAs = () => {
-    // Prepare sheet data using context state
-    const sheetData = { 
-      ...songData, 
-      sections, 
-      partsModule, 
-      transposeValue 
-    };
-    
-    // Use service to save as new sheet
-    const savedSheet = saveSheet(sheetData, true);
-    setCurrentSheetId(savedSheet.id);
+    const savedSheet = saveCurrentSheet(true);
     alert(`Sheet saved as new! (id: ${savedSheet.id})`);
   };
 
-  // Export handler that uses the ExportService to generate a print-friendly version
+  // Export handler that uses the context function
   const handleExport = () => {
-    // Use context state for exporting
-    exportToPDF(songData, sections, transposeValue);
+    exportSheet();
   };
 
   // JSX
@@ -692,11 +242,13 @@ export default function BandSheetEditor() {
         sidebarOpen={sidebarOpen}
         savedSheets={savedSheets}
         setSidebarOpen={setSidebarOpen}
-        loadSheet={loadSheet}
-        fetchSavedSheets={() => {
-          // Use the storage service to get all sheets
-          const sheets = getAllSheets();
-          setSavedSheets(sheets);
+        loadSheet={(id) => {
+          const success = loadSheet(id);
+          if (success) {
+            closeSidebar();
+          } else {
+            alert('Failed to load sheet');
+          }
         }}
       />
       {/* Main content area */}
@@ -736,7 +288,7 @@ export default function BandSheetEditor() {
             />
           ))}
           {/* Add new section button at the bottom */}
-          <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={addSection}>
+          <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={() => addSection()}>
             <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
             <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
           </div>
@@ -797,22 +349,22 @@ export default function BandSheetEditor() {
                     onBlur={() => {
                       // Save edit
                       if (editValue) {
-                        savePartModuleEdit(index, 'part');
+                        saveEdit();
                       } else {
-                        setEditing(null); // Cancel edit if empty
+                        beginEdit(null); // Cancel edit if empty
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         // Save edit
                         if (editValue) {
-                          savePartModuleEdit(index, 'part');
+                          saveEdit();
                         } else {
-                          setEditing(null);
+                          beginEdit(null);
                         }
                       }
                       if (e.key === "Escape") {
-                        setEditing(null);
+                        beginEdit(null);
                       }
                     }}
                     autoFocus
@@ -838,15 +390,15 @@ export default function BandSheetEditor() {
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={() => {
                       // Save edit - default to 4 bars if value is invalid
-                      savePartModuleEdit(index, 'bars');
+                      saveEdit();
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         // Save edit
-                        savePartModuleEdit(index, 'bars');
+                        saveEdit();
                       }
                       if (e.key === "Escape") {
-                        setEditing(null);
+                        beginEdit(null);
                       }
                     }}
                     autoFocus
@@ -869,7 +421,7 @@ export default function BandSheetEditor() {
                     value={editValue}
                     onChange={(e) => {
                       setEditValue(e.target.value);
-                      // Auto-resize the textarea
+                      // Auto-resize the textarea using DOM methods directly
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
                     }}
@@ -880,11 +432,11 @@ export default function BandSheetEditor() {
                     }}
                     onBlur={() => {
                       // Save edit
-                      savePartModuleEdit(index, 'chords');
+                      saveEdit();
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Escape") {
-                        setEditing(null);
+                        beginEdit(null);
                       }
                     }}
                     autoFocus
@@ -903,8 +455,7 @@ export default function BandSheetEditor() {
               <div className="flex-1 px-2 py-2 overflow-y-auto">
                 <div className="font-mono whitespace-pre-wrap max-h-[120px] overflow-y-auto">
                   {partItem.chords ? 
-                    /* Use a simple arrow function to ensure we don't close over any stale variables */
-                    (() => getTransposedChords(partItem.chords, transposeValue))() : 
+                    getTransposedChordsForPart(partItem.chords) : 
                     <span className="text-gray-400 italic">Transposed chords will appear here</span>
                   }
                 </div>
