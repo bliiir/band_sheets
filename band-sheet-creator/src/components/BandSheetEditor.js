@@ -25,6 +25,8 @@ export default function BandSheetEditor() {
   // Parts module state
   const [partsModule, setPartsModule] = useState([]);
   const [transposeValue, setTransposeValue] = useState(0);
+  // Parts module editing state
+  // These will be refactored to use the EditingContext in the next phase
   const [editingPartIndex, setEditingPartIndex] = useState(null);
   const [editingPartField, setEditingPartField] = useState(null);
   const [partEditValue, setPartEditValue] = useState('');
@@ -290,22 +292,18 @@ export default function BandSheetEditor() {
     setEditing(null);
   };
 
+  // Now we just delegate to the contextIsEditing function
   const isEditing = (si, pi, f, type = 'part') => {
     if (type === 'partsModule') {
-      return editing && 
-        editing.type === 'partsModule' && 
-        editing.si === pi && 
-        editing.f === f;
+      // Special case for parts module editing
+      return contextIsEditing(pi, null, f, 'partsModule');
     }
     
-    return editing && 
-      editing.si === si && 
-      (type === 'section' ? true : editing.pi === pi) && 
-      editing.f === f &&
-      editing.type === type;
+    // Use the context's isEditing function for everything else
+    return contextIsEditing(si, pi, f, type);
   };
   
-  console.log('Current editing state:', editing); // Debugging
+  // Debugging if needed can be done through browser devtools
 
   // CRUD
   const addSection = () => {
@@ -767,14 +765,9 @@ export default function BandSheetEditor() {
               hoverState={hoverState}
               setHoverState={setHoverState}
               handleContextMenu={handleContextMenu}
-              isEditing={isEditing}
-              beginEdit={beginEdit}
-              saveEdit={saveEdit}
-              editValue={editValue}
-              setEditValue={setEditValue}
               placeholders={placeholders}
               getEnergyBackgroundColor={getEnergyBackgroundColor}
-              setEditing={setEditing}
+              // No longer passing editing-related props - they'll come from EditingContext
             />
           ))}
           {/* Add new section button at the bottom */}

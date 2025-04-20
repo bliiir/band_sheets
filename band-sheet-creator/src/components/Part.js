@@ -1,6 +1,7 @@
 import React from 'react';
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import EditableCell from './EditableCell';
+import { useEditing } from '../contexts/EditingContext';
 
 /**
  * Part component for rendering a band sheet part
@@ -27,14 +28,11 @@ const Part = ({
   hoverState,
   setHoverState,
   handleContextMenu,
-  isEditing,
-  beginEdit,
-  saveEdit,
-  editValue,
-  setEditValue,
-  placeholders,
-  setEditing
+  placeholders
+  // Removed editing-related props as they come from EditingContext
 }) => {
+  // Use the EditingContext to access editing state and functions
+  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div 
       key={part.id} 

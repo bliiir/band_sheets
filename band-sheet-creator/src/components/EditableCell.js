@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEditing } from '../contexts/EditingContext';
 
 /**
  * EditableCell component that provides a common interface for all editable cells
@@ -30,6 +31,9 @@ const EditableCell = ({
   className = '',
   small = false
 }) => {
+  // We could use EditingContext here, but for now, we'll keep this component flexible
+  // by continuing to use props. This allows it to be used in places where we might not
+  // want to use the EditingContext.
   // Base style classes
   const baseClassName = `${className} ${isEditing ? 'editing-cell' : 'cursor-pointer'}`;
   

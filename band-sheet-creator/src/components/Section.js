@@ -3,6 +3,7 @@ import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import Part from './Part';
 import EditableCell from './EditableCell';
 import SectionHeader from './SectionHeader';
+import { useEditing } from '../contexts/EditingContext';
 
 /**
  * Section component for rendering a band sheet section with its parts
@@ -27,15 +28,12 @@ const Section = ({
   hoverState,
   setHoverState,
   handleContextMenu,
-  isEditing,
-  beginEdit,
-  saveEdit,
-  editValue,
-  setEditValue,
   placeholders,
-  getEnergyBackgroundColor,
-  setEditing
+  getEnergyBackgroundColor
+  // Removed editing-related props as they come from EditingContext
 }) => {
+  // Use the EditingContext to access editing state and functions
+  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div key={section.id} className="border-b border-gray-200">
       <div className="flex">
@@ -46,13 +44,8 @@ const Section = ({
           hoverState={hoverState}
           setHoverState={setHoverState}
           handleContextMenu={handleContextMenu}
-          isEditing={isEditing}
-          beginEdit={beginEdit}
-          saveEdit={saveEdit}
-          editValue={editValue}
-          setEditValue={setEditValue}
-          setEditing={setEditing}
           getEnergyBackgroundColor={getEnergyBackgroundColor}
+          // No longer passing editing-related props - they come from EditingContext
         />
 
         {/* Parts container */}
@@ -66,13 +59,8 @@ const Section = ({
               hoverState={hoverState}
               setHoverState={setHoverState}
               handleContextMenu={handleContextMenu}
-              isEditing={isEditing}
-              beginEdit={beginEdit}
-              saveEdit={saveEdit}
-              editValue={editValue}
-              setEditValue={setEditValue}
               placeholders={placeholders}
-              setEditing={setEditing}
+              // No longer passing editing-related props - they come from EditingContext
             />
           ))}
         </div>

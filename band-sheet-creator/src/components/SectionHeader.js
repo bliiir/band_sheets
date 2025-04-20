@@ -1,6 +1,7 @@
 import React from 'react';
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import EditableCell from './EditableCell';
+import { useEditing } from '../contexts/EditingContext';
 
 /**
  * SectionHeader component for rendering a band sheet section header
@@ -25,14 +26,11 @@ const SectionHeader = ({
   hoverState,
   setHoverState,
   handleContextMenu,
-  isEditing,
-  beginEdit,
-  saveEdit,
-  editValue,
-  setEditValue,
-  setEditing,
   getEnergyBackgroundColor
+  // Removed editing-related props as they come from EditingContext
 }) => {
+  // Use the EditingContext to access editing state and functions
+  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div 
       className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between"
