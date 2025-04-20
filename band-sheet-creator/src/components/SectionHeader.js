@@ -2,6 +2,7 @@ import React from 'react';
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import EditableCell from './EditableCell';
 import { useEditing } from '../contexts/EditingContext';
+import { getEnergyLineWidth } from '../services/StyleService';
 
 /**
  * SectionHeader component for rendering a band sheet section header
@@ -12,29 +13,19 @@ import { useEditing } from '../contexts/EditingContext';
  * @param {Object} props.hoverState - Current hover state object
  * @param {function} props.setHoverState - Function to update hover state
  * @param {function} props.handleContextMenu - Function to handle context menu
- * @param {function} props.isEditing - Function to check if an element is being edited
- * @param {function} props.beginEdit - Function to begin editing an element
- * @param {function} props.saveEdit - Function to save edits
- * @param {string} props.editValue - Current edit value
- * @param {function} props.setEditValue - Function to update edit value
- * @param {function} props.setEditing - Function to update editing state
- * @param {function} props.getEnergyBackgroundColor - Function to get background color based on energy level
  */
 const SectionHeader = ({
   section,
   sectionIndex: si,
   hoverState,
   setHoverState,
-  handleContextMenu,
-  getEnergyBackgroundColor
-  // Removed editing-related props as they come from EditingContext
+  handleContextMenu
 }) => {
   // Use the EditingContext to access editing state and functions
   const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div 
-      className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between"
-      style={{ backgroundColor: getEnergyBackgroundColor(section.energy) }}
+      className="w-[120px] min-w-[120px] border-r border-gray-300 p-4 flex flex-col justify-between relative"
       onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
     >
@@ -59,6 +50,13 @@ const SectionHeader = ({
           </div>
         )}
       </div>
+      
+      {/* Energy indicator - black line at bottom with width based on energy level */}
+      <div 
+        className="absolute bottom-0 left-0 h-1 bg-black"
+        style={{ width: getEnergyLineWidth(section.energy) }}
+        title={`Energy level: ${section.energy}`}
+      />
     </div>
   );
 };

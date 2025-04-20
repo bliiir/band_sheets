@@ -1,6 +1,8 @@
 import React from 'react';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
+import EditableField from './EditableField';
+import TransposeControls from './TransposeControls';
 
 /**
  * PartsModule component for displaying and editing chord progressions
@@ -10,7 +12,6 @@ const PartsModule = () => {
   // Get sheet data and operations from context
   const {
     partsModule,
-    transposeValue, setTransposeValue,
     initializePartsModule,
     getTransposedChordsForPart
   } = useSheetData();
@@ -34,22 +35,7 @@ const PartsModule = () => {
       <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-lg font-bold">Chord progressions</h2>
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium">Transpose:</label>
-          <div className="flex items-center">
-            <button 
-              className="px-2 py-1 bg-gray-200 rounded-l hover:bg-gray-300 text-gray-700 font-bold"
-              onClick={() => setTransposeValue(prev => Math.max(-12, prev - 1))}
-            >
-              -
-            </button>
-            <span className="w-10 text-center">{transposeValue > 0 ? `+${transposeValue}` : transposeValue}</span>
-            <button 
-              className="px-2 py-1 bg-gray-200 rounded-r hover:bg-gray-300 text-gray-700 font-bold"
-              onClick={() => setTransposeValue(prev => Math.min(12, prev + 1))}
-            >
-              +
-            </button>
-          </div>
+          <TransposeControls />
           <button 
             className="ml-2 px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded"
             onClick={initializePartsModule}
@@ -73,117 +59,37 @@ const PartsModule = () => {
         <div key={partItem.id} className="flex min-h-[40px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
           {/* Part */}
           <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center font-semibold">
-            {isEditing(index, null, 'part', 'partsModule') ? (
-              <input
-                className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
-                type="text"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => {
-                  // Save edit
-                  if (editValue) {
-                    saveEdit();
-                  } else {
-                    beginEdit(null); // Cancel edit if empty
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    // Save edit
-                    if (editValue) {
-                      saveEdit();
-                    } else {
-                      beginEdit(null);
-                    }
-                  }
-                  if (e.key === "Escape") {
-                    beginEdit(null);
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <div 
-                className="cursor-pointer"
-                onClick={() => beginPartModuleEdit(index, 'part')}
-              >
-                {partItem.part}
-              </div>
-            )}
+            <EditableField
+              value={partItem.part}
+              type="text"
+              indices={{ sectionIndex: index, partIndex: null, field: 'part', editType: 'partsModule' }}
+              inputClassName="px-2 py-1 text-sm"
+              onClickView={() => beginPartModuleEdit(index, 'part')}
+            />
           </div>
-          
           {/* Bars */}
           <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">
-            {isEditing(index, null, 'bars', 'partsModule') ? (
-              <input
-                className="w-full bg-white rounded px-2 py-1 text-sm border border-gray-300"
-                type="number"
-                min="1"
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => {
-                  // Save edit - default to 4 bars if value is invalid
-                  saveEdit();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    // Save edit
-                    saveEdit();
-                  }
-                  if (e.key === "Escape") {
-                    beginEdit(null);
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <div 
-                className="cursor-pointer"
-                onClick={() => beginPartModuleEdit(index, 'bars')}
-              >
-                {partItem.bars}
-              </div>
-            )}
+            <EditableField
+              value={partItem.bars}
+              type="number"
+              indices={{ sectionIndex: index, partIndex: null, field: 'bars', editType: 'partsModule' }}
+              inputClassName="px-2 py-1 text-sm"
+              inputProps={{ min: "1" }}
+              onClickView={() => beginPartModuleEdit(index, 'bars')}
+            />
           </div>
-          
           {/* Chords */}
           <div className="flex-1 px-2 py-2 overflow-y-auto">
-            {isEditing(index, null, 'chords', 'partsModule') ? (
-              <textarea
-                className="w-full bg-white rounded px-2 py-1 text-sm min-h-[40px] resize-vertical border border-gray-300"
-                value={editValue}
-                onChange={(e) => {
-                  setEditValue(e.target.value);
-                  // Auto-resize the textarea using DOM methods directly
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                }}
-                onFocus={(e) => {
-                  // Auto-resize on focus too
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
-                }}
-                onBlur={() => {
-                  // Save edit
-                  saveEdit();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    beginEdit(null);
-                  }
-                }}
-                autoFocus
-              />
-            ) : (
-              <div 
-                className="cursor-pointer whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100"
-                onClick={() => beginPartModuleEdit(index, 'chords')}
-              >
-                {partItem.chords || <span className="text-gray-400 italic">Click to add chords...</span>}
-              </div>
-            )}
+            <EditableField
+              value={partItem.chords}
+              type="textarea"
+              indices={{ sectionIndex: index, partIndex: null, field: 'chords', editType: 'partsModule' }}
+              placeholder="Click to add chords..."
+              className="whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100"
+              inputClassName="px-2 py-1 text-sm min-h-[40px] resize-vertical"
+              onClickView={() => beginPartModuleEdit(index, 'chords')}
+            />
           </div>
-          
           {/* Transposed Chords */}
           <div className="flex-1 px-2 py-2 overflow-y-auto">
             <div className="font-mono whitespace-pre-wrap max-h-[120px] overflow-y-auto">

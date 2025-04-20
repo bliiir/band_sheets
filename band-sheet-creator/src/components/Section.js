@@ -14,13 +14,7 @@ import { useEditing } from '../contexts/EditingContext';
  * @param {Object} props.hoverState - Current hover state object
  * @param {function} props.setHoverState - Function to update hover state
  * @param {function} props.handleContextMenu - Function to handle context menu
- * @param {function} props.isEditing - Function to check if an element is being edited
- * @param {function} props.beginEdit - Function to begin editing an element
- * @param {function} props.saveEdit - Function to save edits
- * @param {string} props.editValue - Current edit value
- * @param {function} props.setEditValue - Function to update edit value
  * @param {Object} props.placeholders - Placeholder texts for empty fields
- * @param {function} props.getEnergyBackgroundColor - Function to get background color based on energy level
  */
 const Section = ({
   section,
@@ -28,8 +22,7 @@ const Section = ({
   hoverState,
   setHoverState,
   handleContextMenu,
-  placeholders,
-  getEnergyBackgroundColor
+  placeholders
   // Removed editing-related props as they come from EditingContext
 }) => {
   // Use the EditingContext to access editing state and functions
@@ -44,7 +37,6 @@ const Section = ({
           hoverState={hoverState}
           setHoverState={setHoverState}
           handleContextMenu={handleContextMenu}
-          getEnergyBackgroundColor={getEnergyBackgroundColor}
           // No longer passing editing-related props - they come from EditingContext
         />
 

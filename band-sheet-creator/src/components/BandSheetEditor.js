@@ -10,7 +10,6 @@ import EnergyDialog from './EnergyDialog';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
-import { getEnergyBackgroundColor } from '../services/StyleService';
 
 
 export default function BandSheetEditor() {
@@ -35,7 +34,8 @@ export default function BandSheetEditor() {
     loadSheet,
     saveCurrentSheet,
     exportSheet,
-    getTransposedChordsForPart
+    getTransposedChordsForPart,
+    createNewSheetData
   } = useSheetData();
   
   // Use EditingContext for editing state
@@ -53,7 +53,7 @@ export default function BandSheetEditor() {
     // Context menu state
     contextMenu, showContextMenu, hideContextMenu,
     // Hover state
-    hoverState,
+    hoverState, setHoverState,
     // Energy dialog state
     openEnergyDialog
   } = useUIState();
@@ -279,7 +279,6 @@ export default function BandSheetEditor() {
               setHoverState={setHoverState}
               handleContextMenu={handleContextMenu}
               placeholders={placeholders}
-              getEnergyBackgroundColor={getEnergyBackgroundColor}
               // No longer passing editing-related props - they'll come from EditingContext
             />
           ))}
