@@ -6,6 +6,9 @@
 
 import { fetchWithAuth } from './ApiService';
 
+// Get the API URL from environment or use default
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+
 // API flag - set to true when a user is logged in
 let useApi = false;
 
@@ -17,6 +20,20 @@ let useApi = false;
  */
 export const setUseApi = (value) => {
   useApi = !!value;
+  console.log('SheetStorageService: useApi set to', useApi);
+};
+
+/**
+ * Check if we should use the API based on token existence
+ * This is more reliable than the useApi flag
+ * 
+ * @returns {boolean} Whether to use the API
+ */
+const shouldUseApi = () => {
+  const token = localStorage.getItem('token');
+  const hasToken = !!token;
+  console.log('SheetStorageService: Token exists:', hasToken);
+  return hasToken;
 };
 
 /**
@@ -25,10 +42,16 @@ export const setUseApi = (value) => {
  * @returns {Object|null} The loaded sheet or null if not found
  */
 export const getSheetById = async (id) => {
-  // Try API first if enabled
-  if (useApi) {
+  // Check if we should use the API (has token)
+  const isAuthenticated = shouldUseApi();
+  console.log('SheetStorageService: Getting sheet by ID, authenticated =', isAuthenticated);
+  
+  if (isAuthenticated) {
     try {
-      const data = await fetchWithAuth(`/sheets/${id}`);
+      console.log('SheetStorageService: Fetching sheet from API');
+      console.log('SheetStorageService: Using API URL:', `${API_URL}/sheets/${id}`);
+      const data = await fetchWithAuth(`${API_URL}/sheets/${id}`);
+      console.log('SheetStorageService: API response:', data);
       return data.data;
     } catch (error) {
       console.error(`Error fetching sheet ${id} from API:`, error);
@@ -65,22 +88,31 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
     updatedSheet.id = `sheet_${Date.now()}`;
   }
   
-  // Try API first if enabled
-  if (useApi) {
+  // Check if we should use the API (has token)
+  const isAuthenticated = shouldUseApi();
+  console.log('SheetStorageService: Saving sheet, authenticated =', isAuthenticated);
+  if (isAuthenticated) {
     try {
+      console.log('SheetStorageService: Attempting to save to API');
       if (isNewSave || !sheetData.id) {
         // Create new sheet
-        const data = await fetchWithAuth('/sheets', {
+        console.log('SheetStorageService: Creating new sheet via API');
+        console.log('SheetStorageService: Using API URL:', `${API_URL}/sheets`);
+        const data = await fetchWithAuth(`${API_URL}/sheets`, {
           method: 'POST',
           body: JSON.stringify(updatedSheet)
         });
+        console.log('SheetStorageService: API response:', data);
         return data.data;
       } else {
         // Update existing sheet
-        const data = await fetchWithAuth(`/sheets/${updatedSheet.id}`, {
+        console.log('SheetStorageService: Updating existing sheet via API');
+        console.log('SheetStorageService: Using API URL:', `${API_URL}/sheets/${updatedSheet.id}`);
+        const data = await fetchWithAuth(`${API_URL}/sheets/${updatedSheet.id}`, {
           method: 'PUT',
           body: JSON.stringify(updatedSheet)
         });
+        console.log('SheetStorageService: API response:', data);
         return data.data;
       }
     } catch (error) {
@@ -91,6 +123,7 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
   
   // Use localStorage as fallback
   try {
+    console.log('SheetStorageService: Falling back to localStorage');
     localStorage.setItem(`sheet_${updatedSheet.id}`, JSON.stringify(updatedSheet));
     return updatedSheet;
   } catch (e) {
@@ -105,12 +138,18 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
  * @returns {boolean} Whether the deletion was successful
  */
 export const deleteSheet = async (id) => {
-  // Try API first if enabled
-  if (useApi) {
+  // Check if we should use the API (has token)
+  const isAuthenticated = shouldUseApi();
+  console.log('SheetStorageService: Deleting sheet, authenticated =', isAuthenticated);
+  
+  if (isAuthenticated) {
     try {
-      await fetchWithAuth(`/sheets/${id}`, {
+      console.log('SheetStorageService: Deleting sheet from API');
+      console.log('SheetStorageService: Using API URL:', `${API_URL}/sheets/${id}`);
+      await fetchWithAuth(`${API_URL}/sheets/${id}`, {
         method: 'DELETE'
       });
+      console.log('SheetStorageService: Sheet deleted from API successfully');
       return true;
     } catch (error) {
       console.error(`Error deleting sheet ${id} from API:`, error);
@@ -134,10 +173,16 @@ export const deleteSheet = async (id) => {
  * @returns {Array} Array of sheet objects
  */
 export const getAllSheets = async (sortByNewest = true) => {
-  // Try API first if enabled
-  if (useApi) {
+  // Check if we should use the API (has token)
+  const isAuthenticated = shouldUseApi();
+  console.log('SheetStorageService: Getting all sheets, authenticated =', isAuthenticated);
+  
+  if (isAuthenticated) {
     try {
-      const data = await fetchWithAuth('/sheets');
+      console.log('SheetStorageService: Fetching sheets from API');
+      console.log('SheetStorageService: Using API URL:', `${API_URL}/sheets`);
+      const data = await fetchWithAuth(`${API_URL}/sheets`);
+      console.log('SheetStorageService: API response:', data);
       const sheets = data.data || [];
       
       // Sort if needed

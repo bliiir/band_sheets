@@ -5,7 +5,9 @@
 
 // API base URL - Use a simpler approach with a direct URL
 // Dynamically determine the API URL based on the current environment
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+
+// Debug log the API URL to help troubleshoot connection issues
 
 console.log('API Service initialized with URL:', API_URL);
 

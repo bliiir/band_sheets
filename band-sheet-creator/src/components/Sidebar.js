@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import SavedSheetsPanel from './SavedSheetsPanel';
 import { getAllSheets } from '../services/SheetStorageService';
 import { useUIState } from '../contexts/UIStateContext';
@@ -13,10 +13,21 @@ const Sidebar = ({
   const { setSavedSheets } = useUIState();
   
   // Fetch saved sheets directly using the service
-  const fetchSavedSheets = () => {
-    const sheets = getAllSheets();
-    setSavedSheets(sheets);
+  const fetchSavedSheets = async () => {
+    try {
+      console.log('Sidebar: Fetching saved sheets');
+      const sheets = await getAllSheets();
+      console.log('Sidebar: Fetched sheets:', sheets);
+      setSavedSheets(sheets);
+    } catch (error) {
+      console.error('Sidebar: Error fetching sheets:', error);
+    }
   };
+  
+  // Fetch sheets when component mounts
+  useEffect(() => {
+    fetchSavedSheets();
+  }, []);
   return (
     <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
       <SavedSheetsPanel

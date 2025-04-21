@@ -2,15 +2,16 @@ const mongoose = require('mongoose');
 
 // Part Schema (for sections)
 const partSchema = new mongoose.Schema({
-  id: Number,
+  id: { type: mongoose.Schema.Types.Mixed, required: true },
   part: String,
   bars: Number,
-  notes: String
+  notes: String,
+  lyrics: String
 }, { _id: false });
 
 // Section Schema
 const sectionSchema = new mongoose.Schema({
-  id: Number,
+  id: { type: mongoose.Schema.Types.Mixed, required: true },
   name: String,
   energy: Number,
   parts: [partSchema]
@@ -18,7 +19,7 @@ const sectionSchema = new mongoose.Schema({
 
 // Parts Module Schema
 const partsModuleSchema = new mongoose.Schema({
-  id: Number,
+  id: { type: mongoose.Schema.Types.Mixed, required: true },
   part: String,
   bars: Number,
   chords: String

@@ -2,6 +2,18 @@
 
 A full-stack application for creating and managing band sheets.
 
+## Feature requests
+- [ ] Setlists
+- [ ] Add to setlist
+- [ ] Search all users sheets
+- [ ] Paid users can make sheets private
+- [ ] Autogenerate sheets from Lyrics
+- [ ] Expand parts with riffs and notes
+- [ ] Improved pdf export - export playlist
+- [ ] Collaborative features - is it like Wikipedia? Everyone can edit, mods check that its ok?
+- [ ] Columns - possible to save space?
+- [ ] Presentation mode for ipad/tablets
+
 ## Docker Setup
 
 This project uses Docker to create a consistent development environment and avoid browser security issues.

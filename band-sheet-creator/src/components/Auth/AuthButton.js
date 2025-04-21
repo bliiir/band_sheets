@@ -3,18 +3,18 @@ import { useAuth } from '../../contexts/AuthContext';
 import AuthModal from './AuthModal';
 
 /**
- * Standalone authentication button component
+ * Authentication button component
  * Displays login/logout functionality and username when logged in
+ * Designed to be used in the header
  */
-const AuthButton = () => {
+const AuthButton = ({ className = '' }) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { currentUser, logout, isAuthenticated } = useAuth();
   
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      {/* Large, visible auth button */}
+    <div className={className}>
       <button
-        className={`px-4 py-2 rounded-md shadow-lg text-white font-medium ${
+        className={`px-3 py-1.5 rounded text-white text-sm font-medium ${
           isAuthenticated ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
         }`}
         onClick={() => isAuthenticated ? logout() : setAuthModalOpen(true)}

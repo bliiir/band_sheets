@@ -25,16 +25,22 @@ export function AuthProvider({ children }) {
       try {
         // Check for token
         const token = localStorage.getItem('token');
+        console.log('AuthContext: Checking login status, token exists:', !!token);
         
         if (token) {
+          console.log('AuthContext: Attempting to get current user with token');
           const user = await getCurrentUser();
           if (user) {
+            console.log('AuthContext: User authenticated successfully:', user.username);
             setCurrentUser(user);
             setUseApi(true); // Enable API in SheetStorageService
           } else {
+            console.log('AuthContext: Token exists but user fetch failed');
             localStorage.removeItem('token');
             setUseApi(false);
           }
+        } else {
+          console.log('AuthContext: No token found, user is not logged in');
         }
       } catch (err) {
         console.error('Auth check error:', err);
@@ -82,16 +88,20 @@ export function AuthProvider({ children }) {
    */
   const login = async (email, password) => {
     try {
+      console.log('AuthContext: Attempting login for email:', email);
       setError(null);
       setLoading(true);
       
       const user = await loginUser({ email, password });
+      console.log('AuthContext: Login successful, user:', user);
       
       setCurrentUser(user);
       setUseApi(true);
+      console.log('AuthContext: useApi set to true after login');
       setLoading(false);
       return true;
     } catch (err) {
+      console.error('AuthContext: Login failed:', err.message);
       setError(err.message);
       setLoading(false);
       return false;

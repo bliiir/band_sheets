@@ -1,12 +1,19 @@
 // src/App.js
 import React from 'react';
+import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import BandSheetEditor from './components/BandSheetEditor';
 import AuthButton from './components/Auth/AuthButton';
 import Logo from './assets/logo3.png';
 import AppProviders from './contexts/AppProviders';
 
+// Sheet editor with URL parameter
+function SheetEditorWithId() {
+  const { sheetId } = useParams();
+  return <BandSheetEditor initialSheetId={sheetId} />;
+}
+
+// Main App component
 function App() {
-  
   return (
     <div className="flex flex-col min-h-screen w-full">
       <header className="bg-gray-800 text-white p-4 flex items-center">
@@ -17,13 +24,17 @@ function App() {
           <span className="text-xl font-bold mr-6">Band Sheet Creator</span>
           <span className="opacity-80">Create and edit song structure sheets for your band</span>
         </div>
+        <AppProviders>
+          <AuthButton />
+        </AppProviders>
       </header>
       <main className="flex-1 min-w-0 min-h-0 m-0 p-0 bg-white">
         <AppProviders>
-          <>
-            <BandSheetEditor />
-            <AuthButton />
-          </>
+          <Routes>
+            <Route path="/" element={<BandSheetEditor />} />
+            <Route path="/sheet/:sheetId" element={<SheetEditorWithId />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </AppProviders>
       </main>
       <footer className="p-4 text-center text-gray-500 text-xs bg-gray-100 mt-auto">

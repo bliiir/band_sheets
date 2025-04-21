@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
-import { ReactComponent as MenuIcon } from "../assets/menu.svg";
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as MenuIcon } from '../assets/menu.svg';
 import ConfirmModal from "./ConfirmModal";
+import { deleteSheet } from "../services/SheetStorageService";
 
 export default function SavedSheetsPanel({
   open,
@@ -9,6 +11,7 @@ export default function SavedSheetsPanel({
   onClose,
   onDoubleClickSheet,
   onUpdate,
+  onSheetSelect,
 }) {
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
@@ -16,7 +19,8 @@ export default function SavedSheetsPanel({
   const [editingValue, setEditingValue] = useState("");
   const inputRef = useRef();
   const panelRef = useRef();
-  
+  const navigate = useNavigate();
+
   // State for custom confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -76,11 +80,10 @@ export default function SavedSheetsPanel({
   // Function for opening the delete confirmation dialog
   const confirmDeleteSheet = (id) => {
     try {
-      // Get sheet info for the confirmation message
-      const sheetStr = localStorage.getItem(`sheet_${id}`);
-      if (!sheetStr) return;
+      // Find the sheet in the savedSheets array
+      const sheet = savedSheets.find(s => s.id === id);
+      if (!sheet) return;
       
-      const sheet = JSON.parse(sheetStr);
       const title = sheet.title || 'Untitled';
       
       // Show custom confirmation dialog
@@ -88,13 +91,27 @@ export default function SavedSheetsPanel({
         isOpen: true,
         title: "Delete Sheet",
         message: `Are you sure you want to delete "${title}"?`,
-        onConfirm: () => {
-          // Delete from localStorage
-          localStorage.removeItem(`sheet_${id}`);
-          // Update the sheet list
-          if (onUpdate) onUpdate();
-          // Close the dialog
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        onConfirm: async () => {
+          try {
+            console.log('SavedSheetsPanel: Deleting sheet with ID:', id);
+            // Use the SheetStorageService to delete the sheet
+            await deleteSheet(id);
+            console.log('SavedSheetsPanel: Sheet deleted successfully');
+            // Close the dialog first to avoid UI glitches
+            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+            // Force a small delay to ensure the dialog is closed before refreshing
+            setTimeout(() => {
+              console.log('SavedSheetsPanel: Refreshing sheet list after deletion');
+              // Update the sheet list
+              if (onUpdate) {
+                onUpdate();
+              }
+            }, 100);
+          } catch (error) {
+            console.error('SavedSheetsPanel: Error deleting sheet:', error);
+            alert('Failed to delete sheet. Please try again.');
+            setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          }
         },
         sheetId: id
       });
@@ -228,16 +245,21 @@ export default function SavedSheetsPanel({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto pb-2">
-        {savedSheets.length === 0 && (
+        {(!savedSheets || !Array.isArray(savedSheets) || savedSheets.length === 0) && (
           <div className="px-4 py-8 text-center text-gray-400 italic select-none">
             No saved sheets
           </div>
         )}
-        {savedSheets.map((sheet) => (
+        {Array.isArray(savedSheets) && savedSheets.map((sheet) => (
           <div
             key={sheet.id}
             className="group px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-2"
-            onDoubleClick={() => onDoubleClickSheet(sheet.id)}
+            onDoubleClick={() => {
+              // Navigate to the sheet URL
+              navigate(`/sheet/${sheet.id}`);
+              // Also call the original handler
+              onDoubleClickSheet(sheet.id);
+            }}
           >
             <div className="flex-1 min-w-0">
               {editingId === sheet.id ? (
