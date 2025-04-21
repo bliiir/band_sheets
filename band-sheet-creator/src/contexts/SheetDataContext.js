@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { createNewSheet, saveSheet, getSheetById, getAllSheets } from '../services/SheetStorageService';
 import { exportToPDF } from '../services/ExportService';
 import { getTransposedChords } from '../services/ChordService';
+import { useUIState } from './UIStateContext';
 
 // Create the SheetDataContext
 const SheetDataContext = createContext(null);
@@ -14,6 +15,9 @@ const SheetDataContext = createContext(null);
  * @param {React.ReactNode} props.children - Child components
  */
 export function SheetDataProvider({ children }) {
+  // Access UI state for loading indicators
+  const { beginApiCall, endApiCall } = useUIState();
+
   // Sheet data state
   const [sections, setSections] = useState([]);
   const [songData, setSongData] = useState({ title: '', artist: '', bpm: 120 });
@@ -170,13 +174,16 @@ export function SheetDataProvider({ children }) {
   /**
    * Load a sheet by ID
    * @param {string} id - The sheet ID to load
-   * @returns {boolean} - Whether the sheet was loaded successfully
+   * @returns {Promise<boolean>} - Whether the sheet was loaded successfully
    */
-  const loadSheet = useCallback((id) => {
-    const sheet = getSheetById(id);
-    if (!sheet) {
-      return false;
-    }
+  const loadSheet = useCallback(async (id) => {
+    beginApiCall();
+    try {
+      const sheet = await getSheetById(id);
+      if (!sheet) {
+        endApiCall(new Error('Sheet not found'));
+        return false;
+      }
     
     // Set song metadata from sheet
     setSongData({ 
@@ -214,29 +221,43 @@ export function SheetDataProvider({ children }) {
     setTransposeValue(sheet.transposeValue || 0);
     setCurrentSheetId(sheet.id || null);
     
+    endApiCall();
     return true;
+    } catch (error) {
+      console.error('Error loading sheet:', error);
+      endApiCall(error);
+      return false;
+    }
   }, []);
   
   /**
    * Save the current sheet
    * @param {boolean} saveAsNew - Whether to save as a new sheet
-   * @returns {Object} - The saved sheet data
+   * @returns {Promise<Object>} - The saved sheet data
    */
-  const saveCurrentSheet = useCallback((saveAsNew = false) => {
-    // Prepare sheet data
-    const sheetData = { 
-      ...songData, 
-      sections, 
-      partsModule, 
-      transposeValue, 
-      id: saveAsNew ? null : currentSheetId
-    };
-    
-    // Use service to save
-    const savedSheet = saveSheet(sheetData, saveAsNew);
-    setCurrentSheetId(savedSheet.id);
-    
-    return savedSheet;
+  const saveCurrentSheet = useCallback(async (saveAsNew = false) => {
+    beginApiCall();
+    try {
+      // Prepare sheet data
+      const sheetData = { 
+        ...songData, 
+        sections, 
+        partsModule, 
+        transposeValue, 
+        id: saveAsNew ? null : currentSheetId
+      };
+      
+      // Use service to save
+      const savedSheet = await saveSheet(sheetData, saveAsNew);
+      setCurrentSheetId(savedSheet.id);
+      
+      endApiCall();
+      return savedSheet;
+    } catch (error) {
+      console.error('Error saving sheet:', error);
+      endApiCall(error);
+      throw error;
+    }
   }, [songData, sections, partsModule, transposeValue, currentSheetId]);
   
   /**

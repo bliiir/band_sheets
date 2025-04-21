@@ -15,6 +15,10 @@ export function UIStateProvider({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [savedSheets, setSavedSheets] = useState([]);
   
+  // API loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  
   // Context menu state
   const [contextMenu, setContextMenu] = useState({
     visible: false,
@@ -99,6 +103,17 @@ export function UIStateProvider({ children }) {
     setHoverState({ type: null, si: null, pi: null });
   };
   
+  // API loading helpers
+  const beginApiCall = () => {
+    setIsLoading(true);
+    setApiError(null);
+  };
+  
+  const endApiCall = (error = null) => {
+    setIsLoading(false);
+    setApiError(error);
+  };
+
   // Create the context value object
   const value = {
     // Sidebar state
@@ -109,6 +124,12 @@ export function UIStateProvider({ children }) {
     openSidebar,
     closeSidebar,
     toggleSidebar,
+    
+    // API loading state
+    isLoading,
+    apiError,
+    beginApiCall,
+    endApiCall,
     
     // Context menu state
     contextMenu,

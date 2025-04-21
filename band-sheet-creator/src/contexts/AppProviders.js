@@ -1,4 +1,5 @@
 import React from 'react';
+import { AuthProvider } from './AuthContext';
 import { EditingProvider } from './EditingContext';
 import { SheetDataProvider } from './SheetDataContext';
 import { UIStateProvider } from './UIStateContext';
@@ -12,13 +13,15 @@ import { UIStateProvider } from './UIStateContext';
  */
 const AppProviders = ({ children }) => {
   return (
-    <SheetDataProvider>
-      <EditingProvider>
-        <UIStateProvider>
-          {children}
-        </UIStateProvider>
-      </EditingProvider>
-    </SheetDataProvider>
+    <AuthProvider>
+      <UIStateProvider>
+        <SheetDataProvider>
+          <EditingProvider>
+            {children}
+          </EditingProvider>
+        </SheetDataProvider>
+      </UIStateProvider>
+    </AuthProvider>
   );
 };
 
