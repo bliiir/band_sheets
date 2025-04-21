@@ -9,7 +9,7 @@ import React from 'react';
  */
 const SongInfoBar = ({ songData, setSongData }) => {
   return (
-    <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm">
+    <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm sticky top-0 z-40">
       {/* Since SongInfoBar fields are always editable, we'll use a different approach than our typical EditableCell usage */}
       <div className="flex-1 min-w-[160px]">
         <input

@@ -37,6 +37,51 @@ export function UIStateProvider({ children }) {
     pi: null
   });
   
+  // Selection state for sections and parts
+  const [selectedItems, setSelectedItems] = useState([]);
+  
+  // Helper function to check if an item is selected
+  const isItemSelected = (type, sectionIndex, partIndex = null) => {
+    return selectedItems.some(item => 
+      item.type === type && 
+      item.sectionIndex === sectionIndex && 
+      (partIndex === null || item.partIndex === partIndex)
+    );
+  };
+  
+  // Toggle selection of an item
+  const toggleItemSelection = (type, sectionIndex, partIndex = null, isMultiSelect = false) => {
+    const itemKey = { type, sectionIndex, partIndex };
+    
+    setSelectedItems(prev => {
+      // Check if item is already selected
+      const isSelected = isItemSelected(type, sectionIndex, partIndex);
+      
+      if (isSelected) {
+        // If already selected, remove it
+        return prev.filter(item => 
+          !(item.type === type && 
+            item.sectionIndex === sectionIndex && 
+            (partIndex === null || item.partIndex === partIndex))
+        );
+      } else {
+        // If not selected, add it
+        if (isMultiSelect) {
+          // Add to existing selection for multi-select
+          return [...prev, { type, sectionIndex, partIndex }];
+        } else {
+          // Replace selection for single select
+          return [{ type, sectionIndex, partIndex }];
+        }
+      }
+    });
+  };
+  
+  // Clear all selections
+  const clearSelection = () => {
+    setSelectedItems([]);
+  };
+  
   // Energy dialog state
   const [energyDialog, setEnergyDialog] = useState({ 
     open: false, 
@@ -64,18 +109,28 @@ export function UIStateProvider({ children }) {
     }));
   };
   
-  const showContextMenu = (event, type, si, pi) => {
+
+  
+  // Function to handle context menu events
+  const handleContextMenu = (event, type, si, pi = null) => {
     // Prevent default browser context menu
     event.preventDefault();
     
-    // Set context menu state
+    // Stop propagation to prevent other handlers from firing
+    event.stopPropagation();
+    
+    // Store the current section/part indices to ensure consistency
+    const sectionIndex = Number(si);
+    const partIndex = pi !== null ? Number(pi) : null;
+    
+    // Set context menu state with explicit values
     setContextMenu({
       visible: true,
       x: event.clientX,
       y: event.clientY,
       type,
-      si,
-      pi,
+      si: sectionIndex,
+      pi: partIndex,
       isNew: true // Used for position adjustment on first render
     });
     
@@ -86,13 +141,30 @@ export function UIStateProvider({ children }) {
         isNew: false
       }));
     }, 50);
+    
+    // Also set the hover state to match the context menu
+    // This ensures the menu icon stays visible on the correct section
+    setHoverState({
+      type,
+      si: sectionIndex,
+      pi: partIndex
+    });
+    
+    // Prevent any other click handlers from firing
+    return false;
   };
   
   const hideContextMenu = () => {
-    setContextMenu(prev => ({
-      ...prev,
-      visible: false
-    }));
+    // Completely reset the context menu state instead of just hiding it
+    setContextMenu({
+      visible: false,
+      x: 0,
+      y: 0,
+      type: null,
+      si: null,
+      pi: null,
+      isNew: false
+    });
   };
   
   const setHover = (type, si, pi) => {
@@ -119,31 +191,38 @@ export function UIStateProvider({ children }) {
     // Sidebar state
     sidebarOpen,
     setSidebarOpen,
-    savedSheets,
-    setSavedSheets,
     openSidebar,
     closeSidebar,
     toggleSidebar,
+    savedSheets,
+    setSavedSheets,
     
-    // API loading state
+    // API loading states
     isLoading,
+    setIsLoading,
     apiError,
+    setApiError,
     beginApiCall,
     endApiCall,
     
     // Context menu state
     contextMenu,
     setContextMenu,
-    showContextMenu,
+    handleContextMenu,
     hideContextMenu,
     
     // Hover state
     hoverState,
     setHoverState,
-    setHover,
-    clearHover,
     
-    // Energy dialog state
+    // Selection state
+    selectedItems,
+    setSelectedItems,
+    isItemSelected,
+    toggleItemSelection,
+    clearSelection,
+    
+    // Energy dialog
     energyDialog,
     setEnergyDialog,
     openEnergyDialog,

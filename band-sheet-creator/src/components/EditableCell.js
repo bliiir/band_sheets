@@ -34,7 +34,7 @@ const EditableCell = ({
   // by continuing to use props. This allows it to be used in places where we might not
   // want to use the EditingContext.
   // Base style classes
-  const baseClassName = `${className} ${isEditing ? 'editing-cell' : 'cursor-pointer'}`;
+  const baseClassName = `editable-cell ${className} ${isEditing ? 'editing-cell' : 'cursor-pointer'}`;
   
   // Handle click to begin editing
   const handleClick = () => {

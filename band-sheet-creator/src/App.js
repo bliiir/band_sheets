@@ -16,7 +16,7 @@ function SheetEditorWithId() {
 function App() {
   return (
     <div className="flex flex-col min-h-screen w-full">
-      <header className="bg-gray-800 text-white p-4 flex items-center">
+      <header className="bg-gray-800 text-white p-4 flex items-center sticky top-0 z-50">
         <div className="flex-shrink-0 mr-6">
           <img src={Logo} alt="Band Sheet Creator" className="h-12" />
         </div>

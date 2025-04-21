@@ -67,7 +67,7 @@ export default function BandSheetEditor({ initialSheetId }) {
     // Sidebar state
     sidebarOpen, setSidebarOpen, savedSheets, setSavedSheets, closeSidebar,
     // Context menu state
-    contextMenu, showContextMenu, hideContextMenu,
+    contextMenu, handleContextMenu, hideContextMenu,
     // Hover state
     hoverState, setHoverState,
     // Energy dialog state
@@ -140,11 +140,8 @@ export default function BandSheetEditor({ initialSheetId }) {
   // These operations are now handled by SheetDataContext
 
 
-  // Context menu handler - delegates to UIStateContext's showContextMenu
-  const handleContextMenu = (e, type, si, pi = null) => {
-    // Use the showContextMenu function from UIStateContext
-    showContextMenu(e, type, si, pi);
-  };
+  // We're now using handleContextMenu directly from UIStateContext
+  // No need for a local wrapper function
   
   // Get context menu items based on context type
   const getContextMenuItems = () => {
@@ -222,33 +219,48 @@ export default function BandSheetEditor({ initialSheetId }) {
 
   // Menu actions
   const handleMenuAction = (action) => {
-    const { type, si, pi } = contextMenu;
-    if (type === "section") {
-      if (action === "duplicate") {
-        duplicateSection(si);
-      } else if (action === "delete") {
-        deleteSection(si);
-      } else if (action === "moveUp") {
-        moveSection(si, 'up');
-      } else if (action === "moveDown") {
-        moveSection(si, 'down');
-      } else if (action === "setEnergyLevel") {
-        openEnergyDialog(si);
-      }
-    } else if (type === "part") {
-      if (action === "add") {
-        addPart(si);
-      } else if (action === "duplicate") {
-        duplicatePart(si, pi);
-      } else if (action === "delete") {
-        deletePart(si, pi);
-      } else if (action === "moveUp") {
-        movePart(si, pi, 'up');
-      } else if (action === "moveDown") {
-        movePart(si, pi, 'down');
-      }
-    }
+    // Store the values locally to avoid using stale contextMenu state
+    // Convert indices to numbers to ensure consistent handling
+    const type = contextMenu.type;
+    const sectionIndex = Number(contextMenu.si);
+    const partIndex = contextMenu.pi !== null ? Number(contextMenu.pi) : null;
+    
+    // Close the context menu first to prevent stale state issues
     hideContextMenu();
+    
+    // Clear hover state to prevent menu icon from showing on wrong section
+    setHoverState({ type: null, si: null, pi: null });
+    
+    // Add a longer delay to ensure state is fully updated before performing the action
+    // This prevents issues with multiple operations in sequence
+    setTimeout(() => {
+      // Execute the action with the stored values
+      if (type === "section") {
+        if (action === "duplicate") {
+          duplicateSection(sectionIndex);
+        } else if (action === "delete") {
+          deleteSection(sectionIndex);
+        } else if (action === "moveUp") {
+          moveSection(sectionIndex, 'up');
+        } else if (action === "moveDown") {
+          moveSection(sectionIndex, 'down');
+        } else if (action === "setEnergyLevel") {
+          openEnergyDialog(sectionIndex);
+        }
+      } else if (type === "part") {
+        if (action === "add") {
+          addPart(sectionIndex);
+        } else if (action === "duplicate") {
+          duplicatePart(sectionIndex, partIndex);
+        } else if (action === "delete") {
+          deletePart(sectionIndex, partIndex);
+        } else if (action === "moveUp") {
+          movePart(sectionIndex, partIndex, 'up');
+        } else if (action === "moveDown") {
+          movePart(sectionIndex, partIndex, 'down');
+        }
+      }
+    }, 50); // Longer delay to ensure state updates completely
   };
 
   // Note: Energy dialog functions have been moved to the EnergyDialog component
@@ -364,7 +376,7 @@ export default function BandSheetEditor({ initialSheetId }) {
       />
       
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-auto">
+      <div className="flex-1 flex flex-col overflow-auto ml-14">
         {/* Song info bar */}
         <SongInfoBar songData={songData} setSongData={setSongData} />
 

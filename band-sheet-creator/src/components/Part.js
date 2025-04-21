@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import EditableCell from './EditableCell';
 import { useEditing } from '../contexts/EditingContext';
+import { useUIState } from '../contexts/UIStateContext';
+import { useSheetData } from '../contexts/SheetDataContext';
 
 /**
  * Part component for rendering a band sheet part
@@ -32,13 +34,199 @@ const Part = ({
   // Removed editing-related props as they come from EditingContext
 }) => {
   // Use the EditingContext to access editing state and functions
-  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
+  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing, editing } = useEditing();
+  
+  // Get selection state and functions from UIStateContext
+  const { 
+    isItemSelected, 
+    toggleItemSelection,
+    selectedItems,
+    setSelectedItems,
+    clearSelection 
+  } = useUIState();
+  
+  // Get part operations from SheetDataContext
+  const { 
+    deletePart, 
+    duplicatePart,
+    movePart,
+    sections
+  } = useSheetData();
+  
+  // Handle keyboard shortcuts for selected items
+  useEffect(() => {
+    // Store references to the current state and functions to use in the event handler
+    // This prevents closure issues with stale references
+    const currentSelectedItems = selectedItems;
+    const currentSetSelectedItems = setSelectedItems;
+    
+    const handleKeyDown = (e) => {
+      // Only handle if we have selected items
+      if (currentSelectedItems.length === 0) return;
+      
+      // Don't process keyboard shortcuts if we're currently editing a cell
+      if (editing !== null) return;
+      
+      // Delete key - delete selected parts
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        
+        // Process parts
+        const selectedParts = selectedItems
+          .filter(item => item.type === 'part')
+          .sort((a, b) => {
+            // Sort by section index first
+            if (a.sectionIndex !== b.sectionIndex) {
+              return b.sectionIndex - a.sectionIndex;
+            }
+            // Then by part index (from bottom to top)
+            return b.partIndex - a.partIndex;
+          });
+          
+        selectedParts.forEach(item => {
+          deletePart(item.sectionIndex, item.partIndex);
+        });
+      }
+      
+      // Cmd+D - duplicate selected parts
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        // Don't process if we're currently editing a cell
+        if (editing !== null) return;
+        
+        e.preventDefault();
+        
+        // Process parts
+        const selectedParts = selectedItems
+          .filter(item => item.type === 'part')
+          .sort((a, b) => {
+            // Sort by section index first
+            if (a.sectionIndex !== b.sectionIndex) {
+              return a.sectionIndex - b.sectionIndex;
+            }
+            // Then by part index (from top to bottom within each section)
+            return a.partIndex - b.partIndex;
+          });
+          
+        selectedParts.forEach(item => {
+          duplicatePart(item.sectionIndex, item.partIndex);
+        });
+      }
+      
+      // Option/Alt+Arrow Down - move selected parts down
+      if (e.altKey && e.key === 'ArrowDown') {
+        // Don't process if we're currently editing a cell
+        if (editing !== null) return;
+        
+        e.preventDefault();
+        
+        // Only process parts (sections are handled in the Section component)
+        const selectedParts = selectedItems
+          .filter(item => item.type === 'part')
+          .sort((a, b) => {
+            // Sort by section index first
+            if (a.sectionIndex !== b.sectionIndex) {
+              return b.sectionIndex - a.sectionIndex;
+            }
+            // Then by part index (from bottom to top within each section)
+            return b.partIndex - a.partIndex;
+          });
+        
+        selectedParts.forEach(item => {
+          // Check if this is the last part in the section
+          const sectionParts = sections[item.sectionIndex]?.parts || [];
+          if (item.partIndex < sectionParts.length - 1) {
+            movePart(item.sectionIndex, item.partIndex, 'down');
+          }
+        });
+        
+        // Update selection to reflect the new positions
+        const updatedSelection = currentSelectedItems.map(item => {
+          if (item.type === 'part') {
+            const sectionParts = sections[item.sectionIndex]?.parts || [];
+            return {
+              ...item,
+              partIndex: Math.min(item.partIndex + 1, sectionParts.length - 1)
+            };
+          }
+          return item;
+        });
+        
+        // Update selection state
+        currentSetSelectedItems(updatedSelection);
+      }
+      
+      // Option/Alt+Arrow Up - move selected parts up
+      if (e.altKey && e.key === 'ArrowUp') {
+        // Don't process if we're currently editing a cell
+        if (editing !== null) return;
+        
+        e.preventDefault();
+        
+        // Only process parts (sections are handled in the Section component)
+        const selectedParts = selectedItems
+          .filter(item => item.type === 'part')
+          .sort((a, b) => {
+            // Sort by section index first
+            if (a.sectionIndex !== b.sectionIndex) {
+              return a.sectionIndex - b.sectionIndex;
+            }
+            // Then by part index (from top to bottom within each section)
+            return a.partIndex - b.partIndex;
+          });
+        
+        selectedParts.forEach(item => {
+          // Only move if not the first part
+          if (item.partIndex > 0) {
+            movePart(item.sectionIndex, item.partIndex, 'up');
+          }
+        });
+        
+        // Update selection to reflect the new positions
+        const updatedSelection = currentSelectedItems.map(item => {
+          if (item.type === 'part') {
+            return {
+              ...item,
+              partIndex: Math.max(item.partIndex - 1, 0)
+            };
+          }
+          return item;
+        });
+        
+        // Update selection state
+        currentSetSelectedItems(updatedSelection);
+      }
+    };
+    
+    // Add the event listener to the window
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedItems, deletePart, duplicatePart, movePart, sections, editing, setSelectedItems]);
+  // Determine if this part is selected
+  const isPartSelected = isItemSelected('part', si, pi);
+  
+  // Handle part click with selection support
+  const handlePartClick = (e) => {
+    // Don't trigger selection when clicking on editable cells
+    if (e.target.closest('.editable-cell')) return;
+    
+    // Toggle selection with Cmd/Ctrl for multi-select
+    toggleItemSelection('part', si, pi, e.metaKey || e.ctrlKey);
+    
+    // Stop propagation to prevent section selection
+    e.stopPropagation();
+  };
+  
   return (
     <div 
       key={part.id} 
-      className="flex min-h-[40px] border-b border-gray-100 last:border-b-0"
+      className={`flex min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
+      onClick={handlePartClick}
     >
       {/* Part label cell */}
       <div className="w-[60px] min-w-[60px] px-4 py-2 flex items-center">

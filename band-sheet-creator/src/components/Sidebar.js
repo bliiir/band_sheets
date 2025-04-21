@@ -29,7 +29,7 @@ const Sidebar = ({
     fetchSavedSheets();
   }, []);
   return (
-    <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block`}>
+    <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block fixed left-14 top-[60px] bottom-0`}>
       <SavedSheetsPanel
         open={sidebarOpen}
         savedSheets={savedSheets}

@@ -28,8 +28,12 @@ export function SheetDataProvider({ children }) {
   
   // Helper to get a unique ID
   const getNextId = () => {
-    setIdCounter(prev => prev + 1);
-    return idCounter + 1;
+    // Use a more reliable ID generation method with additional randomness
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000000);
+    const nextId = `${timestamp}_${random}`;
+    setIdCounter(timestamp);
+    return nextId;
   };
   
   // Section CRUD operations
@@ -58,15 +62,29 @@ export function SheetDataProvider({ children }) {
   const moveSection = (sectionIndex, direction) => {
     if (direction !== 'up' && direction !== 'down') return;
     
-    setSections(prev => {
-      const newIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
-      if (newIndex < 0 || newIndex >= prev.length) return prev;
-      
-      const result = [...prev];
-      const [removed] = result.splice(sectionIndex, 1);
-      result.splice(newIndex, 0, removed);
-      return result;
-    });
+    // First, get the current sections to determine the new index
+    const currentSections = [...sections];
+    const newIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
+    
+    // Validate the new index
+    if (newIndex < 0 || newIndex >= currentSections.length) return;
+    
+    // Create a deep copy with JSON parse/stringify for complete isolation
+    const deepCopy = JSON.parse(JSON.stringify(currentSections));
+    
+    // Remove the section from its current position
+    const [removed] = deepCopy.splice(sectionIndex, 1);
+    
+    // Insert it at the new position
+    deepCopy.splice(newIndex, 0, removed);
+    
+    // Update the state with the new array
+    setSections(deepCopy);
+    
+    // Force a re-render after a short delay to ensure UI is updated
+    setTimeout(() => {
+      setSections(prev => JSON.parse(JSON.stringify(prev)));
+    }, 50);
   };
   
   // Part CRUD operations
@@ -289,43 +307,64 @@ export function SheetDataProvider({ children }) {
   };
   
   const duplicateSection = (sectionIndex) => {
+    // Generate a unique ID for the new section
     const newId = getNextId();
-    setSections((prev) => {
-      const sectionToCopy = {
-        ...prev[sectionIndex],
-        id: newId,
-        parts: prev[sectionIndex].parts.map((p) => ({
-          ...p,
-          id: getNextId(),
-        })),
-      };
-      const arr = prev.slice();
-      arr.splice(sectionIndex + 1, 0, sectionToCopy);
-      return arr;
-    });
+    
+    // Get the current sections
+    const currentSections = [...sections];
+    
+    // Create a deep copy of all sections using JSON parse/stringify
+    const deepCopy = JSON.parse(JSON.stringify(currentSections));
+    
+    // Create a copy of the section to duplicate with new IDs
+    const sectionToCopy = {
+      ...deepCopy[sectionIndex],
+      id: newId,
+      parts: deepCopy[sectionIndex].parts.map((p) => ({
+        ...p,
+        id: getNextId(),
+      })),
+    };
+    
+    // Insert the copied section
+    deepCopy.splice(sectionIndex + 1, 0, sectionToCopy);
+    
+    // Update the state with the new array
+    setSections(deepCopy);
+    
+    // Force a re-render after a longer delay to ensure UI is fully updated
+    setTimeout(() => {
+      setSections(prev => JSON.parse(JSON.stringify(prev)));
+    }, 50);
   };
   
   const duplicatePart = (sectionIndex, partIndex) => {
-    setSections(prev => {
-      const newSections = [...prev];
-      const section = {...newSections[sectionIndex]};
-      const part = {...section.parts[partIndex]};
-      
-      // Create a new part with a new ID but same content
-      const newPart = {
-        ...part,
-        id: getNextId()
-      };
-      
-      // Insert new part after the source part
-      const parts = [...section.parts];
-      parts.splice(partIndex + 1, 0, newPart);
-      
-      section.parts = parts;
-      newSections[sectionIndex] = section;
-      
-      return newSections;
-    });
+    // Get the current sections
+    const currentSections = [...sections];
+    
+    // Create a deep copy of all sections using JSON parse/stringify
+    const deepCopy = JSON.parse(JSON.stringify(currentSections));
+    
+    // Get the section and part to duplicate
+    const section = deepCopy[sectionIndex];
+    const part = section.parts[partIndex];
+    
+    // Create a new part with a new ID but same content
+    const newPart = {
+      ...part,
+      id: getNextId()
+    };
+    
+    // Insert the duplicated part
+    section.parts.splice(partIndex + 1, 0, newPart);
+    
+    // Update the state with the new array
+    setSections(deepCopy);
+    
+    // Force a re-render after a delay to ensure UI is fully updated
+    setTimeout(() => {
+      setSections(prev => JSON.parse(JSON.stringify(prev)));
+    }, 50);
   };
   
   /**

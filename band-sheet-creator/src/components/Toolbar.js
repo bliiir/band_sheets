@@ -19,7 +19,7 @@ const Toolbar = ({
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const { currentUser, logout, isAuthenticated } = useAuth();
   return (
-    <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center py-4 z-30">
+    <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-8 pb-4 z-30 fixed left-0 top-[60px] bottom-0">
       <button 
         className={`p-2 rounded-md mb-2 transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
