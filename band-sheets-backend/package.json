@@ -24,6 +24,7 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "node-fetch": "^2.6.7",
     "nodemon": "^3.1.9"
   }
 }

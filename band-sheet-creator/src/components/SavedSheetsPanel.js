@@ -108,16 +108,6 @@ export default function SavedSheetsPanel({
     setConfirmDialog(prev => ({ ...prev, isOpen: false }));
   };
   
-  // Helper to handle delete from menu
-  const handleDelete = (sheet) => {
-    // Close the menu first
-    setMenuOpenId(null);
-    
-    // Add a small delay to ensure menu is closed
-    setTimeout(() => {
-      confirmDeleteSheet(sheet.id);
-    }, 100);
-  };
 
   // Listen for storage changes to update the panel
   useEffect(() => {

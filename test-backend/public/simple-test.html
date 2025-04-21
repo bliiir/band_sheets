@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple API Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple API Test</h1>
+  
+  <div class="card">
+    <h2>Test Server Connection</h2>
+    <p>This tests the connection to the simple test server running on port 5001.</p>
+    <button id="testSimpleBtn">Test Simple Server</button>
+    <pre id="testSimpleResult">Results will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <h2>Test Main Server Connection</h2>
+    <p>This tests the connection to the main server running on port 5000.</p>
+    <button id="testMainBtn">Test Main Server</button>
+    <pre id="testMainResult">Results will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <h2>Register User (Simple Server)</h2>
+    <button id="registerSimpleBtn">Register on Simple Server</button>
+    <pre id="registerSimpleResult">Results will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <h2>Login (Simple Server)</h2>
+    <button id="loginSimpleBtn">Login on Simple Server</button>
+    <pre id="loginSimpleResult">Results will appear here...</pre>
+  </div>
+  
+  <script>
+    // Function to update result
+    function updateResult(id, data) {
+      document.getElementById(id).textContent = typeof data === 'string' 
+        ? data 
+        : JSON.stringify(data, null, 2);
+    }
+    
+    // Test simple server
+    document.getElementById('testSimpleBtn').addEventListener('click', async () => {
+      try {
+        updateResult('testSimpleResult', 'Testing simple server connection...');
+        
+        const response = await fetch('http://localhost:5001/api/test');
+        const data = await response.json();
+        
+        updateResult('testSimpleResult', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
+      } catch (error) {
+        updateResult('testSimpleResult', `Error: ${error.message}`);
+      }
+    });
+    
+    // Test main server
+    document.getElementById('testMainBtn').addEventListener('click', async () => {
+      try {
+        updateResult('testMainResult', 'Testing main server connection...');
+        
+        const response = await fetch('http://localhost:5000/api/test');
+        const data = await response.json();
+        
+        updateResult('testMainResult', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
+      } catch (error) {
+        updateResult('testMainResult', `Error: ${error.message}`);
+      }
+    });
+    
+    // Register on simple server
+    document.getElementById('registerSimpleBtn').addEventListener('click', async () => {
+      try {
+        updateResult('registerSimpleResult', 'Registering on simple server...');
+        
+        const response = await fetch('http://localhost:5001/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: 'testuser',
+            email: 'test@example.com',
+            password: 'password123'
+          })
+        });
+        
+        const data = await response.json();
+        
+        updateResult('registerSimpleResult', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
+      } catch (error) {
+        updateResult('registerSimpleResult', `Error: ${error.message}`);
+      }
+    });
+    
+    // Login on simple server
+    document.getElementById('loginSimpleBtn').addEventListener('click', async () => {
+      try {
+        updateResult('loginSimpleResult', 'Logging in on simple server...');
+        
+        const response = await fetch('http://localhost:5001/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: 'test@example.com',
+            password: 'password123'
+          })
+        });
+        
+        const data = await response.json();
+        
+        updateResult('loginSimpleResult', {
+          status: response.status,
+          statusText: response.statusText,
+          data
+        });
+      } catch (error) {
+        updateResult('loginSimpleResult', `Error: ${error.message}`);
+      }
+    });
+  </script>
+</body>
+</html>

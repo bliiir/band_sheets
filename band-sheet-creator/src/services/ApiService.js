@@ -4,7 +4,10 @@
  */
 
 // API base URL - Use a simpler approach with a direct URL
-const API_URL = 'http://localhost:5000/api';
+// Dynamically determine the API URL based on the current environment
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+console.log('API Service initialized with URL:', API_URL);
 
 /**
  * Helper for making API requests with proper error handling
@@ -31,7 +34,8 @@ const makeRequest = async (url, options = {}) => {
     const response = await fetch(url, {
       ...options,
       headers,
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     
     // Check if the response can be parsed as JSON
@@ -75,7 +79,8 @@ export const registerUser = async (userData) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(userData),
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -106,6 +111,8 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   try {
+    console.log('Attempting login with API:', credentials.email);
+    
     // Direct implementation without using the helper
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -113,19 +120,31 @@ export const loginUser = async (credentials) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(credentials),
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     
+    console.log('Login response status:', response.status);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || `Login failed with status: ${response.status}`);
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || `Login failed with status: ${response.status}`;
+      } catch (e) {
+        errorMessage = `Login failed with status: ${response.status}`;
+      }
+      console.error('Login error:', errorMessage);
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
+    console.log('Login successful, received data:', data);
     
     // Save token to localStorage
     if (data.token) {
       localStorage.setItem('token', data.token);
+      console.log('Token saved to localStorage');
     }
     
     return data.data;
@@ -152,7 +171,8 @@ export const logoutUser = async () => {
     
     await fetch(`${API_URL}/auth/logout`, {
       headers,
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     
     localStorage.removeItem('token');
@@ -179,7 +199,8 @@ export const getCurrentUser = async () => {
       headers: {
         Authorization: `Bearer ${token}`
       },
-      mode: 'cors'
+      mode: 'cors',
+      credentials: 'include'
     });
     
     if (!response.ok) {

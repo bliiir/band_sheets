@@ -17,12 +17,17 @@ exports.protect = async (req, res, next) => {
   
   // Get token from header or cookies
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    // Get token from header
     token = req.headers.authorization.split(' ')[1];
+    console.log('Using token from Authorization header');
   } else if (req.cookies.token) {
+    // Get token from cookie
     token = req.cookies.token;
+    console.log('Using token from cookie');
   }
   
   if (!token) {
+    console.log('No token found in request');
     return res.status(401).json({
       success: false,
       error: 'Not authorized to access this route'
@@ -32,6 +37,7 @@ exports.protect = async (req, res, next) => {
   try {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token verified successfully');
     
     try {
       // Try MongoDB first

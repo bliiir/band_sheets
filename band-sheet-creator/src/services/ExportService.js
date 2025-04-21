@@ -11,7 +11,6 @@ import { ENERGY_LINE_CONFIG } from './StyleService';
  */
 const getEnergyWidthForPdf = (energyLevel) => {
   // Use the shared configuration from StyleService
-  const minPercentage = ENERGY_LINE_CONFIG.MIN_WIDTH_PERCENTAGE;
   const maxPercentage = ENERGY_LINE_CONFIG.MAX_WIDTH_PERCENTAGE;
   
   if (energyLevel === 1) {

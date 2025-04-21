@@ -1,145 +1,49 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Self-contained Login and Registration component
- * Provides UI for user authentication without relying on contexts
+ * Login and Registration component that uses AuthContext
+ * Provides UI for user authentication
  */
 const LoginRegister = ({ onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
-
-  // Local storage keys
-  const USER_KEY = 'band_sheets_user';
-  const USERS_KEY = 'band_sheets_users';
-  const TOKEN_KEY = 'token';
-
-  // Check for existing user on mount
-  useState(() => {
-    try {
-      const savedUser = localStorage.getItem(USER_KEY);
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-    } catch (err) {
-      console.error('Error loading user from localStorage:', err);
-    }
-  }, []);
-
-  // Register a new user directly
-  const registerUser = async (userData) => {
-    console.log('Registering user:', userData);
-    
-    try {
-      // Get existing users or create empty array
-      let users = [];
-      try {
-        const savedUsers = localStorage.getItem(USERS_KEY);
-        if (savedUsers) {
-          users = JSON.parse(savedUsers);
-        }
-      } catch (err) {
-        // If error, just use empty array
-      }
-
-      // Check if user exists
-      if (users.some(u => u.email === userData.email || u.username === userData.username)) {
-        throw new Error('User already exists');
-      }
-
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        username: userData.username,
-        email: userData.email,
-        password: userData.password, // In production, this would be hashed
-        createdAt: new Date().toISOString()
-      };
-
-      // Add to users array
-      users.push(newUser);
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-
-      // Create user session without password
-      const userSession = { ...newUser };
-      delete userSession.password;
-
-      // Save current user and mock token
-      localStorage.setItem(USER_KEY, JSON.stringify(userSession));
-      localStorage.setItem(TOKEN_KEY, `mock_token_${newUser.id}`);
-
-      return userSession;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
-    }
-  };
-
-  // Login user directly
-  const loginUser = async (credentials) => {
-    console.log('Logging in user:', credentials.email);
-    
-    try {
-      // Get existing users
-      let users = [];
-      try {
-        const savedUsers = localStorage.getItem(USERS_KEY);
-        if (savedUsers) {
-          users = JSON.parse(savedUsers);
-        }
-      } catch (err) {
-        throw new Error('No users found');
-      }
-
-      // Find user
-      const user = users.find(u => u.email === credentials.email);
-      if (!user || user.password !== credentials.password) {
-        throw new Error('Invalid email or password');
-      }
-
-      // Create user session without password
-      const userSession = { ...user };
-      delete userSession.password;
-
-      // Save current user and mock token
-      localStorage.setItem(USER_KEY, JSON.stringify(userSession));
-      localStorage.setItem(TOKEN_KEY, `mock_token_${user.id}`);
-
-      return userSession;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
+  
+  // Use the auth context instead of local implementation
+  const { login, register, error: authError } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
     
     try {
-      let userData;
+      let success;
       
       if (isLogin) {
-        userData = await loginUser({ email, password });
-        console.log('Login successful:', userData);
+        success = await login(email, password);
+        console.log('Login attempt result:', success);
       } else {
-        userData = await registerUser({ username, email, password });
-        console.log('Registration successful:', userData);
+        success = await register(username, email, password);
+        console.log('Registration attempt result:', success);
       }
       
-      setUser(userData);
-      
-      if (onClose) {
+      if (success && onClose) {
         onClose();
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      setError(err.message);
+      // If there's a network error, provide a more helpful message
+      if (err.message && err.message.includes('NetworkError')) {
+        console.error('Network error details:', err);
+        alert(`Network error: Please check if the backend server is running at http://localhost:5000. 
+        
+You can start it with: 
+cd band-sheets-backend
+npm run dev`);
+      }
     } finally {
       setLoading(false);
     }
@@ -151,9 +55,9 @@ const LoginRegister = ({ onClose }) => {
         {isLogin ? 'Sign In' : 'Create Account'}
       </h2>
       
-      {error && (
+      {authError && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
+          {authError}
         </div>
       )}
       

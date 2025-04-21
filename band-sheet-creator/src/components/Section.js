@@ -1,7 +1,5 @@
 import React from 'react';
-import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import Part from './Part';
-import EditableCell from './EditableCell';
 import SectionHeader from './SectionHeader';
 import { useEditing } from '../contexts/EditingContext';
 
@@ -26,7 +24,7 @@ const Section = ({
   // Removed editing-related props as they come from EditingContext
 }) => {
   // Use the EditingContext to access editing state and functions
-  const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
+  useEditing(); // Keep the context connection without destructuring
   return (
     <div key={section.id} className="border-b border-gray-200">
       <div className="flex">

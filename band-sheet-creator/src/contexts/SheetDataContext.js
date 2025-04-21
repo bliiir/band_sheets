@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { createNewSheet, saveSheet, getSheetById, getAllSheets } from '../services/SheetStorageService';
+import { createNewSheet, saveSheet, getSheetById } from '../services/SheetStorageService';
 import { exportToPDF } from '../services/ExportService';
 import { getTransposedChords } from '../services/ChordService';
 import { useUIState } from './UIStateContext';
@@ -228,7 +228,7 @@ export function SheetDataProvider({ children }) {
       endApiCall(error);
       return false;
     }
-  }, []);
+  }, [beginApiCall, endApiCall, setPartsModule, setTransposeValue, setCurrentSheetId, initializePartsModule]);
   
   /**
    * Save the current sheet
@@ -258,7 +258,7 @@ export function SheetDataProvider({ children }) {
       endApiCall(error);
       throw error;
     }
-  }, [songData, sections, partsModule, transposeValue, currentSheetId]);
+  }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId]);
   
   /**
    * Export the current sheet to PDF

@@ -1,5 +1,4 @@
 import React from 'react';
-import EditableCell from './EditableCell';
 
 /**
  * SongInfoBar component for editing song title, artist, and BPM

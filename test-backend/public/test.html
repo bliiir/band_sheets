@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Test Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .result {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Band Sheets API Test Page</h1>
+  
+  <div class="card">
+    <h2>Test Connection</h2>
+    <button id="testConnection">Test Connection</button>
+    <div id="connectionResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Register User</h2>
+    <div>
+      <label for="registerUsername">Username:</label>
+      <input type="text" id="registerUsername" value="testuser">
+    </div>
+    <div>
+      <label for="registerEmail">Email:</label>
+      <input type="email" id="registerEmail" value="test@example.com">
+    </div>
+    <div>
+      <label for="registerPassword">Password:</label>
+      <input type="password" id="registerPassword" value="password123">
+    </div>
+    <button id="registerUser">Register</button>
+    <div id="registerResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Login</h2>
+    <div>
+      <label for="loginEmail">Email:</label>
+      <input type="email" id="loginEmail" value="test@example.com">
+    </div>
+    <div>
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword" value="password123">
+    </div>
+    <button id="loginUser">Login</button>
+    <div id="loginResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Get Current User</h2>
+    <button id="getCurrentUser">Get Current User</button>
+    <div id="currentUserResult" class="result"></div>
+  </div>
+  
+  <div class="card">
+    <h2>Logout</h2>
+    <button id="logout">Logout</button>
+    <div id="logoutResult" class="result"></div>
+  </div>
+  
+  <script>
+    // API URL
+    const API_URL = 'http://localhost:5000/api';
+    
+    // Helper function to make API requests
+    async function makeRequest(endpoint, options = {}) {
+      const url = `${API_URL}${endpoint}`;
+      
+      try {
+        // Add default headers
+        const headers = {
+          'Content-Type': 'application/json',
+          ...options.headers
+        };
+        
+        // Make the request
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          credentials: 'include' // Include cookies
+        });
+        
+        // Parse response
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = await response.text();
+        }
+        
+        return {
+          success: response.ok,
+          status: response.status,
+          data,
+          headers: Object.fromEntries([...response.headers.entries()])
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    }
+    
+    // Helper function to display results
+    function displayResult(elementId, result) {
+      const element = document.getElementById(elementId);
+      element.textContent = JSON.stringify(result, null, 2);
+    }
+    
+    // Test connection
+    document.getElementById('testConnection').addEventListener('click', async () => {
+      const result = await makeRequest('/test');
+      displayResult('connectionResult', result);
+    });
+    
+    // Register user
+    document.getElementById('registerUser').addEventListener('click', async () => {
+      const username = document.getElementById('registerUsername').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      
+      const result = await makeRequest('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, email, password })
+      });
+      
+      displayResult('registerResult', result);
+    });
+    
+    // Login user
+    document.getElementById('loginUser').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      const result = await makeRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+      
+      displayResult('loginResult', result);
+    });
+    
+    // Get current user
+    document.getElementById('getCurrentUser').addEventListener('click', async () => {
+      const result = await makeRequest('/auth/me');
+      displayResult('currentUserResult', result);
+    });
+    
+    // Logout
+    document.getElementById('logout').addEventListener('click', async () => {
+      const result = await makeRequest('/auth/logout');
+      displayResult('logoutResult', result);
+    });
+  </script>
+</body>
+</html>

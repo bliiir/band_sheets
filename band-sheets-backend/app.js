@@ -2,26 +2,28 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // Load environment variables
 dotenv.config();
 
 // Connect to database (try to connect but continue even if it fails)
-try {
-  connectDB().then(() => {
-    console.log('MongoDB connected successfully!');
-  }).catch(err => {
-    console.warn('MongoDB connection failed:', err.message);
+(async () => {
+  try {
+    const connected = await connectDB();
+    if (connected) {
+      console.log('MongoDB connected successfully!');
+    } else {
+      console.warn('MongoDB connection failed');
+      console.log('Server will run with limited functionality (no persistence)');
+    }
+  } catch (error) {
+    console.warn('MongoDB connection error:', error.message);
     console.log('Server will run with limited functionality (no persistence)');
-  });
-} catch (error) {
-  console.warn('MongoDB connection error:', error.message);
-  console.log('Server will run with limited functionality (no persistence)');
-}
+  }
+})();
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -30,30 +32,52 @@ const sheetRoutes = require('./routes/sheets');
 // Initialize app
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(cookieParser());
-app.use(helmet()); // Security headers
-app.use(morgan('dev')); // Logging
+// Logging middleware
+app.use(morgan('dev'));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
-
-// Use our simple CORS middleware for development
-const enableCors = require('./enableCors');
-app.use(enableCors);
-
-// Also keep the cors middleware for older browsers
+// CORS Configuration - MUST come before other middleware
 app.use(cors({
-  origin: '*', // Allow any origin in development
+  origin: true, // Allow all origins in development
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Body parser middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Cookie parser middleware
+app.use(cookieParser());
+
+// Serve static files from the public directory
+app.use(express.static('public'));
+
+// Add test routes to check if the server is responding
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Server is running' });
+});
+
+app.get('/api/test', (req, res) => {
+  res.status(200).json({ 
+    message: 'API is working',
+    cors: {
+      origin: req.headers.origin || 'No origin header',
+      method: req.method
+    }
+  });
+});
+
+app.post('/api/test', (req, res) => {
+  res.status(200).json({ 
+    message: 'POST request successful',
+    body: req.body || 'No body',
+    headers: {
+      'content-type': req.headers['content-type'],
+      'origin': req.headers.origin
+    }
+  });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);

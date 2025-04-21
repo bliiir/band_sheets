@@ -18,11 +18,7 @@ const PartsModule = () => {
 
   // Get editing functionality from context
   const {
-    isEditing,
-    beginEdit,
-    saveEdit,
-    editValue,
-    setEditValue
+    beginEdit
   } = useEditing();
 
   // Helper function for beginning editing of parts module items

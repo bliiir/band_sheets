@@ -1,5 +1,4 @@
 import React from 'react';
-import { useEditing } from '../contexts/EditingContext';
 
 /**
  * EditableCell component that provides a common interface for all editable cells

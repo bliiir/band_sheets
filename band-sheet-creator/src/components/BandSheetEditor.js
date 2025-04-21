@@ -16,11 +16,8 @@ import { getAllSheets } from '../services/SheetStorageService';
 export default function BandSheetEditor() {
   // Use SheetDataContext for all sheet data and operations
   const { 
-    sections, setSections,
+    sections,
     songData, setSongData,
-    partsModule,
-    transposeValue, setTransposeValue,
-    getNextId,
     createNewSheetData,
     // Operations
     addSection,
@@ -34,22 +31,16 @@ export default function BandSheetEditor() {
     // Sheet operations
     loadSheet,
     saveCurrentSheet,
-    exportSheet,
-    getTransposedChordsForPart
+    exportSheet
   } = useSheetData();
   
   // Use EditingContext for editing state
-  const { 
-    isEditing,
-    beginEdit,
-    saveEdit
-  } = useEditing();
+  useEditing(); // Keep the context connection without destructuring
   
   // Use UIStateContext for UI-related state
   const {
     // Sidebar state
-    sidebarOpen, setSidebarOpen, savedSheets, setSavedSheets,
-    openSidebar, closeSidebar,
+    sidebarOpen, setSidebarOpen, savedSheets, setSavedSheets, closeSidebar,
     // Context menu state
     contextMenu, showContextMenu, hideContextMenu,
     // Hover state
@@ -201,7 +192,7 @@ export default function BandSheetEditor() {
     }
     
     // Create a new sheet using the context function
-    const newSheet = createNewSheetData();
+    createNewSheetData();
   };
 
   // Save handler

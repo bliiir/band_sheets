@@ -16,7 +16,7 @@ const EnergyDialog = () => {
   } = useUIState();
   
   // Get sections from SheetDataContext
-  const { sections, setSections } = useSheetData();
+  const { setSections } = useSheetData();
   
   // If dialog is not open, don't render anything
   if (!energyDialog.open) {

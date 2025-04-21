@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CORS Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>CORS Test</h1>
+  
+  <div class="card">
+    <h2>Test API Connection</h2>
+    <button id="testBtn">Test API</button>
+    <pre id="testResult">Results will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <h2>Register User</h2>
+    <button id="registerBtn">Register Test User</button>
+    <pre id="registerResult">Results will appear here...</pre>
+  </div>
+  
+  <div class="card">
+    <h2>Login</h2>
+    <button id="loginBtn">Login as Test User</button>
+    <pre id="loginResult">Results will appear here...</pre>
+  </div>
+  
+  <script>
+    // API URL
+    const API_URL = 'http://localhost:5000/api';
+    
+    // Test user credentials
+    const testUser = {
+      username: 'corsTester',
+      email: 'cors@test.com',
+      password: 'password123'
+    };
+    
+    // Function to update result
+    function updateResult(id, data) {
+      document.getElementById(id).textContent = typeof data === 'string' 
+        ? data 
+        : JSON.stringify(data, null, 2);
+    }
+    
+    // Test API connection
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      try {
+        updateResult('testResult', 'Testing API connection...');
+        
+        const response = await fetch(`${API_URL}/test`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        updateResult('testResult', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+            'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+          },
+          data
+        });
+      } catch (error) {
+        updateResult('testResult', `Error: ${error.message}`);
+      }
+    });
+    
+    // Register test user
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+      try {
+        updateResult('registerResult', 'Registering test user...');
+        
+        const response = await fetch(`${API_URL}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testUser),
+          credentials: 'include'
+        });
+        
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = await response.text();
+        }
+        
+        updateResult('registerResult', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+            'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+          },
+          data
+        });
+      } catch (error) {
+        updateResult('registerResult', `Error: ${error.message}`);
+      }
+    });
+    
+    // Login as test user
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      try {
+        updateResult('loginResult', 'Logging in...');
+        
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: testUser.email,
+            password: testUser.password
+          }),
+          credentials: 'include'
+        });
+        
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = await response.text();
+        }
+        
+        updateResult('loginResult', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: {
+            'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+            'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+          },
+          data
+        });
+      } catch (error) {
+        updateResult('loginResult', `Error: ${error.message}`);
+      }
+    });
+  </script>
+</body>
+</html>
