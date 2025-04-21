@@ -4,4 +4,35 @@
   font-family: 'Delicious Handrawn', cursive;
 }
 
-/* Add any custom overrides here if needed */
+/* Energy indicator styles */
+.energy-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 1px; /* This value is controlled by HEIGHT in ENERGY_LINE_CONFIG */
+  background-color: black;
+}
+
+/* Print styles */
+@media print {
+  /* Ensure energy indicator shows in print */
+  .energy-indicator {
+    display: block !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 1px !important;
+    background-color: black !important;
+    color: transparent !important; /* Hide any text */
+  }
+  
+  /* Hide tooltips in print */
+  [title]:after {
+    display: none !important;
+  }
+  
+  /* Hide other unnecessary elements in print */
+  .no-print {
+    display: none !important;
+  }
+}

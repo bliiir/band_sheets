@@ -10,16 +10,18 @@ import EnergyDialog from './EnergyDialog';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { getAllSheets } from '../services/SheetStorageService';
 
 
 export default function BandSheetEditor() {
   // Use SheetDataContext for all sheet data and operations
   const { 
-    sections,
+    sections, setSections,
     songData, setSongData,
     partsModule,
     transposeValue, setTransposeValue,
     getNextId,
+    createNewSheetData,
     // Operations
     addSection,
     deleteSection,
@@ -29,13 +31,11 @@ export default function BandSheetEditor() {
     deletePart,
     movePart,
     duplicatePart,
-    initializePartsModule,
     // Sheet operations
     loadSheet,
     saveCurrentSheet,
     exportSheet,
-    getTransposedChordsForPart,
-    createNewSheetData
+    getTransposedChordsForPart
   } = useSheetData();
   
   // Use EditingContext for editing state
@@ -61,9 +61,10 @@ export default function BandSheetEditor() {
   // Fetch saved sheets when sidebar opens
   useEffect(() => {
     if (sidebarOpen) {
-      // This will be moved to Sidebar component
+      const allSheets = getAllSheets();
+      setSavedSheets(allSheets);
     }
-  }, [sidebarOpen]);
+  }, [sidebarOpen, setSavedSheets]);
 
   // This function is moved to SheetDataContext
 

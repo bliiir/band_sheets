@@ -2,6 +2,31 @@
  * ExportService.js
  * Service for handling the export and PDF generation functionality
  */
+import { ENERGY_LINE_CONFIG } from './StyleService';
+
+/**
+ * Calculate energy line width for PDF export
+ * @param {number} energyLevel - Energy level (1-10)
+ * @returns {string} - CSS width value
+ */
+const getEnergyWidthForPdf = (energyLevel) => {
+  // Use the shared configuration from StyleService
+  const minPercentage = ENERGY_LINE_CONFIG.MIN_WIDTH_PERCENTAGE;
+  const maxPercentage = ENERGY_LINE_CONFIG.MAX_WIDTH_PERCENTAGE;
+  
+  if (energyLevel === 1) {
+    // For energy level 1, we want to match the section column width
+    return '80px'; // Matches the new section column width
+  } else if (energyLevel === 10) {
+    return `${maxPercentage}%`;
+  } else {
+    // Linear interpolation between min width and max percentage
+    // For PDF, we convert min width (80px) to a percentage (approx 8%)
+    const minWidthAsPercentage = 8; // 80px is roughly 8% of sheet width
+    const percentage = minWidthAsPercentage + ((maxPercentage - minWidthAsPercentage) / 9) * (energyLevel - 1);
+    return `${percentage}%`;
+  }
+};
 
 /**
  * Generate and open a print-friendly version in a new tab
@@ -38,31 +63,35 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
             color: #333;
             max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
           }
           h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 20px;
+            margin: 0 20px 0 0;
+            display: inline-block;
           }
           .meta {
             display: flex;
-            gap: 20px;
-            margin-bottom: 25px;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
             font-size: 14px;
             color: #555;
           }
           /* Sheet container */
           .sheet-container {
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
+            margin-top: 5px;
           }
           /* Sheet header row */
           .sheet-header {
             display: grid;
-            grid-template-columns: 120px 60px 60px 1fr 12.5% auto;
+            grid-template-columns: 80px 48px 48px 1fr 12.5% auto;
             gap: 10px;
-            padding: 8px 16px;
+            padding: 5px 16px;
             background-color: #f8f8f8;
             border-bottom: 1px solid #ddd;
             font-weight: bold;
@@ -72,28 +101,33 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
           .section-container {
             display: flex;
             border-bottom: 1px solid #ddd;
+            position: relative;
           }
           .section-container:last-child {
             border-bottom: none;
           }
           /* Section header */
           .section-header {
-            width: 120px;
-            min-width: 120px;
-            padding: 12px 8px;
-            background-color: #f0f0f0;
+            width: 80px;
+            min-width: 80px;
+            padding: 8px 8px;
             border-right: 1px solid #ddd;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            position: relative;
           }
           .section-name {
             font-weight: bold;
+            font-size: 13px;
           }
-          .section-energy {
-            font-size: 12px;
-            margin-top: 8px;
-            color: #666;
+          /* Energy indicator line */
+          .energy-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 1px;
+            background-color: black;
           }
           /* Parts container */
           .parts-container {
@@ -102,9 +136,9 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
           /* Part row */
           .part-row {
             display: grid;
-            grid-template-columns: 60px 60px 1fr 12.5% auto;
+            grid-template-columns: 48px 48px 1fr 12.5% auto;
             gap: 10px;
-            padding: 8px 16px;
+            padding: 5px 16px;
             border-bottom: 1px solid #eee;
             align-items: center;
           }
@@ -114,10 +148,12 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
           /* Column styles */
           .lyrics {
             white-space: pre-line;
+            line-height: 1.3;
           }
           .notes {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
+            line-height: 1.2;
           }
           @media print {
             body {
@@ -134,8 +170,8 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
         </style>
       </head>
       <body>
-        <h1>${songData.title || 'Untitled'}</h1>
         <div class="meta">
+          <h1>${songData.title || 'Untitled'}</h1>
           ${songData.artist ? `<div><strong>Artist:</strong> ${songData.artist}</div>` : ''}
           ${songData.bpm ? `<div><strong>BPM:</strong> ${songData.bpm}</div>` : ''}
           ${transposeValue !== 0 ? `<div><strong>Transposed:</strong> ${transposeValue > 0 ? '+' + transposeValue : transposeValue} semitones</div>` : ''}
@@ -159,11 +195,13 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
           
           <!-- Sections -->
           ${processedSections.map((section, si) => `
-            <div class="section-container">
+            <div class="section-container" style="position: relative;">
+              <!-- Energy indicator line that spans across the entire row -->
+              <div style="position: absolute; bottom: 0; left: 0; height: ${ENERGY_LINE_CONFIG.HEIGHT}px; background-color: black; width: ${getEnergyWidthForPdf(section.energy)}; z-index: 1;"></div>
+              
               <!-- Section header -->
               <div class="section-header">
                 <div class="section-name">${section.name}</div>
-                <div class="section-energy">Energy: ${section.energy}</div>
               </div>
               
               <!-- Parts container -->

@@ -285,15 +285,47 @@ export function SheetDataProvider({ children }) {
   };
   
   const duplicatePart = (sectionIndex, partIndex) => {
-    setSections((prev) =>
-      prev.map((section, idx) => {
-        if (idx !== sectionIndex) return section;
-        const partToCopy = { ...section.parts[partIndex], id: getNextId() };
-        const arr = section.parts.slice();
-        arr.splice(partIndex + 1, 0, partToCopy);
-        return { ...section, parts: arr };
-      })
-    );
+    setSections(prev => {
+      const newSections = [...prev];
+      const section = {...newSections[sectionIndex]};
+      const part = {...section.parts[partIndex]};
+      
+      // Create a new part with a new ID but same content
+      const newPart = {
+        ...part,
+        id: getNextId()
+      };
+      
+      // Insert new part after the source part
+      const parts = [...section.parts];
+      parts.splice(partIndex + 1, 0, newPart);
+      
+      section.parts = parts;
+      newSections[sectionIndex] = section;
+      
+      return newSections;
+    });
+  };
+  
+  /**
+   * Save energy level for a section
+   * @param {number} sectionIndex - Index of the section
+   * @param {number} energyLevel - New energy level (1-10)
+   */
+  const saveEnergyLevel = (sectionIndex, energyLevel) => {
+    setSections(prev => {
+      // Input validation
+      if (sectionIndex < 0 || sectionIndex >= prev.length) return prev;
+      if (energyLevel < 1 || energyLevel > 10) return prev;
+      
+      const newSections = [...prev];
+      newSections[sectionIndex] = {
+        ...newSections[sectionIndex],
+        energy: energyLevel
+      };
+      
+      return newSections;
+    });
   };
   
   // Context value
@@ -313,6 +345,7 @@ export function SheetDataProvider({ children }) {
     moveSection,
     duplicateSection,
     updateSectionEnergy,
+    saveEnergyLevel,
     
     // Part operations
     addPart,

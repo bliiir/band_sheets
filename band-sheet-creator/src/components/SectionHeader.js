@@ -2,7 +2,7 @@ import React from 'react';
 import { ReactComponent as MenuIcon } from "../assets/menu.svg";
 import EditableCell from './EditableCell';
 import { useEditing } from '../contexts/EditingContext';
-import { getEnergyLineWidth } from '../services/StyleService';
+import { getEnergyLineWidth, ENERGY_LINE_CONFIG } from '../services/StyleService';
 
 /**
  * SectionHeader component for rendering a band sheet section header
@@ -53,12 +53,18 @@ const SectionHeader = ({
       
       {/* Energy indicator - black line at bottom with width based on energy level */}
       <div 
-        className="absolute bottom-0 left-0 h-1 bg-black"
-        style={{ width: getEnergyLineWidth(section.energy) }}
-        title={`Energy level: ${section.energy}`}
+        className="absolute bottom-0 left-0 bg-black energy-indicator"
+        style={{ 
+          width: getEnergyLineWidth(section.energy),
+          height: `${ENERGY_LINE_CONFIG.HEIGHT}px`
+        }}
+        data-energy-level={section.energy}
+        aria-label={`Energy level: ${section.energy}`}
       />
     </div>
   );
 };
+
+
 
 export default SectionHeader;
