@@ -1,0 +1,17 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd band-sheet-creator
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: band-sheet-creator/build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - band-sheet-creator/node_modules/**/*

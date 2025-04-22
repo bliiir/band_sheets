@@ -7,7 +7,7 @@
 export const ENERGY_LINE_CONFIG = {
   MIN_WIDTH_PERCENTAGE: 5,  // minimum width (5% of total width)
   MAX_WIDTH_PERCENTAGE: 75, // maximum width (75% of total width)
-  HEIGHT: 1                 // height in pixels
+  HEIGHT: 2                 // height in pixels
 };
 
 /**

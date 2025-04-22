@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 import { createNewSheet, saveSheet, getSheetById } from '../services/SheetStorageService';
 import { exportToPDF } from '../services/ExportService';
 import { getTransposedChords } from '../services/ChordService';
+import ExportOptionsModal from '../components/ExportOptionsModal';
 import { useUIState } from './UIStateContext';
 
 // Create the SheetDataContext
@@ -221,7 +222,14 @@ export function SheetDataProvider({ children }) {
       }]);
       setIdCounter(newId + 2);
     } else {
-      setSections(sheet.sections);
+      console.log('Loading sections with background colors:', sheet.sections);
+      // Ensure backgroundColor is preserved when loading sections
+      const sectionsWithColors = sheet.sections.map(section => ({
+        ...section,
+        backgroundColor: section.backgroundColor || null
+      }));
+      console.log('Processed sections with background colors:', sectionsWithColors);
+      setSections(sectionsWithColors);
       setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
     }
     
@@ -281,9 +289,18 @@ export function SheetDataProvider({ children }) {
   /**
    * Export the current sheet to PDF
    */
+  // State for export options modal
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  
   const exportSheet = useCallback(() => {
-    exportToPDF(songData, sections, transposeValue);
-  }, [songData, sections, transposeValue]);
+    // Open the export options modal instead of using window.confirm
+    setExportModalOpen(true);
+  }, []);
+  
+  // Handle the actual export with options
+  const handleExportWithOptions = useCallback((options) => {
+    exportToPDF(songData, sections, transposeValue, partsModule, options);
+  }, [songData, sections, transposeValue, partsModule]);
   
   /**
    * Get transposed chords for a chord string
@@ -294,13 +311,25 @@ export function SheetDataProvider({ children }) {
     return getTransposedChords(chords, transposeValue);
   }, [transposeValue]);
   
-  // Energy level operations
+  // Energy level and background color operations
   const updateSectionEnergy = (sectionIndex, energyLevel) => {
     setSections(prev => {
       const newSections = [...prev];
       newSections[sectionIndex] = {
         ...newSections[sectionIndex],
         energy: energyLevel
+      };
+      return newSections;
+    });
+  };
+  
+  // Update section background color
+  const updateSectionBackgroundColor = (sectionIndex, backgroundColor) => {
+    setSections(prev => {
+      const newSections = [...prev];
+      newSections[sectionIndex] = {
+        ...newSections[sectionIndex],
+        backgroundColor
       };
       return newSections;
     });
@@ -320,10 +349,9 @@ export function SheetDataProvider({ children }) {
     const sectionToCopy = {
       ...deepCopy[sectionIndex],
       id: newId,
-      parts: deepCopy[sectionIndex].parts.map((p) => ({
-        ...p,
-        id: getNextId(),
-      })),
+      parts: deepCopy[sectionIndex].parts.map(p => ({ ...p, id: getNextId() })),
+      // Preserve the background color when duplicating
+      backgroundColor: deepCopy[sectionIndex].backgroundColor
     };
     
     // Insert the copied section
@@ -406,12 +434,13 @@ export function SheetDataProvider({ children }) {
     duplicateSection,
     updateSectionEnergy,
     saveEnergyLevel,
+    updateSectionBackgroundColor,
     
     // Part operations
     addPart,
     deletePart,
-    movePart,
     duplicatePart,
+    movePart,
     
     // Parts module operations
     initializePartsModule,
@@ -427,6 +456,13 @@ export function SheetDataProvider({ children }) {
   return (
     <SheetDataContext.Provider value={value}>
       {children}
+      
+      {/* Export Options Modal */}
+      <ExportOptionsModal 
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExportWithOptions}
+      />
     </SheetDataContext.Provider>
   );
 }

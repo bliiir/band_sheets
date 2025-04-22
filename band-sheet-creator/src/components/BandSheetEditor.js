@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import ColorPicker from './ColorPicker';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
 import Sidebar from './Sidebar';
@@ -24,6 +25,15 @@ export default function BandSheetEditor({ initialSheetId }) {
     isOpen: false,
     onConfirm: () => {},
     onCancel: () => {}
+  });
+  
+  // State for color picker
+  const [colorPicker, setColorPicker] = useState({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    sectionIndex: null,
+    initialColor: '#ffffff'
   });
   
   // Function to show a notification
@@ -56,7 +66,9 @@ export default function BandSheetEditor({ initialSheetId }) {
     // Sheet operations
     loadSheet,
     saveCurrentSheet,
-    exportSheet
+    exportSheet,
+    updateSectionEnergy,
+    updateSectionBackgroundColor
   } = useSheetData();
   
   // Use EditingContext for editing state
@@ -77,7 +89,7 @@ export default function BandSheetEditor({ initialSheetId }) {
   // State to track if we've already loaded the initial sheet
   const [initialSheetLoaded, setInitialSheetLoaded] = useState(false);
   
-  // Load initial sheet from URL if provided
+  // Load initial sheet if ID is provided
   useEffect(() => {
     const loadInitialSheet = async () => {
       // Only load if we have an ID and haven't loaded it yet
@@ -98,7 +110,7 @@ export default function BandSheetEditor({ initialSheetId }) {
     };
     
     loadInitialSheet();
-  }, [initialSheetId, loadSheet, initialSheetLoaded]);
+  }, [initialSheetId, loadSheet, initialSheetLoaded, showNotification]);
   
   // Update URL when sheet ID changes
   useEffect(() => {
@@ -124,6 +136,32 @@ export default function BandSheetEditor({ initialSheetId }) {
       fetchSheets();
     }
   }, [sidebarOpen, setSavedSheets]);
+  
+  // Add keyboard shortcut for saving (Cmd+S / Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for Cmd+S (Mac) or Ctrl+S (Windows)
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault(); // Prevent browser's save dialog
+        console.log('Keyboard shortcut: Cmd+S / Ctrl+S');
+        saveCurrentSheet()
+          .then(() => {
+            showNotification('Sheet saved successfully');
+          })
+          .catch(error => {
+            showNotification('Error saving sheet: ' + error.message, 'error');
+          });
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [saveCurrentSheet, showNotification]);
 
   // This function is moved to SheetDataContext
 
@@ -168,6 +206,11 @@ export default function BandSheetEditor({ initialSheetId }) {
       menuItems.push({
         label: 'Set Energy Level',
         action: () => handleMenuAction('setEnergyLevel')
+      });
+      
+      menuItems.push({
+        label: 'Set Background Color',
+        action: () => handleMenuAction('setBackgroundColor')
       });
       
       menuItems.push({
@@ -230,6 +273,19 @@ export default function BandSheetEditor({ initialSheetId }) {
     
     // Clear hover state to prevent menu icon from showing on wrong section
     setHoverState({ type: null, si: null, pi: null });
+    
+    // Handle set background color action
+    if (action === 'setBackgroundColor' && type === 'section') {
+      const currentColor = sections[sectionIndex].backgroundColor || '#ffffff';
+      setColorPicker({
+        isOpen: true,
+        x: contextMenu.x,
+        y: contextMenu.y,
+        sectionIndex,
+        initialColor: currentColor
+      });
+      return;
+    }
     
     // Add a longer delay to ensure state is fully updated before performing the action
     // This prevents issues with multiple operations in sequence
@@ -412,6 +468,37 @@ export default function BandSheetEditor({ initialSheetId }) {
       {/* Floating UI elements */}
       {/* Context Menu */}
       <ContextMenu menuItems={getContextMenuItems()} />
+      
+      {/* Color picker */}
+      {colorPicker.isOpen && (
+        <ColorPicker
+          initialColor={colorPicker.initialColor}
+          x={colorPicker.x}
+          y={colorPicker.y}
+          onChange={(color) => {
+            // Update the section background color
+            updateSectionBackgroundColor(colorPicker.sectionIndex, color);
+            
+            // Log the update for debugging
+            console.log(`Setting background color for section ${colorPicker.sectionIndex} to ${color}`);
+            
+            // Force an immediate save to ensure the color is persisted
+            setTimeout(() => {
+              console.log('Auto-saving after color change...');
+              saveCurrentSheet();
+            }, 500);
+          }}
+          onClose={() => {
+            setColorPicker(prev => ({ ...prev, isOpen: false }));
+            
+            // Also save when closing the color picker
+            setTimeout(() => {
+              console.log('Auto-saving after closing color picker...');
+              saveCurrentSheet();
+            }, 500);
+          }}
+        />
+      )}
       
       {/* Energy Dialog */}
       <EnergyDialog />

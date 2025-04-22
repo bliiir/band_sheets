@@ -195,11 +195,26 @@ const Section = ({
     toggleItemSelection('section', si, null, e.metaKey || e.ctrlKey);
   };
   
+  // Log the section data including background color
+  console.log('Rendering section with data:', {
+    id: section.id,
+    name: section.name,
+    backgroundColor: section.backgroundColor
+  });
+  
+  // Create style object for background color
+  const sectionStyle = {};
+  if (section.backgroundColor) {
+    sectionStyle.backgroundColor = section.backgroundColor;
+    console.log(`Applying background color ${section.backgroundColor} to section ${section.id}`);
+  }
+  
   return (
-    <div 
+    <div
       key={section.id} 
       className={`border-b border-gray-200 ${isSectionSelected ? 'bg-blue-50' : ''}`}
       onClick={handleSectionClick}
+      style={sectionStyle}
     >
       <div className="flex">
         {/* Section header */}

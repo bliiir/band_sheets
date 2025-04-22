@@ -63,7 +63,20 @@ export const getSheetById = async (id) => {
   try {
     const raw = localStorage.getItem(`sheet_${id}`);
     if (!raw) return null;
-    return JSON.parse(raw);
+    
+    // Parse the sheet data
+    const sheet = JSON.parse(raw);
+    
+    // Ensure section background colors are properly loaded
+    if (sheet.sections && Array.isArray(sheet.sections)) {
+      sheet.sections = sheet.sections.map(section => ({
+        ...section,
+        backgroundColor: section.backgroundColor || null
+      }));
+    }
+    
+    console.log('SheetStorageService: Loaded sheet with colors:', sheet);
+    return sheet;
   } catch (e) {
     console.error('Failed to load sheet from localStorage:', e);
     return null;
@@ -124,8 +137,17 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
   // Use localStorage as fallback
   try {
     console.log('SheetStorageService: Falling back to localStorage');
-    localStorage.setItem(`sheet_${updatedSheet.id}`, JSON.stringify(updatedSheet));
-    return updatedSheet;
+    // Ensure section background colors are properly saved
+    const sheetWithColors = {
+      ...updatedSheet,
+      sections: updatedSheet.sections.map(section => ({
+        ...section,
+        backgroundColor: section.backgroundColor || null
+      }))
+    };
+    console.log('SheetStorageService: Saving sheet with colors:', sheetWithColors);
+    localStorage.setItem(`sheet_${updatedSheet.id}`, JSON.stringify(sheetWithColors));
+    return sheetWithColors;
   } catch (e) {
     console.error('Failed to save sheet to localStorage:', e);
     return updatedSheet; // Return the sheet even if saving failed

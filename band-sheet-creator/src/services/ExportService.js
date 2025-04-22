@@ -3,6 +3,7 @@
  * Service for handling the export and PDF generation functionality
  */
 import { ENERGY_LINE_CONFIG } from './StyleService';
+import { getTransposedChords } from './ChordService';
 
 /**
  * Calculate energy line width for PDF export
@@ -32,8 +33,13 @@ const getEnergyWidthForPdf = (energyLevel) => {
  * @param {Object} songData - Contains title, artist, bpm
  * @param {Array} sections - All sections with their parts for the sheet
  * @param {Number} transposeValue - Current transpose value (optional)
+ * @param {Array} partsModule - Chord progressions data
+ * @param {Object} options - Export options
+ * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on page 2
+ * @param {Boolean} options.includeSectionColors - Whether to include section background colors
  */
-export const exportToPDF = (songData, sections, transposeValue = 0) => {
+export const exportToPDF = (songData, sections, transposeValue = 0, partsModule = [], options = {}) => {
+  const { includeChordProgressions = true, includeSectionColors = true } = options;
   // Filter out placeholder text before exporting
   const processedSections = sections.map(section => ({
     ...section,
@@ -56,6 +62,11 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
         <title>${songData.title || 'Untitled'} - Band Sheet</title>
         <meta charset="utf-8">
         <style>
+          @media print {
+            .page-break {
+              page-break-before: always;
+            }
+          }
           body {
             font-family: Arial, sans-serif;
             line-height: 1.4;
@@ -193,8 +204,8 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
           </div>
           
           <!-- Sections -->
-          ${processedSections.map((section, si) => `
-            <div class="section-container" style="position: relative;">
+          ${processedSections.map((section, index) => `
+            <div class="section-container"${includeSectionColors && section.backgroundColor ? ` style="background-color: ${section.backgroundColor};"` : ''}>
               <!-- Energy indicator line that spans across the entire row -->
               <div style="position: absolute; bottom: 0; left: 0; height: ${ENERGY_LINE_CONFIG.HEIGHT}px; background-color: black; width: ${getEnergyWidthForPdf(section.energy)}; z-index: 1;"></div>
               
@@ -218,6 +229,34 @@ export const exportToPDF = (songData, sections, transposeValue = 0) => {
             </div>
           `).join('')}
         </div>
+        
+        <!-- Page 2: Chord Progressions -->
+        ${includeChordProgressions && partsModule && partsModule.length > 0 ? `
+        <div class="page-break"></div>
+        <div class="chord-progressions">
+          <h2 style="font-size: 18px; margin-top: 20px; margin-bottom: 10px;">Chord Progressions</h2>
+          
+          <div style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
+            <!-- Header row -->
+            <div style="display: grid; grid-template-columns: 80px 60px 1fr 1fr; gap: 10px; padding: 8px 16px; background-color: #f8f8f8; border-bottom: 1px solid #ddd; font-weight: bold; font-size: 14px;">
+              <div>Part</div>
+              <div>Bars</div>
+              <div>Original Chords</div>
+              <div>Transposed Chords</div>
+            </div>
+            
+            <!-- Chord progression rows -->
+            ${partsModule.map(part => `
+              <div style="display: grid; grid-template-columns: 80px 60px 1fr 1fr; gap: 10px; padding: 8px 16px; border-bottom: 1px solid #eee;">
+                <div style="font-weight: bold;">${part.part}</div>
+                <div>${part.bars}</div>
+                <div style="font-family: monospace;">${part.chords || ''}</div>
+                <div style="font-family: monospace;">${part.chords ? getTransposedChords(part.chords, transposeValue) : ''}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
       </body>
     </html>
   `;

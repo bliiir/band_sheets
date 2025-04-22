@@ -14,6 +14,7 @@ const sectionSchema = new mongoose.Schema({
   id: { type: mongoose.Schema.Types.Mixed, required: true },
   name: String,
   energy: Number,
+  backgroundColor: String,
   parts: [partSchema]
 }, { _id: false });
 
