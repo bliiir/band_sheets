@@ -1,11 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { exportSheets, importSheets } from '../services/ImportExportService';
 import { getAllSheets } from '../services/SheetStorageService';
+import ImportDuplicatesModal from './ImportDuplicatesModal';
 
 const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
   const [isImporting, setIsImporting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [duplicateData, setDuplicateData] = useState(null);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
@@ -38,8 +42,20 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
       setError('');
       
       const file = fileInputRef.current.files[0];
+      setImportFile(file); // Save the file for later use
+      
+      // First attempt to import without options to check for duplicates
       const result = await importSheets(file);
       
+      // Check if we need user input for duplicates
+      if (result.needsUserInput && result.duplicateCheck) {
+        setDuplicateData(result);
+        setShowDuplicatesModal(true);
+        setIsImporting(false);
+        return;
+      }
+      
+      // If no duplicates or user already made a choice, proceed with import
       // Refresh the sheets list to show newly imported sheets
       await getAllSheets(true, false); // Force a UI refresh
       
@@ -51,9 +67,41 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
       setIsImporting(false);
     }
   };
+  
+  const handleDuplicateConfirm = async (options) => {
+    if (!importFile) return;
+    
+    try {
+      setIsImporting(true);
+      setMessage('');
+      setError('');
+      
+      // Import with the user's chosen options
+      const result = await importSheets(importFile, options);
+      
+      // Refresh the sheets list to show newly imported sheets
+      await getAllSheets(true, false); // Force a UI refresh
+      
+      setMessage(`${result.results.imported} sheets imported, ${result.results.skipped} skipped`);
+      if (onSuccess) onSuccess(result);
+    } catch (err) {
+      setError(err.message || 'Import failed');
+    } finally {
+      setIsImporting(false);
+      setDuplicateData(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {/* Duplicates Modal */}
+      <ImportDuplicatesModal
+        isOpen={showDuplicatesModal}
+        onClose={() => setShowDuplicatesModal(false)}
+        duplicateData={duplicateData}
+        onConfirm={handleDuplicateConfirm}
+      />
+      
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Import/Export Sheets</h2>
         

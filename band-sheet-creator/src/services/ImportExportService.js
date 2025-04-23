@@ -101,11 +101,47 @@ export const exportSheets = async () => {
 };
 
 /**
+ * Helper function to check for duplicate sheets in localStorage
+ * @param {Array} sheets - Array of sheet objects to check
+ * @returns {Object} Results with potential duplicates
+ */
+export const checkForDuplicates = (sheets) => {
+  const results = {
+    total: sheets.length,
+    potentialDuplicates: [],
+    newSheets: []
+  };
+  
+  // Check each sheet for potential duplicates
+  for (const sheet of sheets) {
+    const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
+    
+    if (existingSheet) {
+      // This is a potential duplicate
+      const parsedExisting = JSON.parse(existingSheet);
+      results.potentialDuplicates.push({
+        importSheet: sheet,
+        existingSheet: parsedExisting
+      });
+    } else {
+      // This is a new sheet
+      results.newSheets.push(sheet);
+    }
+  }
+  
+  return results;
+};
+
+/**
  * Helper function to import sheets to localStorage
  * @param {Array} sheets - Array of sheet objects to import
+ * @param {Object} options - Import options
+ * @param {boolean} options.generateNewIds - Whether to generate new IDs for duplicates
  * @returns {Object} Import results
  */
-const importToLocalStorage = (sheets) => {
+const importToLocalStorage = (sheets, options = {}) => {
+  const { generateNewIds = false } = options;
+  
   const results = {
     total: sheets.length,
     imported: 0,
@@ -119,14 +155,32 @@ const importToLocalStorage = (sheets) => {
       // Check if sheet already exists
       const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
       
-      if (existingSheet) {
-        // Skip this sheet
+      if (existingSheet && !generateNewIds) {
+        // Skip this sheet if it exists and we're not generating new IDs
         results.skipped++;
         continue;
       }
       
-      // Save to localStorage
-      localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(sheet));
+      // Prepare the sheet to save
+      let sheetToSave = { ...sheet };
+      
+      // Generate a new ID if needed
+      if (existingSheet && generateNewIds) {
+        const newId = `sheet_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        sheetToSave = {
+          ...sheet,
+          id: newId,
+          dateModified: new Date().toISOString(),
+          originalId: sheet.id // Keep track of the original ID for reference
+        };
+        
+        // Save with the new ID
+        localStorage.setItem(`sheet_${newId}`, JSON.stringify(sheetToSave));
+      } else {
+        // Save with the original ID
+        localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(sheetToSave));
+      }
+      
       results.imported++;
     } catch (err) {
       results.errors.push({
@@ -143,9 +197,11 @@ const importToLocalStorage = (sheets) => {
 /**
  * Import sheets from a JSON file
  * @param {File} file - The JSON file to import
+ * @param {Object} options - Import options
+ * @param {boolean} options.generateNewIds - Whether to generate new IDs for duplicates
  * @returns {Promise<Object>} Import results
  */
-export const importSheets = async (file) => {
+export const importSheets = async (file, options = {}) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -165,55 +221,87 @@ export const importSheets = async (file) => {
         if (token) {
           // Use API for import
           try {
+            // If we're using the API, we need to check for duplicates first
+            // The API will handle duplicates on its own
             const response = await fetchWithAuth(`${API_URL}/import-export/import`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ sheets: jsonData.sheets }),
-            }).catch(error => {
-              // Handle network errors
+              body: JSON.stringify({
+                ...jsonData,
+                importOptions: options
+              })
+            });
+            
+            // Check if response is ok
+            if (!response.ok) {
+              throw new Error(`API import failed with status: ${response.status}`);
+            }
+            
+            // Parse response data
+            const responseData = await response.json();
+            
+            resolve({
+              success: true,
+              message: responseData.message || `Imported ${responseData.imported} sheets. ${responseData.skipped} skipped.`,
+              results: responseData
+            });
+          } catch (error) {
+            // Handle network errors
+            if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
               console.error('Network error during import:', error);
               
               // Fall back to localStorage if API fails
-              const fallbackResults = importToLocalStorage(jsonData.sheets);
+              const fallbackResults = importToLocalStorage(jsonData.sheets, options);
               return {
                 success: true,
                 message: `API import failed, but imported ${fallbackResults.imported} sheets to localStorage. ${fallbackResults.skipped} skipped.`,
                 results: fallbackResults,
                 usingFallback: true
               };
-            });
-            
-            resolve(response);
-          } catch (apiError) {
-            console.error('API import failed:', apiError);
+            }
             
             // Fall back to localStorage if API fails
             try {
-              const fallbackResults = importToLocalStorage(jsonData.sheets);
+              const fallbackResults = importToLocalStorage(jsonData.sheets, options);
               resolve({
                 success: true,
                 message: `API import failed, but imported ${fallbackResults.imported} sheets to localStorage. ${fallbackResults.skipped} skipped.`,
                 results: fallbackResults,
                 usingFallback: true
               });
-            } catch (fallbackError) {
-              reject(apiError); // If fallback also fails, reject with original error
+            } catch (localError) {
+              reject(localError);
             }
           }
         } else {
           // Use localStorage for import
-          const results = importToLocalStorage(jsonData.sheets);
+          // First, check for duplicates
+          const duplicateCheck = checkForDuplicates(jsonData.sheets);
+          
+          // If there are potential duplicates and we haven't specified options yet,
+          // return the duplicate check results so the UI can ask the user what to do
+          if (duplicateCheck.potentialDuplicates.length > 0 && !('generateNewIds' in options)) {
+            resolve({
+              success: true,
+              needsUserInput: true,
+              message: `Found ${duplicateCheck.potentialDuplicates.length} potential duplicate sheets. Please choose how to handle them.`,
+              duplicateCheck
+            });
+            return;
+          }
+          
+          // Otherwise, proceed with import using the specified options
+          const results = importToLocalStorage(jsonData.sheets, options);
           
           resolve({
             success: true,
-            message: `Import complete. ${results.imported} sheets imported, ${results.skipped} skipped.`,
+            message: `Imported ${results.imported} sheets to localStorage. ${results.skipped} skipped.`,
             results
           });
         }
       } catch (error) {
-        console.error('Import failed:', error);
         reject(error);
       }
     };
