@@ -1,5 +1,6 @@
 const Sheet = require('../models/sheet');
 const User = require('../models/user');
+const mongoose = require('mongoose');
 
 // Get all sheets for the current user
 exports.getSheets = async (req, res) => {

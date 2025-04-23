@@ -1,33 +1,14 @@
 const express = require('express');
 const {
-  getSheets,
-  getSheet,
-  createSheet,
-  updateSheet,
-  deleteSheet,
-  shareSheet,
   exportSheets,
   importSheets
-} = require('../controllers/sheetController');
+} = require('../controllers/importExportController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply auth middleware to all routes
 router.use(protect);
-
-router
-  .route('/')
-  .get(getSheets)
-  .post(createSheet);
-
-router
-  .route('/:id')
-  .get(getSheet)
-  .put(updateSheet)
-  .delete(deleteSheet);
-
-router.route('/:id/share').post(shareSheet);
 
 // Export and import routes
 router.route('/export').get(exportSheets);

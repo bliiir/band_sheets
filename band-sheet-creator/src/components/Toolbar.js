@@ -3,10 +3,13 @@ import { ReactComponent as FolderIcon } from "../assets/folder.svg";
 import { ReactComponent as FilePlusIcon } from "../assets/file_plus.svg";
 import { ReactComponent as SaveIcon } from "../assets/save.svg";
 import { ReactComponent as SaveAllIcon } from "../assets/save_all.svg";
-import { ReactComponent as DownloadIcon } from "../assets/download.svg";
+import { ReactComponent as PrintIcon } from "../assets/print.svg";
 import { ReactComponent as UserIcon } from "../assets/user.svg";
+import { ReactComponent as ImportIcon } from "../assets/import.svg";
+import { ReactComponent as ExportIcon } from "../assets/export.svg";
 import { useAuth } from "../contexts/AuthContext";
 import AuthModal from "./Auth/AuthModal";
+import ImportExportModal from "./ImportExportModal";
 
 const Toolbar = ({ 
   sidebarOpen, 
@@ -17,6 +20,7 @@ const Toolbar = ({
   handleExport 
 }) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [importExportModalOpen, setImportExportModalOpen] = useState(false);
   const { currentUser, logout, isAuthenticated } = useAuth();
   return (
     <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-8 pb-4 z-30 fixed left-0 top-[60px] bottom-0">
@@ -51,9 +55,17 @@ const Toolbar = ({
       <button 
         className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
         onClick={handleExport}
-        title="Download"
+        title="PDF"
       >
-        <DownloadIcon className="w-6 h-6" />
+        <PrintIcon className="w-6 h-6" />
+      </button>
+
+      <button 
+        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        onClick={() => setImportExportModalOpen(true)}
+        title="Import/Export"
+      >
+        <ImportIcon className="w-6 h-6" />
       </button>
       
       {/* Spacer */}
@@ -70,6 +82,16 @@ const Toolbar = ({
       
       {/* Auth Modal */}
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      
+      {/* Import/Export Modal */}
+      <ImportExportModal 
+        isOpen={importExportModalOpen} 
+        onClose={() => setImportExportModalOpen(false)} 
+        onSuccess={() => {
+          // Close the modal after successful import/export
+          setTimeout(() => setImportExportModalOpen(false), 2000);
+        }}
+      />
     </div>
   );
 };

@@ -28,6 +28,7 @@ dotenv.config();
 // Import routes
 const authRoutes = require('./routes/auth');
 const sheetRoutes = require('./routes/sheets');
+const importExportRoutes = require('./routes/importExport');
 
 // Initialize app
 const app = express();
@@ -82,6 +83,7 @@ app.post('/api/test', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sheets', sheetRoutes);
+app.use('/api/import-export', importExportRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
