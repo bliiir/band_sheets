@@ -1,0 +1,76 @@
+version: '3'
+
+services:
+  # MongoDB service
+  mongodb:
+    image: mongo:latest
+    container_name: band-sheets-mongodb-prod
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_prod:/data/db
+    networks:
+      - band-sheets-network-prod
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Backend service
+  backend:
+    build:
+      context: ./band-sheets-backend
+      dockerfile: Dockerfile.prod
+    container_name: band-sheets-backend-prod
+    ports:
+      - "5050:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/bandsheets
+      # In production, use secrets management or environment variables
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=30d
+      - JWT_COOKIE_EXPIRES_IN=30
+    depends_on:
+      - mongodb
+    networks:
+      - band-sheets-network-prod
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend service
+  frontend:
+    build:
+      context: ./band-sheet-creator
+      dockerfile: Dockerfile.prod
+    container_name: band-sheets-frontend-prod
+    ports:
+      - "80:80"
+      # - "443:443"
+    environment:
+      # Use the actual domain name in production
+      - REACT_APP_API_URL=https://api.yourdomain.com/api
+    depends_on:
+      - backend
+    networks:
+      - band-sheets-network-prod
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  band-sheets-network-prod:
+    driver: bridge
+
+volumes:
+  mongodb_data_prod:
