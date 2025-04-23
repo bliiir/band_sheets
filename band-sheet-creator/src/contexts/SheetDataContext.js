@@ -222,13 +222,13 @@ export function SheetDataProvider({ children }) {
       }]);
       setIdCounter(newId + 2);
     } else {
-      console.log('Loading sections with background colors:', sheet.sections);
+
       // Ensure backgroundColor is preserved when loading sections
       const sectionsWithColors = sheet.sections.map(section => ({
         ...section,
         backgroundColor: section.backgroundColor || null
       }));
-      console.log('Processed sections with background colors:', sectionsWithColors);
+
       setSections(sectionsWithColors);
       setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
     }

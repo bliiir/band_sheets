@@ -15,9 +15,7 @@ const Sidebar = ({
   // Fetch saved sheets directly using the service
   const fetchSavedSheets = async () => {
     try {
-      console.log('Sidebar: Fetching saved sheets');
       const sheets = await getAllSheets();
-      console.log('Sidebar: Fetched sheets:', sheets);
       setSavedSheets(sheets);
     } catch (error) {
       console.error('Sidebar: Error fetching sheets:', error);

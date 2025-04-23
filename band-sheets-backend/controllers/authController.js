@@ -22,12 +22,16 @@ const sendTokenResponse = (user, statusCode, res) => {
   
   res.cookie('token', token, cookieOptions);
   
-  user.password = undefined; // Don't send password in response
+  // Ensure password is not sent
+  if (user.password) {
+    user.password = undefined;
+  }
   
+  // Return consistent response format
   res.status(statusCode).json({
     success: true,
     token,
-    data: user
+    user: user // Changed from data to user to match frontend expectations
   });
 };
 

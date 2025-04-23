@@ -25,22 +25,15 @@ export function AuthProvider({ children }) {
       try {
         // Check for token
         const token = localStorage.getItem('token');
-        console.log('AuthContext: Checking login status, token exists:', !!token);
-        
         if (token) {
-          console.log('AuthContext: Attempting to get current user with token');
           const user = await getCurrentUser();
           if (user) {
-            console.log('AuthContext: User authenticated successfully:', user.username);
             setCurrentUser(user);
             setUseApi(true); // Enable API in SheetStorageService
           } else {
-            console.log('AuthContext: Token exists but user fetch failed');
             localStorage.removeItem('token');
             setUseApi(false);
           }
-        } else {
-          console.log('AuthContext: No token found, user is not logged in');
         }
       } catch (err) {
         console.error('Auth check error:', err);
@@ -88,40 +81,45 @@ export function AuthProvider({ children }) {
    */
   const login = async (email, password) => {
     try {
-      console.log('AuthContext: Attempting login for email:', email);
       setError(null);
-      setLoading(true);
+      
+      // Don't set loading to true here - it prevents typing in the form
+      // We'll let the LoginRegister component handle its own loading state
       
       const user = await loginUser({ email, password });
-      console.log('AuthContext: Login successful, user:', user);
-      
       setCurrentUser(user);
       setUseApi(true);
-      console.log('AuthContext: useApi set to true after login');
-      setLoading(false);
       return true;
     } catch (err) {
-      console.error('AuthContext: Login failed:', err.message);
+      console.error('Login error:', err);
       setError(err.message);
-      setLoading(false);
       return false;
     }
   };
 
   /**
    * Log out the current user
-   * 
-   * @returns {Promise<boolean>} - Success status
    */
   const logout = async () => {
     try {
-      await logoutUser();
+      // Don't set loading to true here - it can cause issues with UI interactions
+      
+      // Clear user data first to prevent API calls during transition
       setCurrentUser(null);
       setUseApi(false);
-      return true;
+      
+      // Then attempt to logout from the server
+      try {
+        await logoutUser();
+      } catch (err) {
+        // Continue with local logout despite server error
+      }
+      
+      // Make sure token is removed from localStorage
+      localStorage.removeItem('token');
     } catch (err) {
       console.error('Logout error:', err);
-      return false;
+      setError(err.message);
     }
   };
 

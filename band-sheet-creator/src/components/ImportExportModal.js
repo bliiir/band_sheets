@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { exportSheets, importSheets } from '../services/ImportExportService';
+import { getAllSheets } from '../services/SheetStorageService';
 
 const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
   const [isImporting, setIsImporting] = useState(false);
@@ -38,6 +39,9 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
       
       const file = fileInputRef.current.files[0];
       const result = await importSheets(file);
+      
+      // Refresh the sheets list to show newly imported sheets
+      await getAllSheets(true, false); // Force a UI refresh
       
       setMessage(`${result.results.imported} sheets imported, ${result.results.skipped} skipped`);
       if (onSuccess) onSuccess(result);

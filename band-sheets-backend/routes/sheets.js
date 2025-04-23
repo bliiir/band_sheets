@@ -5,9 +5,7 @@ const {
   createSheet,
   updateSheet,
   deleteSheet,
-  shareSheet,
-  exportSheets,
-  importSheets
+  shareSheet
 } = require('../controllers/sheetController');
 const { protect } = require('../middleware/auth');
 
@@ -28,9 +26,5 @@ router
   .delete(deleteSheet);
 
 router.route('/:id/share').post(shareSheet);
-
-// Export and import routes
-router.route('/export').get(exportSheets);
-router.route('/import').post(importSheets);
 
 module.exports = router;

@@ -5,11 +5,17 @@
 
 // API base URL - Use a simpler approach with a direct URL
 // Dynamically determine the API URL based on the current environment
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+
+// For production without environment variables, use the current origin
+if (window.location.hostname !== 'localhost' && !process.env.REACT_APP_API_URL) {
+  // If we're on a deployed site, use the same origin for API
+  // This assumes the API is available at /api on the same domain
+  API_URL = `${window.location.origin}/api`;
+}
 
 // Debug log the API URL to help troubleshoot connection issues
 
-console.log('API Service initialized with URL:', API_URL);
 
 /**
  * Helper for making API requests with proper error handling
@@ -20,6 +26,9 @@ console.log('API Service initialized with URL:', API_URL);
  */
 const makeRequest = async (url, options = {}) => {
   try {
+    // Special handling for auth endpoints
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+    
     // Ensure we have headers with correct content type
     const headers = {
       'Content-Type': 'application/json',
@@ -30,14 +39,26 @@ const makeRequest = async (url, options = {}) => {
     const token = localStorage.getItem('token');
     if (token) {
       headers.Authorization = `Bearer ${token}`;
+    } else if (!isAuthEndpoint) {
+      // For non-auth endpoints without a token, use localStorage instead
+
+      
+      // If this is a sheets endpoint, we should return early and let the app use localStorage
+      if (url.includes('/sheets')) {
+        throw new Error('Not authenticated - using localStorage instead');
+      }
     }
     
     // Make the request with all needed options set
+
     const response = await fetch(url, {
       ...options,
       headers,
       mode: 'cors',
       credentials: 'include'
+    }).catch(err => {
+      console.error('Network error during fetch:', err);
+      throw new Error('Network error - please check your connection');
     });
     
     // Check if the response can be parsed as JSON
@@ -97,7 +118,8 @@ export const registerUser = async (userData) => {
       localStorage.setItem('token', data.token);
     }
     
-    return data.data;
+    // Return the user object - backend returns it in data.user
+    return data.user;
   } catch (error) {
     console.error('Registration error:', error);
     throw error;
@@ -113,9 +135,12 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   try {
-    console.log('Attempting login with API:', credentials.email);
+
     
-    // Direct implementation without using the helper
+    // First clear any existing token to prevent auth issues
+    localStorage.removeItem('token');
+    
+    // Direct implementation without using the helper for login
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -125,8 +150,6 @@ export const loginUser = async (credentials) => {
       mode: 'cors',
       credentials: 'include'
     });
-    
-    console.log('Login response status:', response.status);
     
     if (!response.ok) {
       let errorMessage;
@@ -141,17 +164,20 @@ export const loginUser = async (credentials) => {
     }
     
     const data = await response.json();
-    console.log('Login successful, received data:', data);
+
     
     // Save token to localStorage
     if (data.token) {
       localStorage.setItem('token', data.token);
-      console.log('Token saved to localStorage');
+
     }
     
-    return data.data;
+    // Return the user object - backend returns it in data.user
+    return data.user;
   } catch (error) {
     console.error('Login error:', error);
+    // Clear token on login error
+    localStorage.removeItem('token');
     throw error;
   }
 };

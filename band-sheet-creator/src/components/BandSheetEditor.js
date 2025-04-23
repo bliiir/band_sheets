@@ -95,7 +95,7 @@ export default function BandSheetEditor({ initialSheetId }) {
       // Only load if we have an ID and haven't loaded it yet
       if (initialSheetId && !initialSheetLoaded) {
         try {
-          console.log('BandSheetEditor: Loading initial sheet from URL:', initialSheetId);
+
           await loadSheet(initialSheetId);
           showNotification(`Sheet loaded successfully`);
           // Mark as loaded so we don't reload
@@ -124,9 +124,7 @@ export default function BandSheetEditor({ initialSheetId }) {
     if (sidebarOpen) {
       const fetchSheets = async () => {
         try {
-          console.log('BandSheetEditor: Fetching saved sheets');
           const allSheets = await getAllSheets();
-          console.log('BandSheetEditor: Fetched sheets:', allSheets);
           setSavedSheets(allSheets);
         } catch (error) {
           console.error('BandSheetEditor: Error fetching sheets:', error);
@@ -143,7 +141,7 @@ export default function BandSheetEditor({ initialSheetId }) {
       // Check for Cmd+S (Mac) or Ctrl+S (Windows)
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault(); // Prevent browser's save dialog
-        console.log('Keyboard shortcut: Cmd+S / Ctrl+S');
+
         saveCurrentSheet()
           .then(() => {
             showNotification('Sheet saved successfully');
@@ -329,7 +327,7 @@ export default function BandSheetEditor({ initialSheetId }) {
         try {
           // Save the current sheet
           const savedSheet = await handleSave();
-          console.log('BandSheetEditor: Sheet saved before creating new sheet:', savedSheet);
+
           
           // Create a new sheet using the context function
           createNewSheetData();
@@ -356,9 +354,7 @@ export default function BandSheetEditor({ initialSheetId }) {
   // Helper function to refresh the saved sheets list
   const refreshSavedSheets = async () => {
     try {
-      console.log('BandSheetEditor: Refreshing saved sheets after save');
       const allSheets = await getAllSheets();
-      console.log('BandSheetEditor: Fetched updated sheets:', allSheets);
       setSavedSheets(allSheets);
     } catch (error) {
       console.error('BandSheetEditor: Error refreshing sheets:', error);
@@ -414,16 +410,12 @@ export default function BandSheetEditor({ initialSheetId }) {
         setSidebarOpen={setSidebarOpen}
         loadSheet={async (id) => {
           try {
-            console.log('BandSheetEditor: Loading sheet with ID:', id);
-            const success = await loadSheet(id);
-            if (success) {
-              console.log('BandSheetEditor: Sheet loaded successfully');
+            loadSheet(id).then(() => {
               closeSidebar();
               showNotification('Sheet loaded successfully');
-            } else {
-              console.error('BandSheetEditor: Failed to load sheet');
+            }).catch(() => {
               showNotification('Failed to load sheet', 'error');
-            }
+            });
           } catch (error) {
             console.error('BandSheetEditor: Error loading sheet:', error);
             showNotification(`Error loading sheet: ${error.message}`, 'error');
@@ -480,11 +472,11 @@ export default function BandSheetEditor({ initialSheetId }) {
             updateSectionBackgroundColor(colorPicker.sectionIndex, color);
             
             // Log the update for debugging
-            console.log(`Setting background color for section ${colorPicker.sectionIndex} to ${color}`);
+
             
             // Force an immediate save to ensure the color is persisted
             setTimeout(() => {
-              console.log('Auto-saving after color change...');
+
               saveCurrentSheet();
             }, 500);
           }}
@@ -493,7 +485,7 @@ export default function BandSheetEditor({ initialSheetId }) {
             
             // Also save when closing the color picker
             setTimeout(() => {
-              console.log('Auto-saving after closing color picker...');
+
               saveCurrentSheet();
             }, 500);
           }}

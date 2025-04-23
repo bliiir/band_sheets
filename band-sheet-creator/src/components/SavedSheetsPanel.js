@@ -93,15 +93,12 @@ export default function SavedSheetsPanel({
         message: `Are you sure you want to delete "${title}"?`,
         onConfirm: async () => {
           try {
-            console.log('SavedSheetsPanel: Deleting sheet with ID:', id);
-            // Use the SheetStorageService to delete the sheet
             await deleteSheet(id);
-            console.log('SavedSheetsPanel: Sheet deleted successfully');
             // Close the dialog first to avoid UI glitches
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
             // Force a small delay to ensure the dialog is closed before refreshing
             setTimeout(() => {
-              console.log('SavedSheetsPanel: Refreshing sheet list after deletion');
+
               // Update the sheet list
               if (onUpdate) {
                 onUpdate();

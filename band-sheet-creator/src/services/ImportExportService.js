@@ -15,8 +15,8 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
  */
 export const exportSheets = async () => {
   try {
-    // Get all sheets from API or localStorage
-    const sheets = await getAllSheets();
+    // Get all sheets from API or localStorage without triggering UI updates
+    const sheets = await getAllSheets(true, true); // sortByNewest=true, skipUIRefresh=true
     
     if (!sheets || sheets.length === 0) {
       throw new Error('No sheets found to export');
