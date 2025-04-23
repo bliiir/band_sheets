@@ -17,6 +17,9 @@ if (window.location.hostname !== 'localhost') {
   API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
 }
 
+// Export the API_URL so it can be imported by other services
+export { API_URL };
+
 // Debug log the API URL to help troubleshoot connection issues
 
 

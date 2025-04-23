@@ -6,12 +6,12 @@
 import { fetchWithAuth } from './ApiService';
 import { getAllSheets } from './SheetStorageService';
 
-// Get the API URL from environment or use default
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+// Import the API_URL from ApiService to ensure consistency
+import { API_URL } from './ApiService';
 
 /**
  * Export all sheets to a JSON file
- * @returns {Promise<void>} Promise that resolves when export is complete
+ * @returns {Promise<Object>} Promise that resolves when export is complete
  */
 export const exportSheets = async () => {
   try {
@@ -58,6 +58,46 @@ export const exportSheets = async () => {
 };
 
 /**
+ * Helper function to import sheets to localStorage
+ * @param {Array} sheets - Array of sheet objects to import
+ * @returns {Object} Import results
+ */
+const importToLocalStorage = (sheets) => {
+  const results = {
+    total: sheets.length,
+    imported: 0,
+    skipped: 0,
+    errors: []
+  };
+  
+  // Process each sheet
+  for (const sheet of sheets) {
+    try {
+      // Check if sheet already exists
+      const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
+      
+      if (existingSheet) {
+        // Skip this sheet
+        results.skipped++;
+        continue;
+      }
+      
+      // Save to localStorage
+      localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(sheet));
+      results.imported++;
+    } catch (err) {
+      results.errors.push({
+        sheetId: sheet.id || 'unknown',
+        title: sheet.title || 'unknown',
+        error: err.message
+      });
+    }
+  }
+  
+  return results;
+};
+
+/**
  * Import sheets from a JSON file
  * @param {File} file - The JSON file to import
  * @returns {Promise<Object>} Import results
@@ -82,51 +122,46 @@ export const importSheets = async (file) => {
         if (token) {
           // Use API for import
           try {
-            const response = await fetchWithAuth(`${API_URL}/sheets/import`, {
+            const response = await fetchWithAuth(`${API_URL}/import-export/import`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ sheets: jsonData.sheets }),
+            }).catch(error => {
+              // Handle network errors
+              console.error('Network error during import:', error);
+              
+              // Fall back to localStorage if API fails
+              const fallbackResults = importToLocalStorage(jsonData.sheets);
+              return {
+                success: true,
+                message: `API import failed, but imported ${fallbackResults.imported} sheets to localStorage. ${fallbackResults.skipped} skipped.`,
+                results: fallbackResults,
+                usingFallback: true
+              };
             });
             
             resolve(response);
           } catch (apiError) {
             console.error('API import failed:', apiError);
-            reject(apiError);
+            
+            // Fall back to localStorage if API fails
+            try {
+              const fallbackResults = importToLocalStorage(jsonData.sheets);
+              resolve({
+                success: true,
+                message: `API import failed, but imported ${fallbackResults.imported} sheets to localStorage. ${fallbackResults.skipped} skipped.`,
+                results: fallbackResults,
+                usingFallback: true
+              });
+            } catch (fallbackError) {
+              reject(apiError); // If fallback also fails, reject with original error
+            }
           }
         } else {
           // Use localStorage for import
-          const results = {
-            total: jsonData.sheets.length,
-            imported: 0,
-            skipped: 0,
-            errors: []
-          };
-          
-          // Process each sheet
-          for (const sheet of jsonData.sheets) {
-            try {
-              // Check if sheet already exists
-              const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
-              
-              if (existingSheet) {
-                // Skip this sheet
-                results.skipped++;
-                continue;
-              }
-              
-              // Save to localStorage
-              localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(sheet));
-              results.imported++;
-            } catch (err) {
-              results.errors.push({
-                sheetId: sheet.id || 'unknown',
-                title: sheet.title || 'unknown',
-                error: err.message
-              });
-            }
-          }
+          const results = importToLocalStorage(jsonData.sheets);
           
           resolve({
             success: true,
