@@ -42,8 +42,24 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, curl, etc)
     if (!origin) return callback(null, true);
     
-    // Allow all origins in development and production
-    return callback(null, true);
+    // Whitelist specific origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://44.211.77.173',
+      'http://44.211.77.173:3000',
+      'http://44.211.77.173:80',
+      'http://44.211.77.173:5050'
+    ];
+    
+    // Check if the origin is in our whitelist
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      // Still allow all origins in development and production for now
+      // but log for debugging purposes
+      console.log('CORS request from:', origin);
+      callback(null, true);
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -52,6 +68,7 @@ app.use(cors({
 
 // Add CORS headers to all responses as a fallback
 app.use((req, res, next) => {
+  // Always allow the request origin
   res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');

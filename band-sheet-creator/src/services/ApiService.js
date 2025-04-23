@@ -5,13 +5,16 @@
 
 // API base URL - Use a simpler approach with a direct URL
 // Dynamically determine the API URL based on the current environment
-let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+let API_URL;
 
-// For production without environment variables, use the current origin
-if (window.location.hostname !== 'localhost' && !process.env.REACT_APP_API_URL) {
-  // If we're on a deployed site, use the same origin for API
-  // This assumes the API is available at /api on the same domain
-  API_URL = `${window.location.origin}/api`;
+// For production deployment on server
+if (window.location.hostname !== 'localhost') {
+  // Use the server's IP address directly with the correct port for the API
+  // This is for the EC2 instance at 44.211.77.173
+  API_URL = 'http://44.211.77.173:5050/api';
+} else {
+  // For local development
+  API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
 }
 
 // Debug log the API URL to help troubleshoot connection issues
