@@ -185,7 +185,7 @@ const Section = ({
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItems, deleteSection, duplicateSection, clearSelection]);
+  }, [selectedItems, deleteSection, duplicateSection, clearSelection, editing, moveSection, sections.length, setSelectedItems]);
   // Determine if this section is selected
   const isSectionSelected = isItemSelected('section', si);
   

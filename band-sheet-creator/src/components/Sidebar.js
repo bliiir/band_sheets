@@ -27,7 +27,9 @@ const Sidebar = ({
   // Fetch sheets when component mounts
   useEffect(() => {
     fetchSavedSheets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  
   return (
     <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block fixed left-14 top-[60px] bottom-0`}>
       <SavedSheetsPanel

@@ -145,7 +145,7 @@ export function SheetDataProvider({ children }) {
   };
   
   // Parts module operations
-  const initializePartsModule = () => {
+  const initializePartsModule = useCallback(() => {
     if (!sections || sections.length === 0) return;
     
     // Extract unique part labels from all sections
@@ -174,7 +174,7 @@ export function SheetDataProvider({ children }) {
     });
     
     setPartsModule(updatedPartsModule);
-  };
+  }, [sections, partsModule, setPartsModule]);
   
   // Sheet operations
   const createNewSheetData = () => {

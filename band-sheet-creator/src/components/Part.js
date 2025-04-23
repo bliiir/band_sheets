@@ -41,8 +41,7 @@ const Part = ({
     isItemSelected, 
     toggleItemSelection,
     selectedItems,
-    setSelectedItems,
-    clearSelection 
+    setSelectedItems
   } = useUIState();
   
   // Get part operations from SheetDataContext
@@ -72,7 +71,7 @@ const Part = ({
         e.preventDefault();
         
         // Process parts
-        const selectedParts = selectedItems
+        const selectedParts = currentSelectedItems
           .filter(item => item.type === 'part')
           .sort((a, b) => {
             // Sort by section index first
@@ -96,7 +95,7 @@ const Part = ({
         e.preventDefault();
         
         // Process parts
-        const selectedParts = selectedItems
+        const selectedParts = currentSelectedItems
           .filter(item => item.type === 'part')
           .sort((a, b) => {
             // Sort by section index first
@@ -120,7 +119,7 @@ const Part = ({
         e.preventDefault();
         
         // Only process parts (sections are handled in the Section component)
-        const selectedParts = selectedItems
+        const selectedParts = currentSelectedItems
           .filter(item => item.type === 'part')
           .sort((a, b) => {
             // Sort by section index first
@@ -163,7 +162,7 @@ const Part = ({
         e.preventDefault();
         
         // Only process parts (sections are handled in the Section component)
-        const selectedParts = selectedItems
+        const selectedParts = currentSelectedItems
           .filter(item => item.type === 'part')
           .sort((a, b) => {
             // Sort by section index first

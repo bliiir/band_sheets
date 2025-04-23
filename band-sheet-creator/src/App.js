@@ -1,6 +1,6 @@
 // src/App.js
 import React from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import BandSheetEditor from './components/BandSheetEditor';
 import AuthButton from './components/Auth/AuthButton';
 import Logo from './assets/logo3.png';

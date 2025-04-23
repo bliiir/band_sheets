@@ -51,8 +51,6 @@ export function UIStateProvider({ children }) {
   
   // Toggle selection of an item
   const toggleItemSelection = (type, sectionIndex, partIndex = null, isMultiSelect = false) => {
-    const itemKey = { type, sectionIndex, partIndex };
-    
     setSelectedItems(prev => {
       // Check if item is already selected
       const isSelected = isItemSelected(type, sectionIndex, partIndex);
@@ -165,14 +163,6 @@ export function UIStateProvider({ children }) {
       pi: null,
       isNew: false
     });
-  };
-  
-  const setHover = (type, si, pi) => {
-    setHoverState({ type, si, pi });
-  };
-  
-  const clearHover = () => {
-    setHoverState({ type: null, si: null, pi: null });
   };
   
   // API loading helpers

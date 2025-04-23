@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import ColorPicker from './ColorPicker';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
@@ -37,13 +37,13 @@ export default function BandSheetEditor({ initialSheetId }) {
   });
   
   // Function to show a notification
-  const showNotification = (message, type = 'success') => {
+  const showNotification = useCallback((message, type = 'success') => {
     setNotification({ show: true, message, type });
     // Auto-hide after 3 seconds
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'success' });
     }, 3000);
-  };
+  }, []);
   // Navigation hooks for URL management
   const navigate = useNavigate();
   const location = useLocation();
