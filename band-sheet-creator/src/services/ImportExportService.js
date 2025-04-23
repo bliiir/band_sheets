@@ -142,6 +142,8 @@ export const checkForDuplicates = (sheets) => {
 const importToLocalStorage = (sheets, options = {}) => {
   const { generateNewIds = false } = options;
   
+  console.log('ImportToLocalStorage with options:', options);
+  
   const results = {
     total: sheets.length,
     imported: 0,
@@ -155,34 +157,40 @@ const importToLocalStorage = (sheets, options = {}) => {
       // Check if sheet already exists
       const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
       
-      if (existingSheet && !generateNewIds) {
-        // Skip this sheet if it exists and we're not generating new IDs
-        results.skipped++;
-        continue;
-      }
-      
       // Prepare the sheet to save
       let sheetToSave = { ...sheet };
+      let storageKey = `sheet_${sheet.id}`;
       
-      // Generate a new ID if needed
-      if (existingSheet && generateNewIds) {
-        const newId = `sheet_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        sheetToSave = {
-          ...sheet,
-          id: newId,
-          dateModified: new Date().toISOString(),
-          originalId: sheet.id // Keep track of the original ID for reference
-        };
-        
-        // Save with the new ID
-        localStorage.setItem(`sheet_${newId}`, JSON.stringify(sheetToSave));
-      } else {
-        // Save with the original ID
-        localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(sheetToSave));
+      // Handle duplicates based on options
+      if (existingSheet) {
+        if (generateNewIds) {
+          // Generate a new unique ID
+          const timestamp = Date.now();
+          const random = Math.floor(Math.random() * 10000);
+          const newId = `sheet_${timestamp}_${random}`;
+          
+          sheetToSave = {
+            ...sheet,
+            id: newId,
+            dateModified: new Date().toISOString(),
+            originalId: sheet.id // Keep track of the original ID for reference
+          };
+          
+          storageKey = `sheet_${newId}`;
+        } else {
+          // Skip this sheet
+          console.log('Skipping duplicate sheet:', sheet.title);
+          results.skipped++;
+          continue;
+        }
       }
       
+      // Save the sheet
+      console.log('Saving sheet with key:', storageKey);
+      localStorage.setItem(storageKey, JSON.stringify(sheetToSave));
       results.imported++;
     } catch (err) {
+      console.error('Error importing sheet:', err);
       results.errors.push({
         sheetId: sheet.id || 'unknown',
         title: sheet.title || 'unknown',
@@ -191,6 +199,7 @@ const importToLocalStorage = (sheets, options = {}) => {
     }
   }
   
+  console.log('Import results:', results);
   return results;
 };
 
@@ -202,6 +211,8 @@ const importToLocalStorage = (sheets, options = {}) => {
  * @returns {Promise<Object>} Import results
  */
 export const importSheets = async (file, options = {}) => {
+  // For debugging
+  console.log('Import options:', options);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -218,11 +229,26 @@ export const importSheets = async (file, options = {}) => {
         // Get token to check if we should use API
         const token = localStorage.getItem('token');
         
+        // First, check for duplicates regardless of whether we're using API or localStorage
+        const duplicateCheck = checkForDuplicates(jsonData.sheets);
+        
+        // If there are potential duplicates and we haven't specified options yet,
+        // return the duplicate check results so the UI can ask the user what to do
+        if (duplicateCheck.potentialDuplicates.length > 0 && !('generateNewIds' in options)) {
+          console.log('Found duplicates:', duplicateCheck.potentialDuplicates.length);
+          resolve({
+            success: true,
+            needsUserInput: true,
+            message: `Found ${duplicateCheck.potentialDuplicates.length} potential duplicate sheets. Please choose how to handle them.`,
+            duplicateCheck
+          });
+          return;
+        }
+        
         if (token) {
           // Use API for import
           try {
-            // If we're using the API, we need to check for duplicates first
-            // The API will handle duplicates on its own
+            // The API will handle duplicates based on the options
             const response = await fetchWithAuth(`${API_URL}/import-export/import`, {
               method: 'POST',
               headers: {
@@ -276,21 +302,7 @@ export const importSheets = async (file, options = {}) => {
             }
           }
         } else {
-          // Use localStorage for import
-          // First, check for duplicates
-          const duplicateCheck = checkForDuplicates(jsonData.sheets);
-          
-          // If there are potential duplicates and we haven't specified options yet,
-          // return the duplicate check results so the UI can ask the user what to do
-          if (duplicateCheck.potentialDuplicates.length > 0 && !('generateNewIds' in options)) {
-            resolve({
-              success: true,
-              needsUserInput: true,
-              message: `Found ${duplicateCheck.potentialDuplicates.length} potential duplicate sheets. Please choose how to handle them.`,
-              duplicateCheck
-            });
-            return;
-          }
+          // Use localStorage for import - duplicates have already been checked above
           
           // Otherwise, proceed with import using the specified options
           const results = importToLocalStorage(jsonData.sheets, options);

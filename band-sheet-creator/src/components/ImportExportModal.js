@@ -97,7 +97,10 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
       {/* Duplicates Modal */}
       <ImportDuplicatesModal
         isOpen={showDuplicatesModal}
-        onClose={() => setShowDuplicatesModal(false)}
+        onClose={() => {
+          setShowDuplicatesModal(false);
+          setDuplicateData(null);
+        }}
         duplicateData={duplicateData}
         onConfirm={handleDuplicateConfirm}
       />
