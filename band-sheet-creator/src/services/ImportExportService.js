@@ -16,17 +16,60 @@ import { API_URL } from './ApiService';
 export const exportSheets = async () => {
   try {
     // Get all sheets from API or localStorage without triggering UI updates
-    const sheets = await getAllSheets(true, true); // sortByNewest=true, skipUIRefresh=true
+    const sheetList = await getAllSheets(true, true); // sortByNewest=true, skipUIRefresh=true
     
-    if (!sheets || sheets.length === 0) {
+    if (!sheetList || sheetList.length === 0) {
       throw new Error('No sheets found to export');
+    }
+    
+    // Fetch the complete data for each sheet
+    const completeSheets = [];
+    const token = localStorage.getItem('token');
+    const isAuthenticated = !!token;
+    
+    // For each sheet in the list, get its complete data
+    for (const sheetInfo of sheetList) {
+      try {
+        let completeSheet;
+        
+        if (isAuthenticated && API_URL) {
+          // Get complete sheet data from API
+          try {
+            const response = await fetchWithAuth(`${API_URL}/sheets/${sheetInfo.id}`);
+            completeSheet = response.data;
+          } catch (error) {
+            console.error(`Error fetching complete data for sheet ${sheetInfo.id}:`, error);
+            // Try localStorage as fallback
+            const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
+            if (localData) {
+              completeSheet = JSON.parse(localData);
+            }
+          }
+        } else {
+          // Get from localStorage
+          const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
+          if (localData) {
+            completeSheet = JSON.parse(localData);
+          }
+        }
+        
+        if (completeSheet) {
+          completeSheets.push(completeSheet);
+        }
+      } catch (error) {
+        console.error(`Error processing sheet ${sheetInfo.id}:`, error);
+      }
+    }
+    
+    if (completeSheets.length === 0) {
+      throw new Error('Failed to retrieve complete data for any sheets');
     }
     
     // Create export object with metadata
     const exportData = {
       exportDate: new Date(),
-      sheetsCount: sheets.length,
-      sheets: sheets
+      sheetsCount: completeSheets.length,
+      sheets: completeSheets
     };
     
     // Convert to JSON string
@@ -49,7 +92,7 @@ export const exportSheets = async () => {
     
     return {
       success: true,
-      message: `${sheets.length} sheets exported successfully`
+      message: `${completeSheets.length} sheets exported successfully`
     };
   } catch (error) {
     console.error('Export failed:', error);
