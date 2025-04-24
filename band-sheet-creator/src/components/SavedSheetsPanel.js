@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate } from 'react-router-dom';
+import MigrationUtility from './MigrationUtility';
 import { ReactComponent as MenuIcon } from '../assets/menu.svg';
 import ConfirmModal from "./ConfirmModal";
 import { deleteSheet } from "../services/SheetStorageService";
@@ -13,6 +14,11 @@ export default function SavedSheetsPanel({
   onUpdate,
   onSheetSelect,
 }) {
+  const [deleteSheetId, setDeleteSheetId] = useState(null);
+  // Redefine migration utility state to fix hot-reload issue
+  const migrationUtilityState = useState(false);
+  const showMigrationUtility = migrationUtilityState[0];
+  const setShowMigrationUtility = migrationUtilityState[1];
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [editingId, setEditingId] = useState(null);
@@ -233,7 +239,18 @@ export default function SavedSheetsPanel({
         <span className="tracking-wide text-lg text-gray-800">
           Saved Sheets
         </span>
+        <button 
+          onClick={() => setShowMigrationUtility(!showMigrationUtility)}
+          className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+        >
+          {showMigrationUtility ? 'Hide Utility' : 'Migration Utility'}
+        </button>
       </div>
+      {showMigrationUtility && (
+        <div className="p-2">
+          <MigrationUtility />
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto pb-2">
         {(!savedSheets || !Array.isArray(savedSheets) || savedSheets.length === 0) && (
           <div className="px-4 py-8 text-center text-gray-400 italic select-none">
