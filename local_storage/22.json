@@ -1,0 +1,183 @@
+{
+  "title": "I Will Survive",
+  "artist": "Scary Pockets",
+  "bpm": 108,
+  "sections": [
+    {
+      "id": 1745513948110,
+      "name": "Intro",
+      "energy": 2,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": 1745513948111,
+          "part": "A",
+          "bars": 8,
+          "notes": "Keys + shaker",
+          "lyrics": ""
+        }
+      ]
+    },
+    {
+      "id": "1745513988904_868390",
+      "name": "Verse 1",
+      "energy": 3,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745513988904_996039",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ vocals and bass",
+          "lyrics": "At first I was afraid I was \npetrified... thinkin' \nI could never live without you \nby my side I spent \nso so many nights thinkin' \nhow you did me wrong - I \ngrew strong, I learned \nhow to get along ... and so you're ..."
+        }
+      ]
+    },
+    {
+      "id": "1745514758456_163776",
+      "name": "",
+      "energy": 4,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745514758456_48171",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ Kick 4/4",
+          "lyrics": "back, from outer \nspace ... I just walked \nin to find you here with that sad \nlook upon your face ... I should've \nchanged my stupid lock ... I should've \nmade you leave your key ... If I'd have \nknown for just one second you'd be \nback to bother me ... go now ..."
+        }
+      ]
+    },
+    {
+      "id": "1745514859024_920092",
+      "name": "",
+      "energy": 5,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745514859025_170752",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ guitar",
+          "lyrics": "go ... walk out the \ndoor ... just turn \naround now, 'cause you're not \nwelcome anymore ... \n... weren't you the one who tried to \nbreak me with goodbye? ... Did you think I'd \ncrumble? ... Did you think i'd \nlay down and die? ... oh no, not ..."
+        }
+      ]
+    },
+    {
+      "id": "1745515160070_412080",
+      "name": "Chorus",
+      "energy": 6,
+      "backgroundColor": "#f8d7da",
+      "parts": [
+        {
+          "id": "1745515160070_137777",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ snare",
+          "lyrics": "I, I will sur-\nvive ........................ oh, as \nlong as I know how to love \nI know I'll stay alive ...... I've got \nall my life to live ......... and I've got \nall my love to give ......... I will \nsurvive ..................... I will sur-\nvive ........................ hey"
+        }
+      ]
+    },
+    {
+      "id": "1745515802022_862498",
+      "name": "Solo",
+      "energy": 5,
+      "backgroundColor": "#fff3cd",
+      "parts": [
+        {
+          "id": "1745515802022_341634",
+          "part": "A",
+          "bars": 8,
+          "notes": "ride",
+          "lyrics": "....... it took "
+        }
+      ]
+    },
+    {
+      "id": "1745515925173_733462",
+      "name": "Verse 2",
+      "energy": 4,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745515925173_448002",
+          "part": "A",
+          "bars": 8,
+          "notes": "vocals, bass, keys and kick",
+          "lyrics": "all the strength I had, not to fall \napart .. kept tryin' to \nfind the missin' pieces of my \nbroken heart ... and I spent \noh so many nights feelin' \nsorry for myself ... I used to \ncry, but now I \nhold my head up high ... and you see "
+        }
+      ]
+    },
+    {
+      "id": "1745516215345_354348",
+      "name": "",
+      "energy": 6,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745516215345_186075",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ guitars",
+          "lyrics": "me, somebody \nnew ... I'm not that \nchained up little person still in \nlove with you ... and so you \nfelt like droppin' in, don't ex-\npect me to be free ... now I'm \nsavin' all my lovin' for someone who's lovin' me ... Go on now"
+        }
+      ]
+    },
+    {
+      "id": "1745516260237_651533",
+      "name": "",
+      "energy": 7,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745516260237_618675",
+          "part": "A",
+          "bars": 8,
+          "notes": "",
+          "lyrics": "go, walk out the door\nJust turn around now, 'cause you're not welcome anymore\nWeren't you the one who tried to break me with goodbye?\nYou'd think I'd crumble?\nYou'd think I'd lay down and die? ....................... oh no, not"
+        }
+      ]
+    },
+    {
+      "id": "1745516312380_936510",
+      "name": "Chorus",
+      "energy": 8,
+      "backgroundColor": "#f8d7da",
+      "parts": [
+        {
+          "id": "1745516312380_152518",
+          "part": "A",
+          "bars": 8,
+          "notes": "+ snare",
+          "lyrics": "I, I will sur-\nvive ........................ oh, as \nlong as I know how to love \nI know I'll stay alive ...... I've got \nall my life to live ......... and I've got \nall my love to give ......... I will \nsurvive ..................... I will sur-\nvive ........................ hey"
+        }
+      ]
+    },
+    {
+      "id": "1745516351038_66831",
+      "name": "Outro",
+      "energy": 4,
+      "backgroundColor": null,
+      "parts": [
+        {
+          "id": "1745516351038_198014",
+          "part": "",
+          "bars": 4,
+          "notes": "",
+          "lyrics": "Hey.....Hey.......Hey.........Ba \nnano........ahh\n1 e & a 2 e & a 3 e & a 4 e & a "
+        }
+      ]
+    }
+  ],
+  "partsModule": [
+    {
+      "id": 1745517243388,
+      "part": "A",
+      "bars": 8,
+      "chords": "| Dm7 | Gm7 | C7 | Fmaj7 | Bbmaj7 | Em7b5 | Asus4 | A |"
+    }
+  ],
+  "transposeValue": 0,
+  "id": "sheet_1745530466700",
+  "dateModified": "2025-04-24T21:34:26.700Z"
+}

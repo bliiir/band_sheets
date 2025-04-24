@@ -1,0 +1,139 @@
+{
+  "title": "Come Together",
+  "artist": "The Beatles",
+  "bpm": "80",
+  "sections": [
+    {
+      "id": 1745177317040,
+      "name": "Theme",
+      "energy": 3,
+      "parts": [
+        {
+          "id": 1745177317041,
+          "part": "A",
+          "bars": 4,
+          "lyrics": "(Shoot me) x 3",
+          "notes": "Band - no keys"
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317043,
+      "name": "Verse 1",
+      "energy": 3,
+      "parts": [
+        {
+          "id": 1745177317043,
+          "part": "B",
+          "bars": 4,
+          "lyrics": "Here come old flat-top, he come groovin' up slowly\nHe got ju-ju eyeball, he one holy roller"
+        },
+        {
+          "id": 1745177317047,
+          "part": "C",
+          "bars": 2,
+          "lyrics": "He got hair down to his knee"
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317045,
+      "name": "Break",
+      "energy": 2,
+      "parts": [
+        {
+          "id": 1745177317045,
+          "part": "D",
+          "bars": 2,
+          "lyrics": "Got to be a joker, he just do what he please",
+          "notes": "Only Drums"
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317048,
+      "name": "Theme",
+      "energy": 3,
+      "parts": [
+        {
+          "id": 1745177317048,
+          "part": "A",
+          "bars": 4,
+          "lyrics": "(Shoot me) x 3",
+          "notes": "Band - no keys"
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317051,
+      "name": "Verse 2",
+      "energy": 3,
+      "parts": [
+        {
+          "id": 1745177317051,
+          "part": "B",
+          "bars": 4,
+          "lyrics": "He wear no shoeshine, he got toe-jam football\nHe got monkey finger, he shoot Coca-Cola"
+        },
+        {
+          "id": 1745177317051,
+          "part": "C",
+          "bars": 2,
+          "lyrics": "He say, \"I know you, you know me\""
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317056,
+      "name": "Break",
+      "energy": 2,
+      "parts": [
+        {
+          "id": 1745177317056,
+          "part": "D",
+          "bars": 2,
+          "lyrics": "One thing I can tell you is you got to be free",
+          "notes": "Only drums"
+        }
+      ],
+      "backgroundColor": null
+    },
+    {
+      "id": 1745177317058,
+      "name": "Chorus",
+      "energy": 4,
+      "parts": [
+        {
+          "id": 1745177317058,
+          "part": "E",
+          "bars": 2,
+          "lyrics": "Come together, right now, Over me"
+        }
+      ],
+      "backgroundColor": null
+    }
+  ],
+  "partsModule": [
+    {
+      "id": 1745177848037,
+      "part": "D",
+      "bars": 4,
+      "chords": ""
+    },
+    {
+      "id": 1745177878537,
+      "part": "E",
+      "bars": 4,
+      "chords": ""
+    }
+  ],
+  "transposeValue": 0,
+  "id": "sheet_1745527242878_3271",
+  "dateModified": "2025-04-24T20:40:42.878Z",
+  "originalId": 1745177661469
+}

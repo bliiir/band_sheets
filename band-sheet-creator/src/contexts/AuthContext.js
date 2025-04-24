@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 // Use real ApiService for authentication
 import { getCurrentUser, loginUser, logoutUser, registerUser } from '../services/ApiService';
-import { setUseApi } from '../services/SheetStorageService';
 
 /**
  * Context for managing authentication state
@@ -29,15 +28,12 @@ export function AuthProvider({ children }) {
           const user = await getCurrentUser();
           if (user) {
             setCurrentUser(user);
-            setUseApi(true); // Enable API in SheetStorageService
           } else {
             localStorage.removeItem('token');
-            setUseApi(false);
           }
         }
       } catch (err) {
         console.error('Auth check error:', err);
-        setUseApi(false);
       } finally {
         setLoading(false);
       }
@@ -62,7 +58,6 @@ export function AuthProvider({ children }) {
       const user = await registerUser({ username, email, password });
       
       setCurrentUser(user);
-      setUseApi(true);
       setLoading(false);
       return true;
     } catch (err) {
@@ -88,7 +83,6 @@ export function AuthProvider({ children }) {
       
       const user = await loginUser({ email, password });
       setCurrentUser(user);
-      setUseApi(true);
       return true;
     } catch (err) {
       console.error('Login error:', err);
@@ -106,7 +100,6 @@ export function AuthProvider({ children }) {
       
       // Clear user data first to prevent API calls during transition
       setCurrentUser(null);
-      setUseApi(false);
       
       // Then attempt to logout from the server
       try {

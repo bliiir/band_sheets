@@ -1,7 +1,7 @@
 /**
  * SheetStorageService.js
  * Service for handling sheet storage, saving, and loading operations
- * Integrated with backend API with localStorage fallback
+ * Integrated with backend API - requires MongoDB authentication
  */
 
 import { fetchWithAuth } from './ApiService';
@@ -9,31 +9,13 @@ import { fetchWithAuth } from './ApiService';
 // Get the API URL from environment or use default
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
 
-// API flag - set to true when a user is logged in
-let useApi = false;
-
 /**
- * Set whether to use the API or localStorage
- * Called by AuthContext when login state changes
- * 
- * @param {boolean} value - Whether to use API
+ * Check if user is authenticated
+ * @returns {boolean} Whether the user is authenticated
  */
-export const setUseApi = (value) => {
-  useApi = !!value;
-
-};
-
-/**
- * Check if we should use the API based on token existence
- * This is more reliable than the useApi flag
- * 
- * @returns {boolean} Whether to use the API
- */
-const shouldUseApi = () => {
+const isAuthenticated = () => {
   const token = localStorage.getItem('token');
-  const hasToken = !!token;
-
-  return hasToken;
+  return !!token;
 };
 
 /**
@@ -42,40 +24,16 @@ const shouldUseApi = () => {
  * @returns {Object|null} The loaded sheet or null if not found
  */
 export const getSheetById = async (id) => {
-  // Check if we should use the API (has token)
-  const isAuthenticated = shouldUseApi();
-
-  
-  if (isAuthenticated) {
-    try {
-      const data = await fetchWithAuth(`${API_URL}/sheets/${id}`);
-      return data.data;
-    } catch (error) {
-      console.error(`Error fetching sheet ${id} from API:`, error);
-      // Fall back to localStorage if API fails
-    }
+  if (!isAuthenticated()) {
+    console.error('Authentication required to load sheets');
+    return null;
   }
   
-  // Use localStorage as fallback
   try {
-    const raw = localStorage.getItem(`sheet_${id}`);
-    if (!raw) return null;
-    
-    // Parse the sheet data
-    const sheet = JSON.parse(raw);
-    
-    // Ensure section background colors are properly loaded
-    if (sheet.sections && Array.isArray(sheet.sections)) {
-      sheet.sections = sheet.sections.map(section => ({
-        ...section,
-        backgroundColor: section.backgroundColor || null
-      }));
-    }
-    
-
-    return sheet;
-  } catch (e) {
-    console.error('Failed to load sheet from localStorage:', e);
+    const data = await fetchWithAuth(`${API_URL}/sheets/${id}`);
+    return data.data;
+  } catch (error) {
+    console.error(`Error fetching sheet ${id} from API:`, error);
     return null;
   }
 };
@@ -87,6 +45,11 @@ export const getSheetById = async (id) => {
  * @returns {Object} The saved sheet with its ID
  */
 export const saveSheet = async (sheetData, isNewSave = false) => {
+  if (!isAuthenticated()) {
+    console.error('Authentication required to save sheets');
+    throw new Error('Authentication required to save sheets');
+  }
+
   // Update modification date
   const updatedSheet = {
     ...sheetData,
@@ -98,36 +61,7 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
     updatedSheet.id = `sheet_${Date.now()}`;
   }
   
-  // Check if we should use the API (has token)
-  const isAuthenticated = shouldUseApi();
-
-  if (isAuthenticated) {
-    try {
-
-      if (isNewSave || !sheetData.id) {
-        // Create new sheet
-        const data = await fetchWithAuth(`${API_URL}/sheets`, {
-          method: 'POST',
-          body: JSON.stringify(updatedSheet)
-        });
-        return data.data;
-      } else {
-        // Update existing sheet
-        const data = await fetchWithAuth(`${API_URL}/sheets/${updatedSheet.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(updatedSheet)
-        });
-        return data.data;
-      }
-    } catch (error) {
-      console.error('Error saving sheet to API:', error);
-      // Fall back to localStorage if API fails
-    }
-  }
-  
-  // Use localStorage as fallback
   try {
-
     // Ensure section background colors are properly saved
     const sheetWithColors = {
       ...updatedSheet,
@@ -137,11 +71,24 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       }))
     };
 
-    localStorage.setItem(`sheet_${updatedSheet.id}`, JSON.stringify(sheetWithColors));
-    return sheetWithColors;
-  } catch (e) {
-    console.error('Failed to save sheet to localStorage:', e);
-    return updatedSheet; // Return the sheet even if saving failed
+    if (isNewSave || !sheetData.id) {
+      // Create new sheet
+      const data = await fetchWithAuth(`${API_URL}/sheets`, {
+        method: 'POST',
+        body: JSON.stringify(sheetWithColors)
+      });
+      return data.data;
+    } else {
+      // Update existing sheet
+      const data = await fetchWithAuth(`${API_URL}/sheets/${sheetWithColors.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(sheetWithColors)
+      });
+      return data.data;
+    }
+  } catch (error) {
+    console.error('Error saving sheet to API:', error);
+    throw error;
   }
 };
 
@@ -151,28 +98,18 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
  * @returns {boolean} Whether the deletion was successful
  */
 export const deleteSheet = async (id) => {
-  // Check if we should use the API (has token)
-  const isAuthenticated = shouldUseApi();
-
-  
-  if (isAuthenticated) {
-    try {
-      await fetchWithAuth(`${API_URL}/sheets/${id}`, {
-        method: 'DELETE'
-      });
-      return true;
-    } catch (error) {
-      console.error(`Error deleting sheet ${id} from API:`, error);
-      // Fall back to localStorage if API fails
-    }
+  if (!isAuthenticated()) {
+    console.error('Authentication required to delete sheets');
+    return false;
   }
   
-  // Use localStorage as fallback
   try {
-    localStorage.removeItem(`sheet_${id}`);
+    await fetchWithAuth(`${API_URL}/sheets/${id}`, {
+      method: 'DELETE'
+    });
     return true;
-  } catch (e) {
-    console.error('Failed to delete sheet from localStorage:', e);
+  } catch (error) {
+    console.error(`Error deleting sheet ${id} from API:`, error);
     return false;
   }
 };
@@ -184,53 +121,25 @@ export const deleteSheet = async (id) => {
  * @returns {Array} Array of sheet objects
  */
 export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) => {
-  // Check if we should use the API (has token)
-  const isAuthenticated = shouldUseApi();
-
-  
-  if (isAuthenticated) {
-    try {
-
-      const data = await fetchWithAuth(`${API_URL}/sheets`);
-      const sheets = data.data || [];
-      
-      // Sort if needed
-      if (sortByNewest && sheets.length > 0) {
-        return sheets.sort((a, b) => {
-          return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
-        });
-      }
-      
-      return sheets;
-    } catch (error) {
-      console.error('Error fetching sheets from API:', error);
-      // Fall back to localStorage if API fails
-    }
+  if (!isAuthenticated()) {
+    console.error('Authentication required to get all sheets');
+    return [];
   }
   
-  // Use localStorage as fallback
-  const sheets = [];
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith('sheet_')) {
-        try {
-          const sheet = JSON.parse(localStorage.getItem(key));
-          sheets.push(sheet);
-        } catch (e) {
-          // Ignore invalid JSON
-        }
-      }
-    }
+    const data = await fetchWithAuth(`${API_URL}/sheets`);
+    const sheets = data.data || [];
     
-    // Sort by ID if requested (most recent first)
-    if (sortByNewest) {
-      sheets.sort((a, b) => b.id - a.id);
+    // Sort if needed
+    if (sortByNewest && sheets.length > 0) {
+      return sheets.sort((a, b) => {
+        return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
+      });
     }
     
     return sheets;
-  } catch (e) {
-    console.error('Error fetching all sheets from localStorage:', e);
+  } catch (error) {
+    console.error('Error fetching sheets from API:', error);
     return [];
   }
 };
@@ -243,8 +152,8 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
  * @returns {Object|null} Updated sheet or null if failed
  */
 export const shareSheet = async (id, username, permission = 'read') => {
-  if (!useApi) {
-    console.error('Sheet sharing requires API connection');
+  if (!isAuthenticated()) {
+    console.error('Authentication required to share sheets');
     return null;
   }
   
