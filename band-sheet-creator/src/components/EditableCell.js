@@ -6,6 +6,7 @@ import React from 'react';
  * 
  * @param {Object} props
  * @param {string} props.type - Type of cell ('text', 'number', or 'textarea')
+ * @param {string} props.contentType - Optional content type identifier (e.g., 'lyrics')
  * @param {boolean} props.isEditing - Whether the cell is currently being edited
  * @param {function} props.onBeginEdit - Function to call when editing begins
  * @param {string|number} props.value - Current value of the cell
@@ -19,6 +20,7 @@ import React from 'react';
  */
 const EditableCell = ({
   type = 'text',
+  contentType,
   isEditing,
   onBeginEdit,
   value,
@@ -81,7 +83,7 @@ const EditableCell = ({
       case 'textarea':
         return (
           <textarea
-            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto`}
+            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto ${contentType === 'lyrics' ? "font-['Inconsolata']" : ''}`}
             value={editValue}
             onChange={handleTextareaChange}
             onFocus={handleTextareaFocus}
@@ -110,7 +112,7 @@ const EditableCell = ({
   const renderDisplayMode = () => {
     if (type === 'textarea') {
       return (
-        <div className="whitespace-pre-line max-h-[120px] overflow-y-auto">
+        <div className={`max-h-[200px] overflow-y-auto ${contentType === 'lyrics' ? "whitespace-pre font-['Inconsolata']" : "whitespace-pre-line"}`}>
           {value || (placeholder && <span className="text-gray-400 italic">{placeholder}</span>)}
         </div>
       );

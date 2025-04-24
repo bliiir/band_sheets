@@ -219,10 +219,15 @@ const Part = ({
     e.stopPropagation();
   };
   
+  // No dynamic height calculation needed
+  
+  // We'll use a simpler approach with fixed row heights
+  // No dynamic height calculation
+
   return (
     <div 
       key={part.id} 
-      className={`flex min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
+      className={`flex min-h-[80px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
       onClick={handlePartClick}
@@ -257,9 +262,10 @@ const Part = ({
       </div>
       
       {/* Lyrics cell */}
-      <div className="flex-1 px-2 py-2 text-gray-500 overflow-y-auto">
+      <div className="flex-1 px-2 py-2 text-gray-500 overflow-y-auto font-['Inconsolata']">
         <EditableCell
           type="textarea"
+          contentType="lyrics"
           isEditing={isEditing(si, pi, 'lyrics')}
           onBeginEdit={() => beginEdit(si, pi, 'lyrics')}
           value={part.lyrics}

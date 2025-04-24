@@ -104,7 +104,7 @@ const EditableField = ({
     <>
       {type === 'textarea' ? (
         <textarea
-          className={`${baseInputClass} resize-vertical w-full p-2 min-h-[40px] text-sm`}
+          className={`${baseInputClass} resize-vertical w-full p-2 min-h-[40px] text-sm ${field === 'chords' ? "font-['Inconsolata']" : ''}`}
           value={editValue}
           onChange={handleChange}
           onBlur={handleBlur}

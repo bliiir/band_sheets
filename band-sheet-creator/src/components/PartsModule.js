@@ -81,14 +81,14 @@ const PartsModule = () => {
               type="textarea"
               indices={{ sectionIndex: index, partIndex: null, field: 'chords', editType: 'partsModule' }}
               placeholder="Click to add chords..."
-              className="whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100"
+              className="whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100 font-['Inconsolata']"
               inputClassName="px-2 py-1 text-sm min-h-[40px] resize-vertical"
               onClickView={() => beginPartModuleEdit(index, 'chords')}
             />
           </div>
           {/* Transposed Chords */}
           <div className="flex-1 px-2 py-2 overflow-y-auto">
-            <div className="font-mono whitespace-pre-wrap max-h-[120px] overflow-y-auto">
+            <div className="font-['Inconsolata'] whitespace-pre-wrap max-h-[120px] overflow-y-auto">
               {partItem.chords ? 
                 getTransposedChordsForPart(partItem.chords) : 
                 <span className="text-gray-400 italic">Transposed chords will appear here</span>

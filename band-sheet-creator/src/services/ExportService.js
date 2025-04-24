@@ -61,6 +61,7 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
       <head>
         <title>${songData.title || 'Untitled'} - Band Sheet</title>
         <meta charset="utf-8">
+        <link href="https://fonts.googleapis.com/css2?family=Inconsolata&display=swap" rel="stylesheet">
         <style>
           @media print {
             .page-break {
@@ -159,6 +160,7 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
           .lyrics {
             white-space: pre-line;
             line-height: 1.3;
+            font-family: 'Inconsolata', monospace;
           }
           .notes {
             font-size: 11px;
@@ -250,8 +252,8 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
               <div style="display: grid; grid-template-columns: 80px 60px 1fr 1fr; gap: 10px; padding: 8px 16px; border-bottom: 1px solid #eee;">
                 <div style="font-weight: bold;">${part.part}</div>
                 <div>${part.bars}</div>
-                <div style="font-family: monospace;">${part.chords || ''}</div>
-                <div style="font-family: monospace;">${part.chords ? getTransposedChords(part.chords, transposeValue) : ''}</div>
+                <div style="font-family: 'Inconsolata', monospace;">${part.chords || ''}</div>
+                <div style="font-family: 'Inconsolata', monospace;">${part.chords ? getTransposedChords(part.chords, transposeValue) : ''}</div>
               </div>
             `).join('')}
           </div>

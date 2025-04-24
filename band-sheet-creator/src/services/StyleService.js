@@ -54,3 +54,49 @@ export const adjustTextareaHeight = (textarea, maxHeight = 200) => {
   textarea.style.height = 'auto';
   textarea.style.height = Math.min(maxHeight, textarea.scrollHeight) + 'px';
 };
+
+/**
+ * Calculates the appropriate height for text content
+ * @param {string} text - The text content to measure
+ * @param {boolean} isTextarea - Whether this is multiline content
+ * @param {boolean} small - Whether to use small text size
+ * @param {number} minHeight - Minimum height in pixels
+ * @param {number} maxHeight - Maximum height in pixels
+ * @returns {number} The calculated height in pixels
+ */
+export const calculateContentHeight = (text, isTextarea = true, small = false, minHeight = 40, maxHeight = 200) => {
+  // Return minimum height for empty or whitespace-only content
+  if (!text || text.trim() === '') return minHeight;
+  
+  try {
+    // Create a temporary measuring div
+    const measurer = document.createElement('div');
+    measurer.style.position = 'absolute';
+    measurer.style.visibility = 'hidden';
+    measurer.style.height = 'auto';
+    measurer.style.width = isTextarea ? '200px' : 'auto'; // Approximate width for textarea
+    measurer.style.padding = '8px';
+    measurer.style.fontSize = small ? '0.75rem' : '0.875rem';
+    measurer.style.lineHeight = '1.5';
+    measurer.style.whiteSpace = isTextarea ? 'pre-wrap' : 'nowrap';
+    
+    // Set the text content
+    measurer.textContent = text;
+    
+    // Add to DOM, measure, then remove
+    document.body.appendChild(measurer);
+    
+    // Calculate height based on content
+    // Add a small buffer (4px) for padding, but don't add too much
+    const contentHeight = measurer.offsetHeight;
+    const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, contentHeight + 4));
+    
+    // Clean up
+    document.body.removeChild(measurer);
+    
+    return calculatedHeight;
+  } catch (error) {
+    console.error('Error calculating content height:', error);
+    return minHeight; // Fallback to minimum height if measurement fails
+  }
+};
