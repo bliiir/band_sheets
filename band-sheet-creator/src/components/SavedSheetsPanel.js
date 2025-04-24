@@ -229,17 +229,10 @@ export default function SavedSheetsPanel({
       className={`h-full flex flex-col transition-all duration-200 overflow-hidden bg-white shadow-lg rounded-r-2xl ${open ? "w-[260px] border-r border-gray-200" : "w-0 border-none"
         } relative z-30`}
     >
-      <div className="px-4 py-4 border-b border-gray-100 font-semibold flex items-center justify-between sticky top-0 bg-white z-20 shadow-sm">
+      <div className="px-4 py-6 pt-10 border-b border-gray-100 font-semibold flex items-center justify-between sticky top-0 bg-white z-20 shadow-sm">
         <span className="tracking-wide text-lg text-gray-800">
           Saved Sheets
         </span>
-        <button
-          className="bg-transparent border-0 text-2xl cursor-pointer hover:text-red-500 transition-colors focus:outline-none p-1 rounded-full hover:bg-gray-100"
-          onClick={onClose}
-          aria-label="Close sidebar"
-        >
-          ×
-        </button>
       </div>
       <div className="flex-1 overflow-y-auto pb-2">
         {(!savedSheets || !Array.isArray(savedSheets) || savedSheets.length === 0) && (

@@ -55,13 +55,10 @@ export const transposeChord = (chord, semitones) => {
 export const getTransposedChords = (chords, semitones) => {
   if (!chords) return '';
   
-  // Split by spaces or other common chord progression separators
-  const chordArray = chords.split(/([|\s-])/);
-  return chordArray.map(item => {
-    // Only transpose items that look like chords
-    if (/^[A-G][b#]?/.test(item)) {
-      return transposeChord(item, semitones);
-    }
-    return item;
-  }).join('');
+  // Use a regex that captures chords but preserves all whitespace
+  // This regex looks for chord patterns (starting with A-G) and captures them
+  // while preserving all other characters (including whitespace)
+  return chords.replace(/([A-G][b#]?[^A-G\s]*)/g, (match) => {
+    return transposeChord(match, semitones);
+  });
 };

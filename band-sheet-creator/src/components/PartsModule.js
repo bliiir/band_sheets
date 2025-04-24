@@ -2,6 +2,7 @@ import React from 'react';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import EditableField from './EditableField';
+import EditableCell from './EditableCell';
 import TransposeControls from './TransposeControls';
 
 /**
@@ -18,7 +19,12 @@ const PartsModule = () => {
 
   // Get editing functionality from context
   const {
-    beginEdit
+    beginEdit,
+    isEditing,
+    editValue,
+    setEditValue,
+    saveEdit,
+    setEditing
   } = useEditing();
 
   // Helper function for beginning editing of parts module items
@@ -75,20 +81,24 @@ const PartsModule = () => {
             />
           </div>
           {/* Chords */}
-          <div className="flex-1 px-2 py-2 overflow-y-auto">
-            <EditableField
-              value={partItem.chords}
+          <div className="flex-1 px-2 py-2">
+            <EditableCell
               type="textarea"
-              indices={{ sectionIndex: index, partIndex: null, field: 'chords', editType: 'partsModule' }}
+              contentType="chords"
+              isEditing={isEditing(index, null, 'chords', 'partsModule')}
+              onBeginEdit={() => beginEdit(index, null, 'chords', 'partsModule')}
+              value={partItem.chords}
+              editValue={editValue}
+              setEditValue={setEditValue}
+              saveEdit={saveEdit}
+              setEditing={setEditing}
               placeholder="Click to add chords..."
-              className="whitespace-pre-wrap max-h-[120px] overflow-y-auto w-full h-full p-1 hover:bg-gray-100 font-['Inconsolata']"
-              inputClassName="px-2 py-1 text-sm min-h-[40px] resize-vertical"
-              onClickView={() => beginPartModuleEdit(index, 'chords')}
+              className=""
             />
           </div>
           {/* Transposed Chords */}
-          <div className="flex-1 px-2 py-2 overflow-y-auto">
-            <div className="font-['Inconsolata'] whitespace-pre-wrap max-h-[120px] overflow-y-auto">
+          <div className="flex-1 px-2 py-2">
+            <div className="font-['Inconsolata'] whitespace-pre-wrap">
               {partItem.chords ? 
                 getTransposedChordsForPart(partItem.chords) : 
                 <span className="text-gray-400 italic">Transposed chords will appear here</span>

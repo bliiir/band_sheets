@@ -141,7 +141,7 @@ const EditableField = ({
   ) : (
     // View mode
     <div 
-      className={`cursor-pointer ${className}`}
+      className={`cursor-pointer ${className} ${field === 'chords' ? 'whitespace-pre font-[\'Inconsolata\'] min-h-[40px] h-auto' : ''}`}
       onClick={handleViewClick}
     >
       {value || <span className="text-gray-400 italic">{placeholder}</span>}

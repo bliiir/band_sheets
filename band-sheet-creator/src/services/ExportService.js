@@ -252,8 +252,8 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
               <div style="display: grid; grid-template-columns: 80px 60px 1fr 1fr; gap: 10px; padding: 8px 16px; border-bottom: 1px solid #eee;">
                 <div style="font-weight: bold;">${part.part}</div>
                 <div>${part.bars}</div>
-                <div style="font-family: 'Inconsolata', monospace;">${part.chords || ''}</div>
-                <div style="font-family: 'Inconsolata', monospace;">${part.chords ? getTransposedChords(part.chords, transposeValue) : ''}</div>
+                <div style="font-family: 'Inconsolata', monospace; white-space: pre;">${part.chords || ''}</div>
+                <div style="font-family: 'Inconsolata', monospace; white-space: pre;">${part.chords ? getTransposedChords(part.chords, transposeValue) : ''}</div>
               </div>
             `).join('')}
           </div>

@@ -55,13 +55,13 @@ const EditableCell = ({
   const handleTextareaChange = (e) => {
     setEditValue(e.target.value);
     e.target.style.height = 'auto';
-    e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+    e.target.style.height = e.target.scrollHeight + 'px';
   };
 
   // Auto-resize textarea on focus
   const handleTextareaFocus = (e) => {
     e.target.style.height = 'auto';
-    e.target.style.height = Math.min(200, e.target.scrollHeight) + 'px';
+    e.target.style.height = e.target.scrollHeight + 'px';
   };
 
   // Render edit mode
@@ -83,7 +83,7 @@ const EditableCell = ({
       case 'textarea':
         return (
           <textarea
-            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto ${contentType === 'lyrics' ? "font-['Inconsolata']" : ''}`}
+            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto ${contentType === 'lyrics' || contentType === 'chords' ? "font-['Inconsolata']" : ''}`}
             value={editValue}
             onChange={handleTextareaChange}
             onFocus={handleTextareaFocus}
@@ -112,7 +112,7 @@ const EditableCell = ({
   const renderDisplayMode = () => {
     if (type === 'textarea') {
       return (
-        <div className={`max-h-[200px] overflow-y-auto ${contentType === 'lyrics' ? "whitespace-pre font-['Inconsolata']" : "whitespace-pre-line"}`}>
+        <div className={`${contentType === 'lyrics' || contentType === 'chords' ? "whitespace-pre font-['Inconsolata']" : "whitespace-pre-line"}`}>
           {value || (placeholder && <span className="text-gray-400 italic">{placeholder}</span>)}
         </div>
       );

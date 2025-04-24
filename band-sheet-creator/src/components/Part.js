@@ -227,13 +227,13 @@ const Part = ({
   return (
     <div 
       key={part.id} 
-      className={`flex min-h-[80px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
+      className={`flex min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
       onClick={handlePartClick}
     >
       {/* Part label cell */}
-      <div className="w-[60px] min-w-[60px] px-4 py-2 flex items-center">
+      <div className="w-[60px] min-w-[60px] px-4 py-1 flex items-center">
         <EditableCell
           type="text"
           isEditing={isEditing(si, pi, 'part')}
@@ -248,7 +248,7 @@ const Part = ({
       </div>
       
       {/* Bars cell */}
-      <div className="w-[60px] min-w-[60px] px-2 py-2 flex items-center">
+      <div className="w-[60px] min-w-[60px] px-2 py-1 flex items-center">
         <EditableCell
           type="number"
           isEditing={isEditing(si, pi, 'bars')}
@@ -262,7 +262,7 @@ const Part = ({
       </div>
       
       {/* Lyrics cell */}
-      <div className="flex-1 px-2 py-2 text-gray-500 overflow-y-auto font-['Inconsolata']">
+      <div className="flex-1 px-2 py-1 text-gray-500 overflow-y-auto font-['Inconsolata']">
         <EditableCell
           type="textarea"
           contentType="lyrics"
@@ -278,7 +278,7 @@ const Part = ({
       </div>
       
       {/* Notes cell */}
-      <div className="w-[200px] min-w-[200px] px-2 py-2 text-xs text-gray-500 overflow-y-auto">
+      <div className="w-[200px] min-w-[200px] px-2 py-1 text-xs text-gray-500 overflow-y-auto">
         <EditableCell
           type="textarea"
           isEditing={isEditing(si, pi, 'notes')}
@@ -294,7 +294,7 @@ const Part = ({
       </div>
       
       {/* Actions cell */}
-      <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center">
+      <div className="w-[40px] min-w-[40px] px-2 py-1 flex justify-center items-center">
         {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
           <div
             onClick={(e) => handleContextMenu(e, "part", si, pi)}

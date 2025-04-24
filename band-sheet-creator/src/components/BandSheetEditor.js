@@ -425,11 +425,12 @@ export default function BandSheetEditor({ initialSheetId }) {
       
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-auto ml-14">
-        {/* Song info bar */}
+        {/* Song info bar - positioned above the sheet in the visual stack */}
         <SongInfoBar songData={songData} setSongData={setSongData} />
 
-        {/* Sheet container */}
+        {/* Sheet container - positioned below the SongInfoBar in the visual stack */}
         <div className="mt-8 mx-4 mb-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
+
           {/* Sheet header row */}
           <SheetHeader />
 
