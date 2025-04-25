@@ -1,7 +1,10 @@
 {
+  "_id": "680bf52a777b9afe59576b0d",
+  "id": "1745614122249_696626",
   "title": "Georgy Porgy",
   "artist": "Toto",
   "bpm": 98,
+  "dateModified": "2025-04-25T20:48:42.249Z",
   "sections": [
     {
       "id": 1745520165932,
@@ -318,6 +321,10 @@
     }
   ],
   "transposeValue": 0,
-  "id": "sheet_1745528898852",
-  "dateModified": "2025-04-24T21:08:18.852Z"
+  "owner": "68068be7a553d634fe42d4c4",
+  "sharedWith": [],
+  "isPublic": false,
+  "createdAt": "2025-04-24T18:46:37.800Z",
+  "updatedAt": "2025-04-24T18:46:37.800Z",
+  "__v": 0
 }

@@ -137,7 +137,7 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="mb-6">
           <h3 className="font-semibold mb-2">Import Sheets</h3>
           <p className="text-gray-600 mb-3">
-            Import sheets from a previously exported JSON file. Sheets with duplicate IDs will be skipped.
+            Import sheets from JSON files. The system will automatically detect the file type and handle it appropriately.
           </p>
           <input
             type="file"
@@ -153,7 +153,7 @@ const ImportExportModal = ({ isOpen, onClose, onSuccess }) => {
           <button
             onClick={handleImport}
             disabled={isImporting}
-            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
+            className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded w-full"
           >
             Import Sheets
           </button>

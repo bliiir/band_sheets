@@ -36,7 +36,8 @@ exports.exportSheets = async (req, res) => {
 // Import sheets from exported JSON
 exports.importSheets = async (req, res) => {
   try {
-    const { sheets } = req.body;
+    const { sheets, importOptions } = req.body;
+    console.log('Import options received:', importOptions);
     
     if (!sheets || !Array.isArray(sheets) || sheets.length === 0) {
       return res.status(400).json({
@@ -44,6 +45,15 @@ exports.importSheets = async (req, res) => {
         error: 'Invalid import data. No sheets found in the import file.'
       });
     }
+    
+    // Set default options if not provided
+    const options = {
+      generateNewIds: importOptions?.generateNewIds || false,
+      skipDuplicates: importOptions?.skipDuplicates || false,
+      overwriteDuplicates: importOptions?.overwriteDuplicates || false
+    };
+    
+    console.log('Using import options:', options);
     
     const results = {
       total: sheets.length,
@@ -59,9 +69,37 @@ exports.importSheets = async (req, res) => {
         const existingSheet = await Sheet.findOne({ id: sheetData.id });
         
         if (existingSheet) {
-          // Skip this sheet
-          results.skipped++;
-          continue;
+          // Handle based on options
+          if (options.generateNewIds) {
+            // Generate a new ID for this sheet
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 1000000);
+            sheetData.id = `${timestamp}_${random}`;
+            console.log(`Generated new ID for duplicate sheet: ${sheetData.id}`);
+            // Continue with import using new ID
+          } else if (options.skipDuplicates) {
+            // Skip this sheet
+            console.log(`Skipping duplicate sheet with ID: ${sheetData.id}`);
+            results.skipped++;
+            continue;
+          } else if (options.overwriteDuplicates) {
+            // Update existing sheet
+            console.log(`Overwriting existing sheet with ID: ${sheetData.id}`);
+            await Sheet.findOneAndUpdate({ id: sheetData.id }, {
+              ...sheetData,
+              owner: req.user.id,
+              sharedWith: existingSheet.sharedWith || [],
+              isPublic: existingSheet.isPublic || false,
+              updatedAt: new Date()
+            });
+            results.imported++;
+            continue;
+          } else {
+            // Default to skip
+            console.log(`No option specified, skipping sheet with ID: ${sheetData.id}`);
+            results.skipped++;
+            continue;
+          }
         }
         
         // Prepare sheet data for import

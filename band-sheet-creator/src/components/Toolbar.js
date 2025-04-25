@@ -5,11 +5,12 @@ import { ReactComponent as SaveIcon } from "../assets/save.svg";
 import { ReactComponent as SaveAllIcon } from "../assets/save_all.svg";
 import { ReactComponent as PrintIcon } from "../assets/print.svg";
 import { ReactComponent as UserIcon } from "../assets/user.svg";
-import { ReactComponent as ImportIcon } from "../assets/import.svg";
-import { ReactComponent as ExportIcon } from "../assets/export.svg";
+import { ReactComponent as ArrowLeftFromLineIcon } from "../assets/arrow_left_from_line.svg";
+import { ReactComponent as ArrowRightFromLineIcon } from "../assets/arrow_right_from_line.svg";
 import { useAuth } from "../contexts/AuthContext";
 import AuthModal from "./Auth/AuthModal";
-import ImportExportModal from "./ImportExportModal";
+import ImportModal from "./ImportModal";
+import ExportModal from "./ExportModal";
 
 const Toolbar = ({ 
   sidebarOpen, 
@@ -20,7 +21,8 @@ const Toolbar = ({
   handleExport 
 }) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [importExportModalOpen, setImportExportModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const { currentUser, logout, isAuthenticated } = useAuth();
   return (
     <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-8 pb-4 z-30 fixed left-0 top-[60px] bottom-0">
@@ -62,10 +64,18 @@ const Toolbar = ({
 
       <button 
         className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
-        onClick={() => setImportExportModalOpen(true)}
-        title="Import/Export"
+        onClick={() => setImportModalOpen(true)}
+        title="Import Sheets"
       >
-        <ImportIcon className="w-6 h-6" />
+        <ArrowLeftFromLineIcon className="w-6 h-6" />
+      </button>
+      
+      <button 
+        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        onClick={() => setExportModalOpen(true)}
+        title="Export Sheets"
+      >
+        <ArrowRightFromLineIcon className="w-6 h-6" />
       </button>
       
       {/* Spacer */}
@@ -83,13 +93,23 @@ const Toolbar = ({
       {/* Auth Modal */}
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
       
-      {/* Import/Export Modal */}
-      <ImportExportModal 
-        isOpen={importExportModalOpen} 
-        onClose={() => setImportExportModalOpen(false)} 
-        onSuccess={() => {
-          // Close the modal after successful import/export
-          setTimeout(() => setImportExportModalOpen(false), 2000);
+      {/* Import Modal */}
+      <ImportModal 
+        isOpen={importModalOpen} 
+        onClose={() => setImportModalOpen(false)} 
+        onSuccess={(result) => {
+          // Don't automatically close the modal
+          // Let the user close it manually
+        }}
+      />
+      
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={exportModalOpen} 
+        onClose={() => setExportModalOpen(false)} 
+        onSuccess={(result) => {
+          // Don't automatically close the modal
+          // Let the user close it manually
         }}
       />
     </div>
