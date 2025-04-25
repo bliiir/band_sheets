@@ -24,16 +24,62 @@ const isAuthenticated = () => {
  * @returns {Object|null} The loaded sheet or null if not found
  */
 export const getSheetById = async (id) => {
-  if (!isAuthenticated()) {
-    console.error('Authentication required to load sheets');
-    return null;
+  // Check if user is authenticated
+  if (isAuthenticated()) {
+    try {
+      console.log(`Getting sheet ${id} from MongoDB`);
+      const token = localStorage.getItem('token');
+      
+      // Make the API request with full URL
+      const response = await fetch(`${API_URL}/sheets/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Log the response status
+      console.log('API response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Successfully loaded sheet ${id} from MongoDB`);
+      return data.data;
+    } catch (error) {
+      console.error(`Error fetching sheet ${id} from API:`, error);
+      
+      // Fallback to localStorage if sheet not found in MongoDB
+      console.log(`Trying to load sheet ${id} from localStorage as fallback`);
+      return getSheetByIdFromLocalStorage(id);
+    }
+  } else {
+    // Fallback to localStorage only for unauthenticated users
+    console.log(`User not authenticated, getting sheet ${id} from localStorage`);
+    return getSheetByIdFromLocalStorage(id);
   }
-  
+};
+
+/**
+ * Helper function to get a sheet from localStorage by ID
+ * @param {string|number} id - The ID of the sheet to load
+ * @returns {Object|null} The loaded sheet or null if not found
+ */
+const getSheetByIdFromLocalStorage = (id) => {
   try {
-    const data = await fetchWithAuth(`${API_URL}/sheets/${id}`);
-    return data.data;
+    const sheetData = localStorage.getItem(`sheet_${id}`);
+    if (sheetData) {
+      const sheet = JSON.parse(sheetData);
+      console.log(`Successfully loaded sheet ${id} from localStorage`);
+      return sheet;
+    }
+    console.log(`Sheet ${id} not found in localStorage`);
+    return null;
   } catch (error) {
-    console.error(`Error fetching sheet ${id} from API:`, error);
+    console.error(`Error fetching sheet ${id} from localStorage:`, error);
     return null;
   }
 };
@@ -121,27 +167,87 @@ export const deleteSheet = async (id) => {
  * @returns {Array} Array of sheet objects
  */
 export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) => {
-  if (!isAuthenticated()) {
-    console.error('Authentication required to get all sheets');
-    return [];
+  // Check if user is authenticated
+  if (isAuthenticated()) {
+    try {
+      console.log('Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
+      
+      // Get the token for debugging
+      const token = localStorage.getItem('token');
+      console.log('Using authentication token:', token ? 'Token exists' : 'No token found');
+      
+      // Make the API request with full URL
+      const response = await fetch(`${API_URL}/sheets`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Log the response status
+      console.log('API response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('API response data:', data);
+      
+      const sheets = data.data || [];
+      
+      // Sort if needed
+      if (sortByNewest && sheets.length > 0) {
+        return sheets.sort((a, b) => {
+          return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
+        });
+      }
+      
+      return sheets;
+    } catch (error) {
+      console.error('Error fetching sheets from API:', error);
+      // Fall back to localStorage on API error
+      console.log('Falling back to localStorage due to API error');
+      return getAllSheetsFromLocalStorage(sortByNewest);
+    }
+  } else {
+    // Fallback to localStorage for unauthenticated users
+    console.log('User not authenticated, using localStorage as fallback');
+    return getAllSheetsFromLocalStorage(sortByNewest);
+  }
+};
+
+/**
+ * Helper function to get sheets from localStorage
+ * @param {boolean} sortByNewest - Whether to sort sheets by date (descending)
+ * @returns {Array} Array of sheet objects from localStorage
+ */
+const getAllSheetsFromLocalStorage = (sortByNewest = true) => {
+  const sheets = [];
+  
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('sheet_')) {
+      try {
+        const sheetData = JSON.parse(localStorage.getItem(key));
+        sheets.push(sheetData);
+      } catch (e) {
+        console.error(`Error parsing sheet from localStorage: ${key}`, e);
+      }
+    }
   }
   
-  try {
-    const data = await fetchWithAuth(`${API_URL}/sheets`);
-    const sheets = data.data || [];
-    
-    // Sort if needed
-    if (sortByNewest && sheets.length > 0) {
-      return sheets.sort((a, b) => {
-        return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
-      });
-    }
-    
-    return sheets;
-  } catch (error) {
-    console.error('Error fetching sheets from API:', error);
-    return [];
+  console.log(`Found ${sheets.length} sheets in localStorage`);
+  
+  // Sort if needed
+  if (sortByNewest && sheets.length > 0) {
+    return sheets.sort((a, b) => {
+      return new Date(b.dateModified || b.dateCreated || 0) - new Date(a.dateModified || a.dateCreated || 0);
+    });
   }
+  
+  return sheets;
 };
 
 /**

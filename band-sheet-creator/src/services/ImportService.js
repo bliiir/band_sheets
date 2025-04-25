@@ -5,11 +5,11 @@ import { API_URL } from './ApiService';
 import { getAllSheets, getSheetById } from './SheetStorageService';
 
 /**
- * Check for duplicate sheets in localStorage
+ * Check for duplicate sheets in MongoDB (when authenticated) or localStorage
  * @param {Array} sheets - Array of sheets to check
  * @returns {Object} Results of duplicate check
  */
-export const checkForDuplicates = (sheets) => {
+export const checkForDuplicates = async (sheets) => {
   const results = {
     total: sheets.length,
     potentialDuplicates: [],
@@ -18,13 +18,54 @@ export const checkForDuplicates = (sheets) => {
     hasDuplicates: false
   };
 
+  // Get token to check if we should use API
+  const token = localStorage.getItem('token');
+  const isAuthenticated = !!token;
+  
+  // Get all current sheets for comparison
+  let currentSheets = [];
+  
+  if (isAuthenticated) {
+    // Get sheets from MongoDB if authenticated
+    try {
+      console.log('Getting sheets from MongoDB for duplicate checking');
+      const response = await fetch(`${API_URL}/sheets`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      currentSheets = data.data || [];
+      console.log(`Found ${currentSheets.length} sheets in MongoDB for duplicate checking`);
+    } catch (error) {
+      console.error('Error fetching sheets from MongoDB for duplicate checking:', error);
+      // If there's an error with MongoDB, we'll fall back to localStorage
+      currentSheets = getLocalStorageSheets();
+    }
+  } else {
+    // Fall back to localStorage if not authenticated
+    currentSheets = getLocalStorageSheets();
+  }
+
   // Check each sheet for potential duplicates
   for (const sheet of sheets) {
-    const existingSheet = localStorage.getItem(`sheet_${sheet.id}`);
-
-    if (existingSheet) {
+    // Check if this sheet exists by ID
+    const existingSheetById = currentSheets.find(s => s.id === sheet.id);
+    
+    // Also check if a sheet with the same title exists (regardless of ID)
+    const existingSheetByTitle = currentSheets.find(s => s.title === sheet.title && s.id !== sheet.id);
+    
+    if (existingSheetById || existingSheetByTitle) {
       // This is a potential duplicate
-      const parsedExisting = JSON.parse(existingSheet);
+      const parsedExisting = existingSheetById || existingSheetByTitle;
+      
       results.potentialDuplicates.push({
         importSheet: sheet,
         existingSheet: parsedExisting
@@ -36,8 +77,29 @@ export const checkForDuplicates = (sheets) => {
       results.newSheets.push(sheet);
     }
   }
-
+  
   return results;
+};
+
+/**
+ * Helper function to get sheets from localStorage
+ * @returns {Array} Array of sheets from localStorage
+ */
+const getLocalStorageSheets = () => {
+  const sheets = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('sheet_')) {
+      try {
+        const sheetData = JSON.parse(localStorage.getItem(key));
+        sheets.push(sheetData);
+      } catch (e) {
+        console.error(`Error parsing sheet from localStorage: ${key}`, e);
+      }
+    }
+  }
+  console.log(`Found ${sheets.length} sheets in localStorage for duplicate checking`);
+  return sheets;
 };
 
 /**
@@ -79,8 +141,15 @@ const importToStorage = async (sheets, options = {}) => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          sheets,
-          options: importOptions
+          sheets: sheets.map(sheet => {
+            if (importOptions.generateNewIds) {
+              // Remove MongoDB-specific fields when creating duplicates
+              const { _id, ...rest } = sheet;
+              return rest;
+            }
+            return sheet;
+          }),
+          importOptions
         })
       });
       
@@ -267,7 +336,7 @@ export const importSheets = async (file, options = {}) => {
         const isAuthenticated = !!token;
 
         // First, check for duplicates regardless of whether we're using API or localStorage
-        const duplicateCheck = checkForDuplicates(sheetsToImport);
+        const duplicateCheck = await checkForDuplicates(sheetsToImport);
 
         // If there are potential duplicates and we haven't specified options yet,
         // return the duplicate check results so the UI can ask the user what to do
@@ -296,13 +365,87 @@ export const importSheets = async (file, options = {}) => {
             const isDuplicate = duplicateCheck.duplicates.some(dup => dup.id === sheet.id);
             
             if (isDuplicate) {
-              // Generate a new ID
+              // Generate a new ID with proper prefix
               const timestamp = Date.now();
               const random = Math.floor(Math.random() * 1000000);
-              const newId = `${timestamp}_${random}`;
+              const newId = `sheet_${timestamp}_${random}`;
               
-              // Create a copy with the new ID
-              const newSheet = { ...sheet, id: newId };
+              // Create a deep copy with the new ID to avoid reference issues
+              // First create a copy of the sheet
+              const sheetCopy = JSON.parse(JSON.stringify(sheet));
+              
+              // Remove MongoDB-specific fields to prevent duplicate key errors
+              delete sheetCopy._id;
+              delete sheetCopy.__v;
+              delete sheetCopy.createdAt;
+              delete sheetCopy.updatedAt;
+              
+              // Create the new sheet with our application-specific fields
+              const newSheet = {
+                ...sheetCopy,
+                id: newId,
+                // Reset ownership and sharing information for the new copy
+                owner: null,  // Will be set by the backend
+                sharedWith: [],
+                isPublic: false,
+                // Use ISO string format for dates to ensure proper serialization
+                dateImported: new Date().toISOString(),
+                dateModified: new Date().toISOString()
+              };
+              
+              // Ensure all sections and parts have unique IDs too
+              if (newSheet.sections && Array.isArray(newSheet.sections)) {
+                newSheet.sections = newSheet.sections.map(section => {
+                  // Remove MongoDB-specific fields from section
+                  const sectionCopy = { ...section };
+                  delete sectionCopy._id;
+                  
+                  // Generate new section ID
+                  const sectionTimestamp = Date.now();
+                  const sectionRandom = Math.floor(Math.random() * 1000000);
+                  
+                  // Update parts if they exist
+                  if (sectionCopy.parts && Array.isArray(sectionCopy.parts)) {
+                    sectionCopy.parts = sectionCopy.parts.map(part => {
+                      // Remove MongoDB-specific fields from part
+                      const partCopy = { ...part };
+                      delete partCopy._id;
+                      
+                      // Generate new part ID
+                      const partTimestamp = Date.now() + Math.floor(Math.random() * 100);
+                      const partRandom = Math.floor(Math.random() * 1000000);
+                      
+                      return {
+                        ...partCopy,
+                        id: `part_${partTimestamp}_${partRandom}`
+                      };
+                    });
+                  }
+                  
+                  return {
+                    ...sectionCopy,
+                    id: `section_${sectionTimestamp}_${sectionRandom}`
+                  };
+                });
+              }
+              
+              // Also handle partsModule if it exists
+              if (newSheet.partsModule && Array.isArray(newSheet.partsModule)) {
+                newSheet.partsModule = newSheet.partsModule.map(part => {
+                  // Remove MongoDB-specific fields
+                  const partCopy = { ...part };
+                  delete partCopy._id;
+                  
+                  // Generate new part ID
+                  const partTimestamp = Date.now() + Math.floor(Math.random() * 100);
+                  const partRandom = Math.floor(Math.random() * 1000000);
+                  
+                  return {
+                    ...partCopy,
+                    id: `part_${partTimestamp}_${partRandom}`
+                  };
+                });
+              }
               console.log(`Pre-processed: Generated new ID ${newId} for duplicate sheet ${sheet.id}`);
               processedSheets.push(newSheet);
             } else {
