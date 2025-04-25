@@ -5,7 +5,7 @@ import MigrationUtility from './MigrationUtility';
 import { ReactComponent as MenuIcon } from '../assets/menu.svg';
 import ConfirmModal from "./ConfirmModal";
 import { deleteSheet } from "../services/SheetStorageService";
-import { exportSingleSheet } from "../services/ImportExportService";
+import { exportSingleSheet } from "../services/ExportService";
 
 export default function SavedSheetsPanel({
   open,

@@ -4,6 +4,8 @@
  */
 import { ENERGY_LINE_CONFIG } from './StyleService';
 import { getTransposedChords } from './ChordService';
+import { getAllSheets, getSheetById } from './SheetStorageService';
+import { fetchWithAuth, API_URL } from './ApiService';
 
 /**
  * Calculate energy line width for PDF export
@@ -276,6 +278,138 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
       // Keep the window/tab open for the user to manually print
     }, 250);
   };
+};
+
+/**
+ * Export a single sheet to a JSON file
+ * @param {string} sheetId - ID of the sheet to export
+ * @returns {Promise<Object>} Promise that resolves when export is complete
+ */
+export const exportSingleSheet = async (sheetId) => {
+  try {
+    // Get the sheet from storage
+    const sheet = await getSheetById(sheetId);
+    
+    if (!sheet) {
+      throw new Error(`Sheet with ID ${sheetId} not found`);
+    }
+    
+    // Export the sheet directly (same format as localStorage)
+    // This makes it consistent with the localStorage format
+    const jsonData = JSON.stringify(sheet, null, 2);
+    
+    // Create a blob and download
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a safe filename based on the sheet title
+    const safeTitle = sheet.title.replace(/[^a-z0-9]/gi, '_');
+    const filename = `${safeTitle}_${sheet.id}.json`;
+    
+    // Create a download link and trigger it
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    return { success: true, message: `Sheet "${sheet.title}" exported successfully` };
+  } catch (error) {
+    console.error('Error exporting sheet:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Export all sheets to a JSON file
+ * @returns {Promise<Object>} Promise that resolves when export is complete
+ */
+export const exportSheets = async () => {
+  try {
+    // Get all sheets from API or localStorage without triggering UI updates
+    const sheetList = await getAllSheets(true, true); // sortByNewest=true, skipUIRefresh=true
+    
+    if (!sheetList || sheetList.length === 0) {
+      throw new Error('No sheets found to export');
+    }
+    
+    // Fetch the complete data for each sheet
+    const completeSheets = [];
+    const token = localStorage.getItem('token');
+    const isAuthenticated = !!token;
+    
+    // For each sheet in the list, get its complete data
+    for (const sheetInfo of sheetList) {
+      try {
+        let completeSheet;
+        
+        if (isAuthenticated && API_URL) {
+          // Get complete sheet data from API
+          try {
+            const response = await fetchWithAuth(`${API_URL}/sheets/${sheetInfo.id}`);
+            completeSheet = response.data;
+          } catch (error) {
+            console.error(`Error fetching complete data for sheet ${sheetInfo.id}:`, error);
+            // Try localStorage as fallback
+            const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
+            if (localData) {
+              completeSheet = JSON.parse(localData);
+            }
+          }
+        } else {
+          // Get from localStorage
+          const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
+          if (localData) {
+            completeSheet = JSON.parse(localData);
+          }
+        }
+        
+        if (completeSheet) {
+          completeSheets.push(completeSheet);
+        }
+      } catch (error) {
+        console.error(`Error processing sheet ${sheetInfo.id}:`, error);
+      }
+    }
+    
+    if (completeSheets.length === 0) {
+      throw new Error('Failed to retrieve complete data for any sheets');
+    }
+    
+    // Create export object with metadata
+    const exportData = {
+      exportDate: new Date(),
+      sheetsCount: completeSheets.length,
+      sheets: completeSheets
+    };
+    
+    // Convert to JSON string
+    const jsonData = JSON.stringify(exportData, null, 2);
+    
+    // Create blob and download link
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create download link and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `band_sheets_export_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Clean up
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    return {
+      success: true,
+      message: `${completeSheets.length} sheets exported successfully`
+    };
+  } catch (error) {
+    console.error('Export failed:', error);
+    throw error;
+  }
 };
 
 // Named exports only

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { importSheets } from '../services/ImportExportService';
+import { importSheets } from '../services/ImportService';
 import { getAllSheets } from '../services/SheetStorageService';
 import { useUIState } from '../contexts/UIStateContext';
 
@@ -65,17 +65,24 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
       console.log('Importing with options:', importOptions);
       const result = await importSheets(selectedFile, importOptions);
       
-      // Check if we actually imported any sheets
-      if (result.results && (result.results.imported > 0 || result.results.skipped > 0)) {
+      // Log the full import result for debugging
+      console.log('Import result:', result);
+      if (result.results) {
+        console.log('Import results detail:', result.results);
+      }
+      
+      if (result.needsUserInput) {
+        // This is handled by the duplicate detection
         setMessage(result.message);
+      } else if (result.success) {
+        // Always display the message returned from the import function
+        setMessage(result.message);
+        
         // Clear the file input to allow for another import
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
           setSelectedFile(null);
         }
-      } else if (result.needsUserInput) {
-        // This is handled by the duplicate detection
-        setMessage(result.message);
       } else {
         // No sheets were imported and no duplicates were found
         setMessage('Import complete, but no sheets were imported. Please check the file format.');
