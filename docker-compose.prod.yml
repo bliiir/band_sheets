@@ -55,8 +55,8 @@ services:
       - "80:80"
       # - "443:443"
     environment:
-      # Using the primary domain for the API
-      - REACT_APP_API_URL=https://band-sheets.com/api
+      # Using the backend container directly
+      - REACT_APP_API_URL=http://backend:5000/api
     depends_on:
       - backend
     networks:

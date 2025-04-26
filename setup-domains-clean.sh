@@ -1,7 +1,14 @@
 #!/bin/bash
 
-# Setup script for Band Sheets multi-domain configuration
+# Clean setup script for Band Sheets multi-domain configuration
 echo "Setting up Band Sheets with multiple domains..."
+
+# Stop any existing containers
+echo "Stopping any existing containers..."
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.nginx.yml down
+docker ps -q | xargs -r docker stop
+docker ps -aq | xargs -r docker rm
 
 # Create required directories
 mkdir -p ./certbot/conf
@@ -36,11 +43,11 @@ docker run --rm -it \
   -d putuni.com -d www.putuni.com \
   -d riddam.com -d www.riddam.com
 
-# Step 3: Restart Nginx to apply SSL certificates
-echo "Restarting Nginx with SSL configuration..."
-docker-compose -f docker-compose.nginx.yml restart nginx
+# Stop the temporary Nginx container
+echo "Stopping temporary Nginx container..."
+docker-compose -f docker-compose.nginx.yml down
 
-# Step 4: Start the complete stack
+# Step 3: Start the complete stack
 echo "Starting the complete Band Sheets application stack..."
 docker-compose -f docker-compose.prod.yml -f docker-compose.nginx.yml up -d
 
@@ -54,4 +61,3 @@ echo "- https://g-minor.com"
 echo "- https://lead-sheets.com"
 echo "- https://putuni.com"
 echo "- https://riddam.com"
-echo "- https://ec2-44-211-77-173.compute-1.amazonaws.com"
