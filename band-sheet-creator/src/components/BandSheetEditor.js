@@ -13,7 +13,8 @@ import ConfirmModal from './ConfirmModal';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
-import { getAllSheets } from '../services/SheetStorageService';
+import { useAuth } from '../contexts/AuthContext';
+import { getAllSheets, saveTemporaryDraft, loadTemporaryDraft, clearTemporaryDraft, hasTemporaryDraft } from '../services/SheetStorageService';
 
 
 export default function BandSheetEditor({ initialSheetId }) {
@@ -35,6 +36,12 @@ export default function BandSheetEditor({ initialSheetId }) {
     sectionIndex: null,
     initialColor: '#ffffff'
   });
+  
+  // Get authentication state
+  const { isAuthenticated } = useAuth();
+  
+  // State to track if we've loaded a draft
+  const [draftLoaded, setDraftLoaded] = useState(false);
   
   // Function to show a notification
   const showNotification = useCallback((message, type = 'success') => {
@@ -95,22 +102,63 @@ export default function BandSheetEditor({ initialSheetId }) {
       // Only load if we have an ID and haven't loaded it yet
       if (initialSheetId && !initialSheetLoaded) {
         try {
-
           await loadSheet(initialSheetId);
           showNotification(`Sheet loaded successfully`);
           // Mark as loaded so we don't reload
           setInitialSheetLoaded(true);
+          // Clear any temporary draft since we loaded a real sheet
+          clearTemporaryDraft();
         } catch (error) {
           console.error('BandSheetEditor: Error loading initial sheet:', error);
           showNotification(`Error loading sheet: ${error.message}`, 'error');
           // Still mark as attempted so we don't retry
           setInitialSheetLoaded(true);
         }
+      } else if (!initialSheetId && !initialSheetLoaded && !draftLoaded) {
+        // Check for temporary draft if no sheet ID was provided
+        const draft = loadTemporaryDraft();
+        if (draft) {
+          try {
+            // Load the draft data into the editor
+            createNewSheetData();
+            setSongData(draft.songData || { title: '', artist: '', bpm: 120 });
+            // Only set sections if they exist in the draft
+            if (draft.sections && draft.sections.length > 0) {
+              // We're using the context's internal state update mechanism
+              // by calling createNewSheetData first and then manually updating
+              for (let i = 0; i < draft.sections.length; i++) {
+                if (i === 0) {
+                  // Update the first section that was created by createNewSheetData
+                  // This avoids having to manipulate the sections array directly
+                  updateSectionBackgroundColor(0, draft.sections[i].backgroundColor || null);
+                  // Add parts to match the draft
+                  for (let j = 1; j < draft.sections[i].parts.length; j++) {
+                    addPart(0);
+                  }
+                } else {
+                  // Add additional sections
+                  addSection();
+                  updateSectionBackgroundColor(i, draft.sections[i].backgroundColor || null);
+                  // Add parts to match the draft
+                  for (let j = 1; j < draft.sections[i].parts.length; j++) {
+                    addPart(i);
+                  }
+                }
+              }
+            }
+            showNotification('Unsaved draft loaded', 'info');
+            setDraftLoaded(true);
+          } catch (error) {
+            console.error('Error loading draft:', error);
+            showNotification('Error loading draft', 'error');
+          }
+        }
+        setInitialSheetLoaded(true);
       }
     };
     
     loadInitialSheet();
-  }, [initialSheetId, loadSheet, initialSheetLoaded, showNotification]);
+  }, [initialSheetId, loadSheet, initialSheetLoaded, draftLoaded, showNotification, createNewSheetData, setSongData, addSection, addPart, updateSectionBackgroundColor]);
   
   // Update URL when sheet ID changes
   useEffect(() => {
@@ -119,21 +167,30 @@ export default function BandSheetEditor({ initialSheetId }) {
     }
   }, [currentSheetId, navigate, location.pathname]);
   
-  // Fetch saved sheets when sidebar opens
+  // Helper function to refresh the saved sheets list
+  const refreshSavedSheets = useCallback(async () => {
+    try {
+      console.log('Refreshing saved sheets list...');
+      const allSheets = await getAllSheets();
+      setSavedSheets(allSheets);
+    } catch (error) {
+      console.error('Error refreshing sheets:', error);
+    }
+  }, [setSavedSheets]);
+  
+  // Refresh saved sheets when sidebar is opened
   useEffect(() => {
     if (sidebarOpen) {
-      const fetchSheets = async () => {
-        try {
-          const allSheets = await getAllSheets();
-          setSavedSheets(allSheets);
-        } catch (error) {
-          console.error('BandSheetEditor: Error fetching sheets:', error);
-        }
-      };
-      
-      fetchSheets();
+      refreshSavedSheets();
     }
-  }, [sidebarOpen, setSavedSheets]);
+  }, [sidebarOpen, refreshSavedSheets]);
+  
+  // Refresh sheets when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshSavedSheets();
+    }
+  }, [isAuthenticated, refreshSavedSheets]);
   
   // Add keyboard shortcut for saving (Cmd+S / Ctrl+S)
   useEffect(() => {
@@ -142,13 +199,19 @@ export default function BandSheetEditor({ initialSheetId }) {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault(); // Prevent browser's save dialog
 
-        saveCurrentSheet()
-          .then(() => {
-            showNotification('Sheet saved successfully');
-          })
-          .catch(error => {
-            showNotification('Error saving sheet: ' + error.message, 'error');
-          });
+        if (isAuthenticated) {
+          saveCurrentSheet()
+            .then(() => {
+              showNotification('Sheet saved successfully');
+              // Clear temporary draft after successful save
+              clearTemporaryDraft();
+            })
+            .catch(error => {
+              showNotification('Error saving sheet: ' + error.message, 'error');
+            });
+        } else {
+          showNotification('Please log in to save your sheet', 'error');
+        }
       }
     };
     
@@ -159,11 +222,24 @@ export default function BandSheetEditor({ initialSheetId }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [saveCurrentSheet, showNotification]);
+  }, [saveCurrentSheet, showNotification, isAuthenticated]);
 
-  // This function is moved to SheetDataContext
-
-  // This initialization is now handled by SheetDataContext
+  // Auto-save draft for unauthenticated users
+  useEffect(() => {
+    // Only use draft functionality when not authenticated and there's content
+    if (!isAuthenticated && sections.length > 0) {
+      const draftTimer = setTimeout(() => {
+        const currentSheet = {
+          songData,
+          sections
+        };
+        saveTemporaryDraft(currentSheet);
+        console.log('Temporary draft auto-saved');
+      }, 30000); // Auto-save draft every 30 seconds
+      
+      return () => clearTimeout(draftTimer);
+    }
+  }, [isAuthenticated, sections, songData]);
 
   // Placeholder text for empty fields
   const placeholders = {
@@ -321,67 +397,103 @@ export default function BandSheetEditor({ initialSheetId }) {
 
   // New Sheet handler - opens the confirmation dialog
   const handleNewSheet = () => {
-    setNewSheetConfirm({
-      isOpen: true,
-      onConfirm: async () => {
-        try {
-          // Save the current sheet
-          const savedSheet = await handleSave();
-
-          
-          // Create a new sheet using the context function
+    // Check if there are unsaved changes
+    if (sections.length > 0) {
+      setNewSheetConfirm({
+        isOpen: true,
+        onConfirm: async () => {
+          try {
+            if (isAuthenticated) {
+              // Save current sheet first if authenticated
+              await saveCurrentSheet();
+              showNotification('Sheet saved before creating new sheet');
+            } else {
+              // Save as draft if not authenticated
+              const currentSheet = {
+                songData,
+                sections
+              };
+              saveTemporaryDraft(currentSheet);
+              showNotification('Draft saved before creating new sheet', 'info');
+            }
+            
+            // Create new sheet
+            createNewSheetData();
+            navigate('/');
+            showNotification('New sheet created');
+          } catch (error) {
+            console.error('Error saving before new sheet:', error);
+            showNotification('Error saving sheet: ' + error.message, 'error');
+          } finally {
+            setNewSheetConfirm({ isOpen: false, onConfirm: () => {}, onCancel: () => {} });
+          }
+        },
+        onCancel: () => {
+          // Create new sheet without saving
           createNewSheetData();
-          showNotification('Sheet saved and new sheet created');
-          
-          // Reset URL to root when creating a new sheet
-          navigate('/', { replace: true });
-        } catch (error) {
-          console.error('BandSheetEditor: Error saving sheet before creating new:', error);
-          showNotification(`Error saving sheet: ${error.message}`, 'error');
+          navigate('/');
+          showNotification('New sheet created');
+          setNewSheetConfirm({ isOpen: false, onConfirm: () => {}, onCancel: () => {} });
         }
-      },
-      onCancel: () => {
-        // Just create a new sheet without saving
-        createNewSheetData();
-        showNotification('New sheet created');
-        
-        // Reset URL to root when creating a new sheet
-        navigate('/', { replace: true });
-      }
-    });
-  };
-
-  // Helper function to refresh the saved sheets list
-  const refreshSavedSheets = async () => {
-    try {
-      const allSheets = await getAllSheets();
-      setSavedSheets(allSheets);
-    } catch (error) {
-      console.error('BandSheetEditor: Error refreshing sheets:', error);
+      });
+    } else {
+      // No existing content, just create new sheet
+      createNewSheetData();
+      navigate('/');
+      showNotification('New sheet created');
+      refreshSavedSheets(); // Refresh saved sheets list after creating new sheet
     }
   };
 
-  // Save handler
+
+
+  // Handle save button click
   const handleSave = async () => {
     try {
-      const savedSheet = await saveCurrentSheet(false);
-      showNotification(`Sheet saved! (id: ${savedSheet.id})`);
-      // Refresh the saved sheets list
+      if (!isAuthenticated) {
+        showNotification('Please log in to save your sheet', 'error');
+        throw new Error('Authentication required');
+      }
+      
+      const savedSheet = await saveCurrentSheet();
+      showNotification(`Sheet saved successfully`);
+      
+      // Clear temporary draft after successful save
+      clearTemporaryDraft();
+      
+      // Refresh saved sheets list after saving
       await refreshSavedSheets();
+      
+      return savedSheet;
     } catch (error) {
+      console.error('BandSheetEditor: Error saving sheet:', error);
       showNotification(`Error saving sheet: ${error.message}`, 'error');
+      throw error;
     }
   };
 
-  // Save As handler
+  // Handle save as button click
   const handleSaveAs = async () => {
     try {
+      if (!isAuthenticated) {
+        showNotification('Please log in to save your sheet', 'error');
+        throw new Error('Authentication required');
+      }
+      
       const savedSheet = await saveCurrentSheet(true);
-      showNotification(`Sheet saved as new! (id: ${savedSheet.id})`);
-      // Refresh the saved sheets list
+      showNotification(`Sheet saved as new sheet with ID: ${savedSheet.id}`);
+      
+      // Clear temporary draft after successful save
+      clearTemporaryDraft();
+      
+      // Refresh saved sheets list after saving as new
       await refreshSavedSheets();
+      
+      return savedSheet;
     } catch (error) {
+      console.error('BandSheetEditor: Error saving sheet as new:', error);
       showNotification(`Error saving sheet: ${error.message}`, 'error');
+      throw error;
     }
   };
 

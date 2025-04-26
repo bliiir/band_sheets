@@ -2,12 +2,16 @@
  * SheetStorageService.js
  * Service for handling sheet storage, saving, and loading operations
  * Integrated with backend API - requires MongoDB authentication
+ * Uses localStorage only for temporary drafts when not authenticated
  */
 
 import { fetchWithAuth } from './ApiService';
 
 // Get the API URL from environment or use default
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+
+// Key for storing temporary draft in localStorage
+const TEMPORARY_DRAFT_KEY = 'band_sheets_temporary_draft';
 
 /**
  * Check if user is authenticated
@@ -51,37 +55,60 @@ export const getSheetById = async (id) => {
       return data.data;
     } catch (error) {
       console.error(`Error fetching sheet ${id} from API:`, error);
-      
-      // Fallback to localStorage if sheet not found in MongoDB
-      console.log(`Trying to load sheet ${id} from localStorage as fallback`);
-      return getSheetByIdFromLocalStorage(id);
+      return null; // No fallback to localStorage for authenticated users
     }
   } else {
-    // Fallback to localStorage only for unauthenticated users
-    console.log(`User not authenticated, getting sheet ${id} from localStorage`);
-    return getSheetByIdFromLocalStorage(id);
+    // For unauthenticated users, only check if this is a temporary draft
+    if (id === 'temporary_draft') {
+      return loadTemporaryDraft();
+    }
+    return null; // No sheet access for unauthenticated users
   }
 };
 
 /**
- * Helper function to get a sheet from localStorage by ID
- * @param {string|number} id - The ID of the sheet to load
- * @returns {Object|null} The loaded sheet or null if not found
+ * Save a temporary draft for unauthenticated users
+ * @param {Object} sheetData - The sheet data to save as draft
  */
-const getSheetByIdFromLocalStorage = (id) => {
+export const saveTemporaryDraft = (sheetData) => {
   try {
-    const sheetData = localStorage.getItem(`sheet_${id}`);
-    if (sheetData) {
-      const sheet = JSON.parse(sheetData);
-      console.log(`Successfully loaded sheet ${id} from localStorage`);
-      return sheet;
+    // Add timestamp to track when the draft was saved
+    const draftWithTimestamp = {
+      ...sheetData,
+      draftSavedAt: new Date().toISOString()
+    };
+    localStorage.setItem(TEMPORARY_DRAFT_KEY, JSON.stringify(draftWithTimestamp));
+    console.log('Temporary draft saved');
+  } catch (error) {
+    console.error('Error saving temporary draft:', error);
+  }
+};
+
+/**
+ * Load the temporary draft
+ * @returns {Object|null} The draft sheet or null if not found
+ */
+export const loadTemporaryDraft = () => {
+  try {
+    const draftData = localStorage.getItem(TEMPORARY_DRAFT_KEY);
+    if (draftData) {
+      const draft = JSON.parse(draftData);
+      console.log('Temporary draft loaded');
+      return draft;
     }
-    console.log(`Sheet ${id} not found in localStorage`);
     return null;
   } catch (error) {
-    console.error(`Error fetching sheet ${id} from localStorage:`, error);
+    console.error('Error loading temporary draft:', error);
     return null;
   }
+};
+
+/**
+ * Clear the temporary draft
+ */
+export const clearTemporaryDraft = () => {
+  localStorage.removeItem(TEMPORARY_DRAFT_KEY);
+  console.log('Temporary draft cleared');
 };
 
 /**
@@ -199,7 +226,7 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
       
       // Sort if needed
       if (sortByNewest && sheets.length > 0) {
-        return sheets.sort((a, b) => {
+        sheets.sort((a, b) => {
           return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
         });
       }
@@ -207,47 +234,41 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
       return sheets;
     } catch (error) {
       console.error('Error fetching sheets from API:', error);
-      // Fall back to localStorage on API error
-      console.log('Falling back to localStorage due to API error');
-      return getAllSheetsFromLocalStorage(sortByNewest);
+      return []; // Return empty array on error, no fallback
     }
   } else {
-    // Fallback to localStorage for unauthenticated users
-    console.log('User not authenticated, using localStorage as fallback');
-    return getAllSheetsFromLocalStorage(sortByNewest);
+    // Not authenticated, return empty array
+    console.log('User not authenticated, no sheets available');
+    return [];
   }
 };
 
 /**
- * Helper function to get sheets from localStorage
- * @param {boolean} sortByNewest - Whether to sort sheets by date (descending)
- * @returns {Array} Array of sheet objects from localStorage
+ * Check if a temporary draft exists
+ * 
+ * @returns {boolean} Whether a temporary draft exists
  */
-const getAllSheetsFromLocalStorage = (sortByNewest = true) => {
-  const sheets = [];
-  
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key.startsWith('sheet_')) {
-      try {
-        const sheetData = JSON.parse(localStorage.getItem(key));
-        sheets.push(sheetData);
-      } catch (e) {
-        console.error(`Error parsing sheet from localStorage: ${key}`, e);
-      }
+export const hasTemporaryDraft = () => {
+  return !!localStorage.getItem(TEMPORARY_DRAFT_KEY);
+};
+
+/**
+ * Get the timestamp of when the temporary draft was last saved
+ * 
+ * @returns {Date|null} The date when the draft was saved, or null if no draft exists
+ */
+export const getTemporaryDraftTimestamp = () => {
+  try {
+    const draftData = localStorage.getItem(TEMPORARY_DRAFT_KEY);
+    if (draftData) {
+      const draft = JSON.parse(draftData);
+      return draft.draftSavedAt ? new Date(draft.draftSavedAt) : null;
     }
+    return null;
+  } catch (error) {
+    console.error('Error getting temporary draft timestamp:', error);
+    return null;
   }
-  
-  console.log(`Found ${sheets.length} sheets in localStorage`);
-  
-  // Sort if needed
-  if (sortByNewest && sheets.length > 0) {
-    return sheets.sort((a, b) => {
-      return new Date(b.dateModified || b.dateCreated || 0) - new Date(a.dateModified || a.dateCreated || 0);
-    });
-  }
-  
-  return sheets;
 };
 
 /**

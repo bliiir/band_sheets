@@ -4,6 +4,7 @@ import { exportToPDF } from '../services/ExportService';
 import { getTransposedChords } from '../services/ChordService';
 import ExportOptionsModal from '../components/ExportOptionsModal';
 import { useUIState } from './UIStateContext';
+import { useAuth } from './AuthContext';
 
 // Create the SheetDataContext
 const SheetDataContext = createContext(null);
@@ -18,6 +19,9 @@ const SheetDataContext = createContext(null);
 export function SheetDataProvider({ children }) {
   // Access UI state for loading indicators
   const { beginApiCall, endApiCall } = useUIState();
+  
+  // Access authentication state
+  const { isAuthenticated } = useAuth();
 
   // Sheet data state
   const [sections, setSections] = useState([]);
@@ -264,6 +268,13 @@ export function SheetDataProvider({ children }) {
   const saveCurrentSheet = useCallback(async (saveAsNew = false) => {
     beginApiCall();
     try {
+      // Check authentication before saving
+      if (!isAuthenticated) {
+        const error = new Error('Authentication required to save sheets');
+        endApiCall(error);
+        throw error;
+      }
+      
       // Prepare sheet data
       const sheetData = { 
         ...songData, 
@@ -284,7 +295,7 @@ export function SheetDataProvider({ children }) {
       endApiCall(error);
       throw error;
     }
-  }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId]);
+  }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId, isAuthenticated]);
   
   /**
    * Export the current sheet to PDF

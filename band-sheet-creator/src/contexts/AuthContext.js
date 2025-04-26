@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 // Use real ApiService for authentication
 import { getCurrentUser, loginUser, logoutUser, registerUser } from '../services/ApiService';
+import { getAllSheets } from '../services/SheetStorageService';
+import eventBus from '../utils/EventBus';
 
 /**
  * Context for managing authentication state
@@ -8,15 +11,26 @@ import { getCurrentUser, loginUser, logoutUser, registerUser } from '../services
 const AuthContext = createContext(null);
 
 /**
+ * Custom hook to get navigate function in the context
+ */
+const NavigationWrapper = ({ children }) => {
+  const navigate = useNavigate();
+  
+  return React.cloneElement(children, { navigate });
+};
+
+/**
  * Provider component for authentication state
  * 
  * @param {Object} props
  * @param {React.ReactNode} props.children - Child components
+ * @param {Function} props.navigate - React Router navigate function
  */
-export function AuthProvider({ children }) {
+export function AuthProviderWithoutNav({ children, navigate }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authChangeCounter, setAuthChangeCounter] = useState(0);
 
   // Check if user is logged in on app load
   useEffect(() => {
@@ -68,6 +82,27 @@ export function AuthProvider({ children }) {
   };
 
   /**
+   * Load the first available sheet
+   */
+  const loadFirstSheet = async () => {
+    try {
+      // Get all sheets
+      const sheets = await getAllSheets();
+      
+      // If we have sheets, load the first one
+      if (sheets && sheets.length > 0) {
+        const sheet = sheets[0];
+        if (sheet && sheet.id) {
+          console.log(`Loading first sheet: ${sheet.id}`);
+          navigate(`/sheet/${sheet.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading first sheet:', error);
+    }
+  };
+
+  /**
    * Log in an existing user
    * 
    * @param {string} email - Email address
@@ -83,6 +118,17 @@ export function AuthProvider({ children }) {
       
       const user = await loginUser({ email, password });
       setCurrentUser(user);
+      
+      // Trigger auth change event
+      setAuthChangeCounter(prev => prev + 1);
+      
+      // Emit auth change event
+      eventBus.emit('auth-change', { isAuthenticated: true, user });
+      console.log('Emitted auth-change event: logged in');
+      
+      // Load the first sheet after successful login
+      setTimeout(() => loadFirstSheet(), 500);
+      
       return true;
     } catch (err) {
       console.error('Login error:', err);
@@ -110,12 +156,25 @@ export function AuthProvider({ children }) {
       
       // Make sure token is removed from localStorage
       localStorage.removeItem('token');
+      
+      // Trigger auth change event
+      setAuthChangeCounter(prev => prev + 1);
+      
+      // Emit auth change event
+      eventBus.emit('auth-change', { isAuthenticated: false, user: null });
+      console.log('Emitted auth-change event: logged out');
     } catch (err) {
       console.error('Logout error:', err);
       setError(err.message);
     }
   };
 
+  // Function to subscribe to auth changes
+  const onAuthChange = useCallback((callback) => {
+    // This will be used by components to react to auth state changes
+    return { authChangeCounter };
+  }, [authChangeCounter]);
+  
   // Context value
   const value = {
     currentUser,
@@ -124,13 +183,26 @@ export function AuthProvider({ children }) {
     register,
     login,
     logout,
-    isAuthenticated: !!currentUser
+    isAuthenticated: !!currentUser,
+    authChangeCounter,
+    onAuthChange
   };
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
+  );
+}
+
+/**
+ * Wrapper component that provides navigation to the AuthProvider
+ */
+export function AuthProvider({ children }) {
+  return (
+    <NavigationWrapper>
+      <AuthProviderWithoutNav>{children}</AuthProviderWithoutNav>
+    </NavigationWrapper>
   );
 }
 

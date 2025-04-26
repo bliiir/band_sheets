@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import SavedSheetsPanel from './SavedSheetsPanel';
 import { getAllSheets } from '../services/SheetStorageService';
 import { useUIState } from '../contexts/UIStateContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = ({ 
   sidebarOpen, 
@@ -11,6 +12,9 @@ const Sidebar = ({
 }) => {
   // Get UI state methods
   const { setSavedSheets } = useUIState();
+  
+  // Get auth state to detect changes
+  const { authChangeCounter, isAuthenticated } = useAuth();
   
   // Fetch saved sheets directly using the service
   const fetchSavedSheets = async () => {
@@ -22,11 +26,15 @@ const Sidebar = ({
     }
   };
   
-  // Fetch sheets when component mounts
+  // Fetch sheets when component mounts or auth state changes
   useEffect(() => {
-    fetchSavedSheets();
+    // Only fetch sheets if sidebar is open or auth state changed
+    if (sidebarOpen || authChangeCounter > 0) {
+      console.log('Auth state changed or sidebar opened, fetching sheets');
+      fetchSavedSheets();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sidebarOpen, authChangeCounter, isAuthenticated]);
   
   return (
     <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block fixed left-14 top-[60px] bottom-0`}>
