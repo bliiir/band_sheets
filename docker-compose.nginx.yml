@@ -36,4 +36,4 @@ services:
 
 networks:
   band-sheets-network-prod:
-    external: true
+    driver: bridge

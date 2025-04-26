@@ -7,6 +7,10 @@ echo "Setting up Band Sheets with multiple domains..."
 mkdir -p ./certbot/conf
 mkdir -p ./certbot/www
 
+# Create Docker network if it doesn't exist
+echo "Creating Docker network..."
+docker network create band-sheets-network-prod || true
+
 # Step 1: Start nginx container temporarily for certificate acquisition
 echo "Starting temporary Nginx container for SSL certificate acquisition..."
 docker-compose -f docker-compose.nginx.yml up -d nginx
