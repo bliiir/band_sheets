@@ -44,11 +44,52 @@ app.use(cors({
     
     // Whitelist specific origins
     const allowedOrigins = [
+      // Local development
       'http://localhost:3000',
+      // Server IP and EC2 hostname
       'http://44.211.77.173',
       'http://44.211.77.173:3000',
       'http://44.211.77.173:80',
-      'http://44.211.77.173:5050'
+      'http://44.211.77.173:5050',
+      'http://ec2-44-211-77-173.compute-1.amazonaws.com',
+      'https://ec2-44-211-77-173.compute-1.amazonaws.com',
+      // Domain names (both http and https)
+      'http://muzjik.com',
+      'https://muzjik.com',
+      'http://www.muzjik.com',
+      'https://www.muzjik.com',
+      'http://band-sheets.com',
+      'https://band-sheets.com',
+      'http://www.band-sheets.com',
+      'https://www.band-sheets.com',
+      'http://bandut.com',
+      'https://bandut.com',
+      'http://www.bandut.com',
+      'https://www.bandut.com',
+      'http://f-minor.com',
+      'https://f-minor.com',
+      'http://www.f-minor.com',
+      'https://www.f-minor.com',
+      'http://b-major.com',
+      'https://b-major.com',
+      'http://www.b-major.com',
+      'https://www.b-major.com',
+      'http://g-minor.com',
+      'https://g-minor.com',
+      'http://www.g-minor.com',
+      'https://www.g-minor.com',
+      'http://lead-sheets.com',
+      'https://lead-sheets.com',
+      'http://www.lead-sheets.com',
+      'https://www.lead-sheets.com',
+      'http://putuni.com',
+      'https://putuni.com',
+      'http://www.putuni.com',
+      'https://www.putuni.com',
+      'http://riddam.com',
+      'https://riddam.com',
+      'http://www.riddam.com',
+      'https://www.riddam.com'
     ];
     
     // Check if the origin is in our whitelist
