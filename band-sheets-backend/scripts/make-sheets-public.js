@@ -7,10 +7,23 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
 // Load environment variables
-dotenv.config({ path: '../.env' });
+// Try multiple possible paths for the .env file
+try {
+  dotenv.config(); // Try current directory first
+} catch (e) {
+  try {
+    dotenv.config({ path: '../.env' }); // Try parent directory
+  } catch (e) {
+    console.log('Could not load .env file, using default MongoDB URI');
+  }
+}
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/bandsheets', {
+// Connect to MongoDB - use Docker container name for MongoDB
+// Inside Docker, the MongoDB container is accessible via its service name
+const mongoUri = process.env.MONGO_URI || 'mongodb://mongodb:27017/bandsheets';
+console.log(`Connecting to MongoDB at: ${mongoUri}`);
+
+mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
