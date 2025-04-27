@@ -65,7 +65,7 @@ const sheetSchema = new mongoose.Schema({
   }],
   isPublic: {
     type: Boolean,
-    default: false
+    default: true  // Changed to true to make sheets publicly readable by default
   }
 }, { timestamps: true });
 

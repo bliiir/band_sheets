@@ -40,10 +40,13 @@ exports.getSheet = async (req, res) => {
     }
     
     // Check if user has access to this sheet
+    // If sheet is public, allow access
+    // If user is not authenticated (req.user is null), only allow access to public sheets
     if (
-      sheet.owner.toString() !== req.user.id && 
-      !sheet.sharedWith.some(s => s.user.toString() === req.user.id) &&
-      !sheet.isPublic
+      !sheet.isPublic && // Not a public sheet
+      (!req.user || // No authenticated user
+       (sheet.owner.toString() !== req.user.id && // Not the owner
+        !sheet.sharedWith.some(s => s.user.toString() === req.user.id))) // Not shared with user
     ) {
       return res.status(403).json({
         success: false,

@@ -7,24 +7,21 @@ const {
   deleteSheet,
   shareSheet
 } = require('../controllers/sheetController');
-const { protect } = require('../middleware/auth');
+const { protect, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Apply auth middleware to all routes
-router.use(protect);
-
 router
   .route('/')
-  .get(getSheets)
-  .post(createSheet);
+  .get(optionalAuth, getSheets)
+  .post(protect, createSheet);
 
 router
   .route('/:id')
-  .get(getSheet)
-  .put(updateSheet)
-  .delete(deleteSheet);
+  .get(optionalAuth, getSheet)
+  .put(protect, updateSheet)
+  .delete(protect, deleteSheet);
 
-router.route('/:id/share').post(shareSheet);
+router.route('/:id/share').post(protect, shareSheet);
 
 module.exports = router;

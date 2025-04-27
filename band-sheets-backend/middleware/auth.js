@@ -79,12 +79,59 @@ exports.protect = async (req, res, next) => {
 // Authorize by role
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !req.user.role || !roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        error: 'Not authorized for this operation'
+        error: `User role ${req.user ? req.user.role : 'undefined'} is not authorized to access this route`
       });
     }
     next();
   };
+};
+
+// Optional auth middleware - allows unauthenticated access but populates req.user if token exists
+exports.optionalAuth = async (req, res, next) => {
+  let token;
+  
+  // Get token from header or cookies
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.token) {
+    token = req.cookies.token;
+  }
+  
+  // If no token, continue without authentication (for public access)
+  if (!token) {
+    console.log('No token found, continuing as public access');
+    req.user = null;
+    return next();
+  }
+  
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    try {
+      // Try MongoDB first
+      req.user = await User.findById(decoded.id);
+      
+      if (!req.user) {
+        // If MongoDB user not found, check in-memory
+        const memUser = inMemoryUsers.find(u => u._id === decoded.id);
+        if (memUser) {
+          req.user = memUser;
+        }
+      }
+      
+      next();
+    } catch (err) {
+      console.error('Error finding user:', err);
+      req.user = null;
+      next();
+    }
+  } catch (err) {
+    console.error('Invalid token:', err);
+    req.user = null;
+    next();
+  }
 };
