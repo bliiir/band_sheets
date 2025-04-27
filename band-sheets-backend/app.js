@@ -47,10 +47,10 @@ app.use(cors({
       // Local development
       'http://localhost:3000',
       // Server IP and EC2 hostname
-      'http://44.211.77.173',
-      'http://44.211.77.173:3000',
-      'http://44.211.77.173:80',
-      'http://44.211.77.173:5050',
+      'http://35.157.195.167',
+      'http://35.157.195.167:3000',
+      'http://35.157.195.167:80',
+      'http://35.157.195.167:5050',
       'http://ec2-44-211-77-173.compute-1.amazonaws.com',
       'https://ec2-44-211-77-173.compute-1.amazonaws.com',
       // Domain names (both http and https)
