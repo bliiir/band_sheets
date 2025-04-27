@@ -57,11 +57,39 @@ export const getSheetById = async (id) => {
       return null; // No fallback to localStorage for authenticated users
     }
   } else {
-    // For unauthenticated users, only check if this is a temporary draft
+    // For unauthenticated users
+    // First check if this is a temporary draft
     if (id === 'temporary_draft') {
       return loadTemporaryDraft();
     }
-    return null; // No sheet access for unauthenticated users
+    
+    // For other sheets, try to access via API without authentication
+    // This will work for public sheets
+    try {
+      console.log(`Getting public sheet ${id} from MongoDB without authentication`);
+      
+      // Make the API request with full URL but without token
+      const response = await fetch(`${API_URL}/sheets/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Log the response status
+      console.log('API response status for public access:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Successfully loaded public sheet ${id} from MongoDB`);
+      return data.data;
+    } catch (error) {
+      console.error(`Error fetching public sheet ${id} from API:`, error);
+      return null;
+    }
   }
 };
 
