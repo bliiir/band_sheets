@@ -51,9 +51,9 @@ services:
       context: ./band-sheet-creator
       dockerfile: Dockerfile.prod
     container_name: band-sheets-frontend-prod
-    ports:
-      - "80:80"
-      # - "443:443"
+    # No need to expose ports directly as nginx will proxy
+    # ports:
+    #   - "80:80"
     environment:
       # Using the backend container directly
       - REACT_APP_API_URL=http://backend:5000/api
