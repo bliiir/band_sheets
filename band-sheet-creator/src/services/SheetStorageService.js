@@ -5,10 +5,9 @@
  * Uses localStorage only for temporary drafts when not authenticated
  */
 
-import { fetchWithAuth } from './ApiService';
+import { fetchWithAuth, API_URL } from './ApiService';
 
-// Get the API URL from environment or use default
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
+// Using the API_URL imported from ApiService.js for consistency
 
 // Key for storing temporary draft in localStorage
 const TEMPORARY_DRAFT_KEY = 'band_sheets_temporary_draft';

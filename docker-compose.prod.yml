@@ -55,8 +55,9 @@ services:
     # ports:
     #   - "80:80"
     environment:
-      # Using the backend container directly
-      - REACT_APP_API_URL=http://backend:5000/api
+      # Don't set REACT_APP_API_URL here, let the frontend code handle it dynamically
+      # based on the current domain
+      - NODE_ENV=production
     depends_on:
       - backend
     networks:
