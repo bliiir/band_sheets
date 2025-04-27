@@ -18,22 +18,23 @@ mkdir -p ./certbot/www
 echo "Creating Docker network..."
 docker network create band-sheets-network-prod || true
 
-# Step 1: Start nginx container temporarily for certificate acquisition
-echo "Starting temporary Nginx container for SSL certificate acquisition..."
-docker-compose -f docker-compose.nginx.yml up -d nginx
+# Make sure no containers are running on port 80
+echo "Making sure port 80 is free..."
+docker ps -a | grep -E '80' | awk '{print $1}' | xargs -r docker stop
+docker ps -a | grep -E '80' | awk '{print $1}' | xargs -r docker rm
 
-# Wait for nginx to start
-echo "Waiting for Nginx to start..."
-sleep 5
-
-# Step 2: Get SSL certificates for all domains
+# Step 2: Get SSL certificates for all domains using the standalone method
 echo "Obtaining SSL certificates for all domains..."
+
+# First stop nginx to free up port 80
+docker-compose -f docker-compose.nginx.yml down
+
+# Use standalone mode which runs its own temporary web server
 docker run --rm -it \
   -v $(pwd)/certbot/conf:/etc/letsencrypt \
   -v $(pwd)/certbot/www:/var/www/certbot \
-  --network band-sheets-network-prod \
-  certbot/certbot certonly --webroot \
-  --webroot-path=/var/www/certbot \
+  -p 80:80 \
+  certbot/certbot certonly --standalone \
   --email admin@band-sheets.com \
   --agree-tos \
   --no-eff-email \
@@ -47,9 +48,8 @@ docker run --rm -it \
   -d putuni.com -d www.putuni.com \
   -d riddam.com -d www.riddam.com
 
-# Stop the temporary Nginx container
-echo "Stopping temporary Nginx container..."
-docker-compose -f docker-compose.nginx.yml down
+# Prepare for the full stack deployment
+echo "Preparing for full stack deployment..."
 
 # Step 3: Start the complete stack
 echo "Starting the complete Band Sheets application stack..."
