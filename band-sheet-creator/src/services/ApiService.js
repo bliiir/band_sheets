@@ -9,9 +9,9 @@ let API_URL;
 
 // For production deployment on server
 if (window.location.hostname !== 'localhost') {
-  // Use the server's IP address directly with the correct port for the API
-  // This is for the EC2 instance at 44.211.77.173
-  API_URL = 'http://44.211.77.173:5050/api';
+  // Use the current domain for API requests to avoid CORS issues
+  // This ensures we use HTTPS when the site is served over HTTPS
+  API_URL = `https://${window.location.hostname}/api`;
 } else {
   // For local development
   API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
