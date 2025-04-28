@@ -77,6 +77,7 @@ const PartsModule = () => {
               indices={{ sectionIndex: index, partIndex: null, field: 'bars', editType: 'partsModule' }}
               inputClassName="px-2 py-1 text-sm"
               inputProps={{ min: "1" }}
+              placeholder="#"
               onClickView={() => beginPartModuleEdit(index, 'bars')}
             />
           </div>

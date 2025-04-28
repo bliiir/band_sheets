@@ -258,6 +258,7 @@ const Part = ({
           setEditValue={setEditValue}
           saveEdit={saveEdit}
           setEditing={setEditing}
+          placeholder="#"
         />
       </div>
       
