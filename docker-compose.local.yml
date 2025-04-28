@@ -4,13 +4,13 @@ services:
   # MongoDB service
   mongodb:
     image: mongo:latest
-    container_name: band-sheets-mongodb-dev
+    container_name: band-sheets-mongodb
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data_dev:/data/db
+      - mongodb_data:/data/db
     networks:
-      - band-sheets-network-dev
+      - band-sheets-network
     restart: unless-stopped
 
   # Backend service
@@ -18,20 +18,20 @@ services:
     build:
       context: ./band-sheets-backend
       dockerfile: Dockerfile
-    container_name: band-sheets-backend-dev
+    container_name: band-sheets-backend
     ports:
       - "5050:5000"
     environment:
       - NODE_ENV=development
       - PORT=5000
       - MONGO_URI=mongodb://mongodb:27017/bandsheets
-      - JWT_SECRET=band_sheets_jwt_secret_for_dev_only
+      - JWT_SECRET=band_sheets_jwt_secret_for_local_only
       - JWT_EXPIRES_IN=30d
       - JWT_COOKIE_EXPIRES_IN=30
     depends_on:
       - mongodb
     networks:
-      - band-sheets-network-dev
+      - band-sheets-network
     restart: unless-stopped
     volumes:
       - ./band-sheets-backend:/app
@@ -42,7 +42,7 @@ services:
     build:
       context: ./band-sheet-creator
       dockerfile: Dockerfile
-    container_name: band-sheets-frontend-dev
+    container_name: band-sheets-frontend
     ports:
       - "3000:3000"
     environment:
@@ -50,15 +50,15 @@ services:
     depends_on:
       - backend
     networks:
-      - band-sheets-network-dev
+      - band-sheets-network
     restart: unless-stopped
     volumes:
       - ./band-sheet-creator:/app
       - /app/node_modules
 
 networks:
-  band-sheets-network-dev:
+  band-sheets-network:
     driver: bridge
 
 volumes:
-  mongodb_data_dev:
+  mongodb_data:
