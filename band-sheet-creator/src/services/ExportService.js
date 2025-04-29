@@ -31,7 +31,7 @@ const getEnergyWidthForPdf = (energyLevel) => {
 };
 
 /**
- * Generate and open a print-friendly version in a new tab
+ * Generate print-friendly HTML content
  * @param {Object} songData - Contains title, artist, bpm
  * @param {Array} sections - All sections with their parts for the sheet
  * @param {Number} transposeValue - Current transpose value (optional)
@@ -39,8 +39,9 @@ const getEnergyWidthForPdf = (energyLevel) => {
  * @param {Object} options - Export options
  * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on page 2
  * @param {Boolean} options.includeSectionColors - Whether to include section background colors
+ * @returns {String} - HTML content for printing
  */
-export const exportToPDF = (songData, sections, transposeValue = 0, partsModule = [], options = {}) => {
+export const generatePrintContent = (songData, sections, transposeValue = 0, partsModule = [], options = {}) => {
   const { includeChordProgressions = true, includeSectionColors = true } = options;
   // Filter out placeholder text before exporting
   const processedSections = sections.map(section => ({
@@ -53,11 +54,8 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
     }))
   }));
   
-  // Create a new window/tab
-  const printWindow = window.open('', '_blank');
-  
   // Generate the print-friendly HTML
-  const printContent = `
+  return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -265,19 +263,63 @@ export const exportToPDF = (songData, sections, transposeValue = 0, partsModule 
     </html>
   `;
   
+};
+
+/**
+ * Generate and open a print-friendly version in a new tab
+ * @param {Object} songData - Contains title, artist, bpm
+ * @param {Array} sections - All sections with their parts for the sheet
+ * @param {Number} transposeValue - Current transpose value (optional)
+ * @param {Array} partsModule - Chord progressions data
+ * @param {Object} options - Export options
+ * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on page 2
+ * @param {Boolean} options.includeSectionColors - Whether to include section background colors
+ */
+export const exportToPDF = (songData, sections, transposeValue = 0, partsModule = [], options = {}) => {
+  // Create a new window/tab
+  const printWindow = window.open('', '_blank');
+  
+  // Generate the print-friendly HTML
+  const printContent = generatePrintContent(songData, sections, transposeValue, partsModule, options);
+  
   // Write the content to the new window
-  printWindow.document.open();
   printWindow.document.write(printContent);
   printWindow.document.close();
-  
-  // Automatically trigger print when content is loaded
-  printWindow.onload = function() {
-    // Give a moment for styles to apply
-    setTimeout(() => {
-      // printWindow.print();
-      // Keep the window/tab open for the user to manually print
-    }, 250);
-  };
+};
+
+/**
+ * Load a sheet by ID and return the print content
+ * @param {string} sheetId - ID of the sheet to print
+ * @param {Object} options - Export options
+ * @returns {Promise<Object>} - Object containing print content and sheet data
+ */
+export const getPrintContentBySheetId = async (sheetId, options = {}) => {
+  try {
+    const sheet = await getSheetById(sheetId);
+    if (!sheet) {
+      throw new Error('Sheet not found');
+    }
+    
+    const songData = {
+      title: sheet.title || '',
+      artist: sheet.artist || '',
+      bpm: sheet.bpm || ''
+    };
+    
+    const sections = sheet.sections || [];
+    const partsModule = sheet.partsModule || [];
+    const transposeValue = sheet.transposeValue || 0;
+    
+    const printContent = generatePrintContent(songData, sections, transposeValue, partsModule, options);
+    
+    return {
+      printContent,
+      sheet
+    };
+  } catch (error) {
+    console.error('Error generating print content:', error);
+    throw error;
+  }
 };
 
 /**

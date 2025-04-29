@@ -298,6 +298,23 @@ export function SheetDataProvider({ children }) {
   }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId, isAuthenticated]);
   
   /**
+   * Get the direct print URL for the current sheet with query parameters
+   * @param {Object} options - Print options
+   * @param {boolean} options.includeChordProgressions - Whether to include chord progressions
+   * @param {boolean} options.includeSectionColors - Whether to include section background colors
+   * @returns {string} The URL to the print view
+   */
+  const getPrintUrl = useCallback((options = {}) => {
+    if (!currentSheetId) return null;
+    
+    const { includeChordProgressions = true, includeSectionColors = true } = options;
+    
+    // Get the base URL (protocol + host)
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/sheet/${currentSheetId}?print=true&color=${includeSectionColors}&chords=${includeChordProgressions}`;
+  }, [currentSheetId]);
+  
+  /**
    * Export the current sheet to PDF
    */
   // State for export options modal
@@ -310,8 +327,18 @@ export function SheetDataProvider({ children }) {
   
   // Handle the actual export with options
   const handleExportWithOptions = useCallback((options) => {
-    exportToPDF(songData, sections, transposeValue, partsModule, options);
-  }, [songData, sections, transposeValue, partsModule]);
+    // Instead of opening a new window, navigate to the print view URL
+    if (currentSheetId) {
+      const { includeChordProgressions, includeSectionColors } = options;
+      const printUrl = getPrintUrl({ includeChordProgressions, includeSectionColors });
+      if (printUrl) {
+        window.open(printUrl, '_blank');
+      }
+    } else {
+      // Fall back to the original export method if no sheet ID is available
+      exportToPDF(songData, sections, transposeValue, partsModule, options);
+    }
+  }, [songData, sections, transposeValue, partsModule, currentSheetId, getPrintUrl]);
   
   /**
    * Get transposed chords for a chord string
@@ -461,7 +488,8 @@ export function SheetDataProvider({ children }) {
     createNewSheetData,
     loadSheet,
     saveCurrentSheet,
-    exportSheet
+    exportSheet,
+    getPrintUrl,
   };
 
   return (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import ColorPicker from './ColorPicker';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Toolbar from './Toolbar';
 import Sidebar from './Sidebar';
 import SongInfoBar from './SongInfoBar';
@@ -15,6 +15,7 @@ import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllSheets, saveTemporaryDraft, loadTemporaryDraft, clearTemporaryDraft, hasTemporaryDraft } from '../services/SheetStorageService';
+import { generatePrintContent } from '../services/ExportService';
 
 
 export default function BandSheetEditor({ initialSheetId }) {
@@ -51,9 +52,16 @@ export default function BandSheetEditor({ initialSheetId }) {
       setNotification({ show: false, message: '', type: 'success' });
     }, 3000);
   }, []);
+  
   // Navigation hooks for URL management
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  
+  // Check if we're in print mode based on URL parameters
+  const isPrintMode = searchParams.get('print') === 'true';
+  const includeColors = searchParams.get('color') === 'true';
+  const includeChords = searchParams.get('chords') === 'true';
   
   // Use SheetDataContext for all sheet data and operations
   const { 
@@ -61,6 +69,8 @@ export default function BandSheetEditor({ initialSheetId }) {
     songData, setSongData,
     createNewSheetData,
     currentSheetId,
+    partsModule,
+    transposeValue,
     // Operations
     addSection,
     deleteSection,
@@ -75,7 +85,8 @@ export default function BandSheetEditor({ initialSheetId }) {
     saveCurrentSheet,
     exportSheet,
     updateSectionEnergy,
-    updateSectionBackgroundColor
+    updateSectionBackgroundColor,
+    getTransposedChordsForPart
   } = useSheetData();
   
   // Use EditingContext for editing state
@@ -502,7 +513,228 @@ export default function BandSheetEditor({ initialSheetId }) {
     exportSheet();
   };
 
-  // JSX
+  // If we're in print mode, render the print-friendly version
+  if (isPrintMode) {
+    // Print view options
+    const options = {
+      includeChordProgressions: includeChords,
+      includeSectionColors: includeColors
+    };
+    
+    // Generate the print content directly in the component
+    return (
+      <div className="print-view">
+        <style>
+          {`
+            @media print {
+              .print-button {
+                display: none;
+              }
+              .page-break {
+                page-break-before: always;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.4;
+              color: #333;
+              max-width: 900px;
+              margin: 0 auto;
+              padding: 10px;
+            }
+            h1 {
+              font-size: 20px;
+              margin: 0 20px 0 0;
+              display: inline-block;
+            }
+            .meta {
+              display: flex;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 15px;
+              margin-bottom: 10px;
+              font-size: 14px;
+              color: #555;
+            }
+            .sheet-container {
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              overflow: hidden;
+              margin-top: 5px;
+            }
+            .sheet-header {
+              display: grid;
+              grid-template-columns: 80px 48px 48px 1fr 12.5% auto;
+              gap: 10px;
+              padding: 5px 16px;
+              background-color: #f8f8f8;
+              border-bottom: 1px solid #ddd;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            .section-container {
+              display: flex;
+              border-bottom: 1px solid #ddd;
+              position: relative;
+            }
+            .section-container:last-child {
+              border-bottom: none;
+            }
+            .section-header {
+              width: 80px;
+              min-width: 80px;
+              padding: 8px 8px;
+              border-right: 1px solid #ddd;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              position: relative;
+            }
+            .section-name {
+              font-weight: bold;
+              font-size: 13px;
+            }
+            .energy-line {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              height: 2px;
+              background-color: black;
+            }
+            .parts-container {
+              flex: 1;
+            }
+            .part-row {
+              display: grid;
+              grid-template-columns: 48px 48px 1fr 12.5% auto;
+              gap: 10px;
+              padding: 5px 16px;
+              border-bottom: 1px solid #eee;
+              align-items: center;
+            }
+            .part-row:last-child {
+              border-bottom: none;
+            }
+            .lyrics {
+              white-space: pre-line;
+              line-height: 1.3;
+              font-family: 'Inconsolata', monospace;
+            }
+            .notes {
+              font-size: 11px;
+              color: #666;
+              line-height: 1.2;
+            }
+            .print-button {
+              padding: 5px 10px;
+              background: #0066cc;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              margin-left: 10px;
+            }
+          `}
+        </style>
+        
+        <div className="meta">
+          <h1>{songData.title || 'Untitled'}</h1>
+          {songData.artist && <div><strong>Artist:</strong> {songData.artist}</div>}
+          {songData.bpm && <div><strong>BPM:</strong> {songData.bpm}</div>}
+          {transposeValue !== 0 && (
+            <div>
+              <strong>Transposed:</strong> {transposeValue > 0 ? '+' + transposeValue : transposeValue} semitones
+            </div>
+          )}
+          <button 
+            className="print-button" 
+            onClick={() => window.print()}
+          >
+            Print PDF
+          </button>
+        </div>
+        
+        <div className="sheet-container">
+          {/* Sheet header */}
+          <div className="sheet-header">
+            <div>Section</div>
+            <div>Part</div>
+            <div>Bars</div>
+            <div>Lyrics</div>
+            <div>Notes</div>
+            <div>{/* Actions placeholder */}</div>
+          </div>
+          
+          {/* Sections */}
+          {sections.map((section, sectionIndex) => (
+            <div 
+              key={section.id} 
+              className="section-container"
+              style={includeColors && section.backgroundColor ? { backgroundColor: section.backgroundColor } : {}}
+            >
+              {/* Energy indicator line */}
+              <div 
+                className="energy-line" 
+                style={{ 
+                  width: section.energy === 1 ? '80px' : 
+                         section.energy === 10 ? '75%' : 
+                         `${8 + ((75 - 8) / 9) * (section.energy - 1)}%`
+                }}
+              />
+              
+              {/* Section header */}
+              <div className="section-header">
+                <div className="section-name">{section.name}</div>
+              </div>
+              
+              {/* Parts container */}
+              <div className="parts-container">
+                {section.parts.map((part, partIndex) => (
+                  <div key={part.id} className="part-row">
+                    <div>{part.part}</div>
+                    <div>{part.bars}</div>
+                    <div className="lyrics">{part.lyrics || ''}</div>
+                    <div className="notes">{part.notes || ''}</div>
+                    <div>{/* No actions in print view */}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Chord progressions on page 2 */}
+        {includeChords && partsModule && partsModule.length > 0 && (
+          <div className="page-break">
+            <h2 className="text-xl font-bold mt-8 mb-4">Chord Progressions</h2>
+            <div className="border border-gray-300 rounded overflow-hidden">
+              <div className="grid grid-cols-4 bg-gray-100 font-bold">
+                <div className="p-2 border-r border-gray-300">Part</div>
+                <div className="p-2 border-r border-gray-300">Bars</div>
+                <div className="p-2 border-r border-gray-300">Original Chords</div>
+                <div className="p-2">Transposed Chords</div>
+              </div>
+              
+              {partsModule.map(part => (
+                <div key={part.id} className="grid grid-cols-4 border-t border-gray-300">
+                  <div className="p-2 border-r border-gray-300">{part.part}</div>
+                  <div className="p-2 border-r border-gray-300">{part.bars}</div>
+                  <div className="p-2 border-r border-gray-300 font-mono">{part.chords || ''}</div>
+                  <div className="p-2 font-mono">
+                    {transposeValue !== 0 && part.chords 
+                      ? getTransposedChordsForPart(part.chords) 
+                      : part.chords || ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Regular editor view
   return (
     <div className="flex h-full min-h-screen bg-white relative">
       {/* Toolbar Component */}
