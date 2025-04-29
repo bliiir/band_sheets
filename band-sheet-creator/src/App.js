@@ -22,13 +22,13 @@ function App() {
     <div className="flex flex-col min-h-screen w-full">
       {/* Only show header and footer when not in print mode */}
       {!isPrintMode && (
-        <header className="bg-gray-800 text-white p-4 flex items-center sticky top-0 z-50">
-          <div className="flex-shrink-0 mr-6">
-            <img src={Logo} alt="Band Sheet Creator" className="h-12" />
+        <header className="bg-gray-800 text-white p-2 md:p-4 flex items-center sticky top-0 z-50">
+          <div className="flex-shrink-0 mr-2 md:mr-6">
+            <img src={Logo} alt="Band Sheet Creator" className="h-8 md:h-12" />
           </div>
-          <div className="text-left flex-1">
-            <span className="text-xl font-bold mr-6">Band Sheet Creator</span>
-            <span className="opacity-80">Create and edit song structure sheets for your band</span>
+          <div className="text-left flex-1 flex flex-nowrap items-center">
+            <span className="text-xs md:text-xl font-bold mr-2 md:mr-6 whitespace-nowrap">Band Sheet Creator</span>
+            <span className="hidden md:inline opacity-80">Create and edit song structure sheets for your band</span>
           </div>
           <AppProviders>
             <AuthButton />

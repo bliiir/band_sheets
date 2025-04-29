@@ -563,17 +563,23 @@ export default function BandSheetEditor({ initialSheetId }) {
               margin-top: 5px;
             }
             .sheet-header {
-              display: grid;
-              grid-template-columns: 80px 48px 48px 1fr 12.5% auto;
-              gap: 10px;
-              padding: 5px 16px;
-              background-color: #f8f8f8;
-              border-bottom: 1px solid #ddd;
-              font-weight: bold;
-              font-size: 14px;
+              display: none;
+            }
+            @media (min-width: 768px) {
+              .sheet-header {
+                display: grid;
+                grid-template-columns: 80px 48px 48px 1fr 12.5% auto;
+                gap: 10px;
+                padding: 5px 16px;
+                background-color: #f8f8f8;
+                border-bottom: 1px solid #ddd;
+                font-weight: bold;
+                font-size: 14px;
+              }
             }
             .section-container {
               display: flex;
+              flex-direction: row;
               border-bottom: 1px solid #ddd;
               position: relative;
             }
@@ -611,6 +617,13 @@ export default function BandSheetEditor({ initialSheetId }) {
               padding: 5px 16px;
               border-bottom: 1px solid #eee;
               align-items: center;
+            }
+            .part-row > div {
+              width: auto;
+              margin-bottom: 0;
+            }
+            .part-row > div:before {
+              content: none;
             }
             .part-row:last-child {
               border-bottom: none;
@@ -691,10 +704,10 @@ export default function BandSheetEditor({ initialSheetId }) {
               <div className="parts-container">
                 {section.parts.map((part, partIndex) => (
                   <div key={part.id} className="part-row">
-                    <div>{part.part}</div>
-                    <div>{part.bars}</div>
-                    <div className="lyrics">{part.lyrics || ''}</div>
-                    <div className="notes">{part.notes || ''}</div>
+                    <div data-label="Part:">{part.part}</div>
+                    <div data-label="Bars:">{part.bars}</div>
+                    <div data-label="Lyrics:" className="lyrics">{part.lyrics || ''}</div>
+                    <div data-label="Notes:" className="notes">{part.notes || ''}</div>
                     <div>{/* No actions in print view */}</div>
                   </div>
                 ))}
@@ -717,9 +730,15 @@ export default function BandSheetEditor({ initialSheetId }) {
               
               {partsModule.map(part => (
                 <div key={part.id} className="grid grid-cols-4 border-t border-gray-300">
-                  <div className="p-2 border-r border-gray-300">{part.part}</div>
-                  <div className="p-2 border-r border-gray-300">{part.bars}</div>
-                  <div className="p-2 border-r border-gray-300 font-mono">{part.chords || ''}</div>
+                  <div className="p-2 border-r border-gray-300">
+                    {part.part}
+                  </div>
+                  <div className="p-2 border-r border-gray-300">
+                    {part.bars}
+                  </div>
+                  <div className="p-2 border-r border-gray-300 font-mono">
+                    {part.chords || ''}
+                  </div>
                   <div className="p-2 font-mono">
                     {transposeValue !== 0 && part.chords 
                       ? getTransposedChordsForPart(part.chords) 

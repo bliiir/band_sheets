@@ -209,7 +209,7 @@ const Section = ({
       onClick={handleSectionClick}
       style={sectionStyle}
     >
-      <div className="flex">
+      <div className="flex flex-col md:flex-row">
         {/* Section header */}
         <SectionHeader
           section={section}

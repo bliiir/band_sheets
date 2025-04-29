@@ -227,13 +227,48 @@ const Part = ({
   return (
     <div 
       key={part.id} 
-      className={`flex min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
+      className={`flex flex-col md:flex-row min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
       onClick={handlePartClick}
     >
-      {/* Part label cell */}
-      <div className="w-[60px] min-w-[60px] px-4 py-1 flex items-center">
+      {/* Mobile view: Part and Bars in one row */}
+      <div className="flex md:hidden w-full border-b border-gray-100 md:border-b-0">
+        {/* Part label cell */}
+        <div className="w-1/2 px-4 py-2 flex items-center">
+          <div className="text-xs text-gray-500 mr-2 font-semibold">Part:</div>
+          <EditableCell
+            type="text"
+            isEditing={isEditing(si, pi, 'part')}
+            onBeginEdit={() => beginEdit(si, pi, 'part')}
+            value={part.part}
+            editValue={editValue}
+            setEditValue={setEditValue}
+            saveEdit={saveEdit}
+            setEditing={setEditing}
+            placeholder="?"
+          />
+        </div>
+        
+        {/* Bars cell */}
+        <div className="w-1/2 px-2 py-2 flex items-center">
+          <div className="text-xs text-gray-500 mr-2 font-semibold">Bars:</div>
+          <EditableCell
+            type="number"
+            isEditing={isEditing(si, pi, 'bars')}
+            onBeginEdit={() => beginEdit(si, pi, 'bars')}
+            value={part.bars}
+            editValue={editValue}
+            setEditValue={setEditValue}
+            saveEdit={saveEdit}
+            setEditing={setEditing}
+            placeholder="#"
+          />
+        </div>
+      </div>
+      
+      {/* Desktop view: Part label cell */}
+      <div className="hidden md:flex w-[60px] min-w-[60px] px-4 py-1 items-center">
         <EditableCell
           type="text"
           isEditing={isEditing(si, pi, 'part')}
@@ -247,8 +282,8 @@ const Part = ({
         />
       </div>
       
-      {/* Bars cell */}
-      <div className="w-[60px] min-w-[60px] px-2 py-1 flex items-center">
+      {/* Desktop view: Bars cell */}
+      <div className="hidden md:flex w-[60px] min-w-[60px] px-2 py-1 items-center">
         <EditableCell
           type="number"
           isEditing={isEditing(si, pi, 'bars')}
@@ -263,7 +298,8 @@ const Part = ({
       </div>
       
       {/* Lyrics cell */}
-      <div className="flex-1 px-2 py-1 text-gray-500 overflow-y-auto font-['Inconsolata']">
+      <div className="w-full md:flex-1 px-2 py-2 md:py-1 text-gray-500 overflow-y-auto font-['Inconsolata']">
+        <div className="block md:hidden text-xs text-gray-500 mb-1 font-semibold">Lyrics:</div>
         <EditableCell
           type="textarea"
           contentType="lyrics"
@@ -279,7 +315,8 @@ const Part = ({
       </div>
       
       {/* Notes cell */}
-      <div className="w-[200px] min-w-[200px] px-2 py-1 text-xs text-gray-500 overflow-y-auto">
+      <div className="w-full md:w-[200px] md:min-w-[200px] px-2 py-2 md:py-1 text-xs text-gray-500 overflow-y-auto">
+        <div className="block md:hidden text-xs text-gray-500 mb-1 font-semibold">Notes:</div>
         <EditableCell
           type="textarea"
           isEditing={isEditing(si, pi, 'notes')}
@@ -294,8 +331,8 @@ const Part = ({
         />
       </div>
       
-      {/* Actions cell */}
-      <div className="w-[40px] min-w-[40px] px-2 py-1 flex justify-center items-center">
+      {/* Actions cell - visible on both mobile and desktop */}
+      <div className="w-full md:w-[40px] md:min-w-[40px] px-2 py-2 md:py-1 flex justify-end md:justify-center items-center">
         {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
           <div
             onClick={(e) => handleContextMenu(e, "part", si, pi)}

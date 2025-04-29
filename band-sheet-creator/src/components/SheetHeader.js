@@ -2,10 +2,11 @@ import React from 'react';
 
 /**
  * SheetHeader component for displaying column headers in the band sheet
+ * Hidden on mobile devices since Part component has its own labels
  */
 const SheetHeader = () => {
   return (
-    <div className="flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+    <div className="hidden md:flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
       <div className="w-[120px] min-w-[120px] px-4 py-2 flex items-center">Section</div>
       <div className="w-[60px] min-w-[60px] px-4 py-2 flex items-center">Part</div>
       <div className="w-[60px] min-w-[60px] px-2 py-2 flex items-center">Bars</div>

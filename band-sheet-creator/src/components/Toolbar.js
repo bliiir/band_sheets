@@ -75,28 +75,28 @@ const Toolbar = ({
     }
   };
   return (
-    <div className="w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-8 pb-4 z-30 fixed left-0 top-[60px] bottom-0">
+    <div className="w-10 md:w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-4 md:pt-8 pb-4 z-30 fixed left-0 top-[48px] md:top-[60px] bottom-0">
       <button 
         className={`p-2 rounded-md mb-2 transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         title="Saved Sheets"
       >
-        <FolderIcon className="w-6 h-6" />
+        <FolderIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       <button 
-        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
         onClick={handleNewSheet}
         title="New Sheet"
       >
-        <FilePlusIcon className="w-6 h-6" />
+        <FilePlusIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       <button 
-        className={`p-2 rounded-md mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
+        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
         onClick={handleSaveClick}
         disabled={!isAuthEnabled}
         title={isAuthEnabled ? "Save" : "Login to Save"}
       >
-        <SaveIcon className="w-6 h-6" />
+        <SaveIcon className="w-5 h-5 md:w-6 md:h-6" />
         {!isAuthEnabled && (
           <span className="absolute -top-1 -right-1 bg-gray-800 rounded-full p-0.5">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -106,12 +106,12 @@ const Toolbar = ({
         )}
       </button>
       <button 
-        className={`p-2 rounded-md mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
+        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
         onClick={handleSaveAsClick}
         disabled={!isAuthEnabled}
         title={isAuthEnabled ? "Save As" : "Login to Save As"}
       >
-        <SaveAllIcon className="w-6 h-6" />
+        <SaveAllIcon className="w-5 h-5 md:w-6 md:h-6" />
         {!isAuthEnabled && (
           <span className="absolute -top-1 -right-1 bg-gray-800 rounded-full p-0.5">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -121,27 +121,27 @@ const Toolbar = ({
         )}
       </button>
       <button 
-        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
         onClick={handleExport}
         title="PDF"
       >
-        <PrintIcon className="w-6 h-6" />
+        <PrintIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
 
       <button 
-        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
         onClick={() => setImportModalOpen(true)}
         title="Import Sheets"
       >
-        <ArrowLeftFromLineIcon className="w-6 h-6" />
+        <ArrowLeftFromLineIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
       <button 
-        className="p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600"
+        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
         onClick={() => setExportModalOpen(true)}
         title="Export Sheets"
       >
-        <ArrowRightFromLineIcon className="w-6 h-6" />
+        <ArrowRightFromLineIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
       {/* Spacer */}
@@ -149,11 +149,11 @@ const Toolbar = ({
       
       {/* Auth Button */}
       <button 
-        className={`p-2 rounded-md mb-2 transition-colors text-white hover:bg-gray-600 ${isAuthenticated ? 'bg-green-600 hover:bg-green-700' : ''}`}
+        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600 ${isAuthenticated ? 'bg-green-600 hover:bg-green-700' : ''}`}
         onClick={() => isAuthenticated ? logout() : setAuthModalOpen(true)}
         title={isAuthenticated ? `Logout ${currentUser?.username}` : "Login/Register"}
       >
-        <UserIcon className="w-6 h-6" />
+        <UserIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
       {/* Auth Modal */}
