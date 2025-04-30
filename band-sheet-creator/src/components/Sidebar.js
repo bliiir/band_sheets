@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import SavedSheetsPanel from './SavedSheetsPanel';
 import { getAllSheets } from '../services/SheetStorageService';
 import { useUIState } from '../contexts/UIStateContext';
@@ -10,6 +10,18 @@ const Sidebar = ({
   setSidebarOpen, 
   loadSheet 
 }) => {
+  // Determine if we're on a mobile device
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  // Add resize listener to update isMobile state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // Get UI state methods
   const { setSavedSheets } = useUIState();
   
@@ -37,14 +49,17 @@ const Sidebar = ({
   }, [sidebarOpen, authChangeCounter, isAuthenticated]);
   
   return (
-    <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block fixed left-14 top-[60px] bottom-0`}>
-      <SavedSheetsPanel
-        open={sidebarOpen}
-        savedSheets={savedSheets}
-        onClose={() => setSidebarOpen(false)}
-        onDoubleClickSheet={loadSheet}
-        onUpdate={fetchSavedSheets}
-      />
+    <>
+      <div className={`z-20 transition-all duration-200 ${sidebarOpen ? 'block' : 'hidden'} md:block fixed ${isMobile ? 'left-0 right-0 top-[84px]' : 'left-14 top-[60px] bottom-0'}`}>
+        <SavedSheetsPanel
+          open={sidebarOpen}
+          savedSheets={savedSheets}
+          onClose={() => setSidebarOpen(false)}
+          onDoubleClickSheet={loadSheet}
+          onUpdate={fetchSavedSheets}
+          isMobile={isMobile}
+        />
+      </div>
       {/* Mobile overlay backdrop */}
       {sidebarOpen && (
         <div 
@@ -52,7 +67,7 @@ const Sidebar = ({
           onClick={() => setSidebarOpen(false)} 
         />
       )}
-    </div>
+    </>
   );
 };
 

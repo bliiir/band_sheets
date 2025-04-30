@@ -13,6 +13,7 @@ export default function SavedSheetsPanel({
   onDoubleClickSheet,
   onUpdate,
   onSheetSelect,
+  isMobile,
 }) {
   const [deleteSheetId, setDeleteSheetId] = useState(null);
 
@@ -265,14 +266,23 @@ export default function SavedSheetsPanel({
 
   return (
     <div
-      className={`h-full flex flex-col transition-all duration-200 overflow-hidden bg-white shadow-lg rounded-r-2xl ${open ? "w-[260px] border-r border-gray-200" : "w-0 border-none"
-        } relative z-30`}
+      className={`flex flex-col transition-all duration-200 overflow-hidden bg-white shadow-lg ${isMobile ? 'max-h-[70vh] rounded-b-2xl' : 'h-full rounded-r-2xl'} ${open ? (isMobile ? "w-full border-b border-gray-200" : "w-[260px] border-r border-gray-200") : "w-0 border-none"} relative z-30`}
     >
-      <div className="px-4 py-6 pt-10 border-b border-gray-100 font-semibold flex items-center justify-between sticky top-0 bg-white z-20 shadow-sm">
+      <div className="px-4 py-4 border-b border-gray-100 font-semibold flex items-center justify-between sticky top-0 bg-white z-20 shadow-sm">
         <span className="tracking-wide text-lg text-gray-800">
           Saved Sheets
         </span>
-
+        {isMobile && (
+          <button 
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            onClick={onClose}
+            aria-label="Close panel"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
       
       {/* Export Status Messages */}
@@ -287,7 +297,7 @@ export default function SavedSheetsPanel({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto pb-2">
+      <div className={`flex-1 overflow-y-auto pb-2 ${isMobile ? 'max-h-[calc(70vh-60px)]' : ''}`}>
         {(!savedSheets || !Array.isArray(savedSheets) || savedSheets.length === 0) && (
           <div className="px-4 py-8 text-center text-gray-400 italic select-none">
             No saved sheets
@@ -297,11 +307,22 @@ export default function SavedSheetsPanel({
           <div
             key={sheet.id}
             className="group px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-blue-50 transition-colors flex items-center gap-2"
+            onClick={() => {
+              if (isMobile) {
+                // On mobile, single click loads the sheet
+                navigate(`/sheet/${sheet.id}`);
+                onDoubleClickSheet(sheet.id);
+                // Close the panel on mobile after selection
+                onClose();
+              }
+            }}
             onDoubleClick={() => {
               // Navigate to the sheet URL
               navigate(`/sheet/${sheet.id}`);
               // Also call the original handler
               onDoubleClickSheet(sheet.id);
+              // Close the panel on mobile after selection
+              if (isMobile) onClose();
             }}
           >
             <div className="flex-1 min-w-0">

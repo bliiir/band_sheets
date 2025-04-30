@@ -23,7 +23,8 @@ const Toolbar = ({
   handleNewSheet, 
   handleSave, 
   handleSaveAs, 
-  handleExport 
+  handleExport,
+  isMobile
 }) => {
   // State for modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -74,24 +75,26 @@ const Toolbar = ({
       setAuthRequiredModalOpen(true);
     }
   };
+  // Use the isMobile prop passed from parent component
+
   return (
-    <div className="w-10 md:w-14 bg-gray-700 border-r border-gray-800 shadow-md flex flex-col items-center pt-4 md:pt-8 pb-4 z-30 fixed left-0 top-[48px] md:top-[60px] bottom-0">
+    <div className={`bg-gray-700 shadow-md z-30 flex items-center ${isMobile ? 'w-full fixed top-[48px] left-0 right-0 px-2 py-1 flex-row justify-around' : 'w-14 fixed left-0 top-[60px] bottom-0 flex-col pt-8 pb-4 border-r border-gray-800'}`}>
       <button 
-        className={`p-2 rounded-md mb-2 transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
         title="Saved Sheets"
       >
         <FolderIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       <button 
-        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
         onClick={handleNewSheet}
         title="New Sheet"
       >
         <FilePlusIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       <button 
-        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
         onClick={handleSaveClick}
         disabled={!isAuthEnabled}
         title={isAuthEnabled ? "Save" : "Login to Save"}
@@ -106,7 +109,7 @@ const Toolbar = ({
         )}
       </button>
       <button 
-        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${isAuthEnabled ? 'text-white hover:bg-gray-600' : 'text-gray-400 cursor-not-allowed relative'}`}
         onClick={handleSaveAsClick}
         disabled={!isAuthEnabled}
         title={isAuthEnabled ? "Save As" : "Login to Save As"}
@@ -121,7 +124,7 @@ const Toolbar = ({
         )}
       </button>
       <button 
-        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
         onClick={handleExport}
         title="PDF"
       >
@@ -129,7 +132,7 @@ const Toolbar = ({
       </button>
 
       <button 
-        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
         onClick={() => setImportModalOpen(true)}
         title="Import Sheets"
       >
@@ -137,19 +140,19 @@ const Toolbar = ({
       </button>
       
       <button 
-        className="p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600"
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
         onClick={() => setExportModalOpen(true)}
         title="Export Sheets"
       >
         <ArrowRightFromLineIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
-      {/* Spacer */}
-      <div className="flex-grow"></div>
+      {/* Spacer - only show on desktop */}
+      {!isMobile && <div className="flex-grow"></div>}
       
       {/* Auth Button */}
       <button 
-        className={`p-1 md:p-2 rounded-md mb-1 md:mb-2 transition-colors text-white hover:bg-gray-600 ${isAuthenticated ? 'bg-green-600 hover:bg-green-700' : ''}`}
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600 ${isAuthenticated ? 'bg-green-600 hover:bg-green-700' : ''}`}
         onClick={() => isAuthenticated ? logout() : setAuthModalOpen(true)}
         title={isAuthenticated ? `Logout ${currentUser?.username}` : "Login/Register"}
       >

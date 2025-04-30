@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import ColorPicker from './ColorPicker';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import Toolbar from './Toolbar';
@@ -19,6 +19,18 @@ import { generatePrintContent } from '../services/ExportService';
 
 
 export default function BandSheetEditor({ initialSheetId }) {
+  // State to track if we're on a mobile device
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  // Add resize listener to update isMobile state
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   // State for save notification
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   
@@ -764,6 +776,7 @@ export default function BandSheetEditor({ initialSheetId }) {
         handleSave={handleSave}
         handleSaveAs={handleSaveAs}
         handleExport={handleExport}
+        isMobile={isMobile}
       />
       
       {/* Sidebar */}
@@ -771,6 +784,7 @@ export default function BandSheetEditor({ initialSheetId }) {
         sidebarOpen={sidebarOpen}
         savedSheets={savedSheets}
         setSidebarOpen={setSidebarOpen}
+        isMobile={isMobile}
         loadSheet={async (id) => {
           try {
             loadSheet(id).then(() => {
@@ -785,9 +799,8 @@ export default function BandSheetEditor({ initialSheetId }) {
           }
         }}
       />
-      
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-auto ml-14">
+      <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : 'ml-14'} overflow-hidden`}>
         {/* Song info bar - positioned above the sheet in the visual stack */}
         <SongInfoBar songData={songData} setSongData={setSongData} />
 
