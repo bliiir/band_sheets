@@ -31,7 +31,7 @@ const ExportOptionsModal = ({ isOpen, onClose, onExport }) => {
               onChange={(e) => setIncludeChordProgressions(e.target.checked)}
               className="form-checkbox h-5 w-5 text-blue-600"
             />
-            <span>Include chord progressions on page 2</span>
+            <span>Include chord progressions on a last page</span>
           </label>
         </div>
         

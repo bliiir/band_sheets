@@ -331,16 +331,14 @@ const Part = ({
         />
       </div>
       
-      {/* Actions cell - visible on both mobile and desktop */}
+      {/* Actions cell - always visible on both mobile and desktop */}
       <div className="w-full md:w-[40px] md:min-w-[40px] px-2 py-2 md:py-1 flex justify-end md:justify-center items-center">
-        {(hoverState.type === 'part' && hoverState.si === si && hoverState.pi === pi) && (
-          <div
-            onClick={(e) => handleContextMenu(e, "part", si, pi)}
-            className="cursor-pointer"
-          >
-            <MenuIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-          </div>
-        )}
+        <div
+          onClick={(e) => handleContextMenu(e, "part", si, pi)}
+          className="cursor-pointer"
+        >
+          <MenuIcon className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+        </div>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ const getEnergyWidthForPdf = (energyLevel) => {
  * @param {Number} transposeValue - Current transpose value (optional)
  * @param {Array} partsModule - Chord progressions data
  * @param {Object} options - Export options
- * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on page 2
+ * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on the last page
  * @param {Boolean} options.includeSectionColors - Whether to include section background colors
  * @returns {String} - HTML content for printing
  */
@@ -232,10 +232,10 @@ export const generatePrintContent = (songData, sections, transposeValue = 0, par
           `).join('')}
         </div>
         
-        <!-- Page 2: Chord Progressions -->
+        <!-- Last Page: Chord Progressions -->
         ${includeChordProgressions && partsModule && partsModule.length > 0 ? `
         <div class="page-break"></div>
-        <div class="chord-progressions">
+        <div class="chord-progressions" style="min-height: 100vh; display: flex; flex-direction: column;">
           <h2 style="font-size: 18px; margin-top: 20px; margin-bottom: 10px;">Chord Progressions</h2>
           
           <div style="border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
@@ -272,7 +272,7 @@ export const generatePrintContent = (songData, sections, transposeValue = 0, par
  * @param {Number} transposeValue - Current transpose value (optional)
  * @param {Array} partsModule - Chord progressions data
  * @param {Object} options - Export options
- * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on page 2
+ * @param {Boolean} options.includeChordProgressions - Whether to include chord progressions on the last page
  * @param {Boolean} options.includeSectionColors - Whether to include section background colors
  */
 export const exportToPDF = (songData, sections, transposeValue = 0, partsModule = [], options = {}) => {
