@@ -28,6 +28,8 @@ services:
       - JWT_SECRET=band_sheets_jwt_secret_for_local_only
       - JWT_EXPIRES_IN=30d
       - JWT_COOKIE_EXPIRES_IN=30
+      - CHOKIDAR_USEPOLLING=true
+      - NODE_PATH=/app
     depends_on:
       - mongodb
     networks:
@@ -47,6 +49,9 @@ services:
       - "3000:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:5050/api
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - FAST_REFRESH=true
     depends_on:
       - backend
     networks:

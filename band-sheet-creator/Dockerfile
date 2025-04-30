@@ -14,5 +14,9 @@ COPY . .
 # Expose port 3000
 EXPOSE 3000
 
-# Start the application
+# Enable file watching in Docker
+ENV WATCHPACK_POLLING=true
+ENV CHOKIDAR_USEPOLLING=true
+
+# Start the application in development mode with watch enabled
 CMD ["npm", "start"]
