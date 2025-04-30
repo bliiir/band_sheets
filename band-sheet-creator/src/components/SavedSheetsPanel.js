@@ -196,7 +196,12 @@ export default function SavedSheetsPanel({
     ? ReactDOM.createPortal(
       <div
         className="fixed bg-white border border-gray-300 rounded shadow-lg z-[9999] sheet-menu-container"
-        style={{ left: menuPos.x, top: menuPos.y }}
+        style={{ 
+          left: menuPos.x, 
+          top: menuPos.y,
+          width: '150px', // Fixed width to match our calculation
+          maxWidth: '90vw' // Ensure it doesn't overflow on very small screens
+        }}
         onClick={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
@@ -355,10 +360,22 @@ export default function SavedSheetsPanel({
                 } else {
                   const rect = e.currentTarget.getBoundingClientRect();
                   setMenuOpenId(sheet.id);
-                  // Position menu slightly above on touch devices to avoid finger occlusion
-                  const isTouchDevice = 'ontouchstart' in window;
+                  
+                  // Get viewport dimensions
+                  const viewportWidth = window.innerWidth;
+                  
+                  // Calculate menu position
+                  // For mobile devices, position the menu to the left of the button instead of right
+                  const isTouchDevice = 'ontouchstart' in window || window.innerWidth < 768;
+                  const menuWidth = 150; // Approximate width of the menu
+                  
+                  // If positioning at rect.right would push the menu off-screen, position it to the left
+                  const xPos = (rect.right + menuWidth > viewportWidth) 
+                    ? rect.left - menuWidth 
+                    : rect.right;
+                  
                   setMenuPos({ 
-                    x: rect.right, 
+                    x: xPos, 
                     y: isTouchDevice ? rect.top : rect.bottom 
                   });
                 }

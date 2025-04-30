@@ -79,6 +79,7 @@ const Toolbar = ({
 
   return (
     <div className={`bg-gray-700 shadow-md z-30 flex items-center ${isMobile ? 'w-full fixed top-[48px] left-0 right-0 px-2 py-1 flex-row justify-around' : 'w-14 fixed left-0 top-[60px] bottom-0 flex-col pt-8 pb-4 border-r border-gray-800'}`}>
+      {/* Show the sidebar toggle button in both desktop and mobile views */}
       <button 
         className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
         onClick={() => setSidebarOpen(!sidebarOpen)}
