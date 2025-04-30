@@ -10,6 +10,7 @@ import PartsModule from './PartsModule';
 import ContextMenu from './ContextMenu';
 import EnergyDialog from './EnergyDialog';
 import ConfirmModal from './ConfirmModal';
+import SetlistsPanel from './SetlistsPanel';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
@@ -21,6 +22,9 @@ import { generatePrintContent } from '../services/ExportService';
 export default function BandSheetEditor({ initialSheetId }) {
   // State to track if we're on a mobile device
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  // State for setlists panel
+  const [setlistsPanelOpen, setSetlistsPanelOpen] = useState(false);
   
   // Add resize listener to update isMobile state
   useEffect(() => {
@@ -777,6 +781,8 @@ export default function BandSheetEditor({ initialSheetId }) {
         handleSaveAs={handleSaveAs}
         handleExport={handleExport}
         isMobile={isMobile}
+        setlistsPanelOpen={setlistsPanelOpen}
+        setSetlistsPanelOpen={setSetlistsPanelOpen}
       />
       
       {/* Sidebar */}
@@ -799,6 +805,30 @@ export default function BandSheetEditor({ initialSheetId }) {
           }
         }}
       />
+      
+      {/* Setlists Panel */}
+      {setlistsPanelOpen && (
+        <div className="z-20 transition-all duration-200 block fixed left-14 top-[60px] bottom-0">
+          <SetlistsPanel
+            open={setlistsPanelOpen}
+            onClose={() => setSetlistsPanelOpen(false)}
+            onSelectSetlist={(setlist) => {
+              // Future enhancement: Load the setlist
+              console.log('Selected setlist:', setlist);
+              setSetlistsPanelOpen(false);
+            }}
+            isMobile={isMobile}
+          />
+        </div>
+      )}
+      
+      {/* Mobile overlay backdrop for setlists panel */}
+      {setlistsPanelOpen && isMobile && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-30 md:hidden z-10" 
+          onClick={() => setSetlistsPanelOpen(false)} 
+        />
+      )}
       {/* Main content area */}
       <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : 'ml-14'} overflow-hidden`}>
         {/* Song info bar - positioned above the sheet in the visual stack */}

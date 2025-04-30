@@ -26,14 +26,15 @@ const Toolbar = ({
   handleSave, 
   handleSaveAs, 
   handleExport,
-  isMobile
+  isMobile,
+  setlistsPanelOpen,
+  setSetlistsPanelOpen
 }) => {
   // State for modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [setlistModalOpen, setSetlistModalOpen] = useState(false);
   
   // State for authentication
   const [isAuthEnabled, setIsAuthEnabled] = useState(false);
@@ -85,7 +86,13 @@ const Toolbar = ({
       {/* Show the sidebar toggle button in both desktop and mobile views */}
       <button 
         className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${sidebarOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+        onClick={() => {
+          setSidebarOpen(!sidebarOpen);
+          // Close setlists panel if it's open
+          if (setlistsPanelOpen) {
+            setSetlistsPanelOpen(false);
+          }
+        }}
         title="Saved Sheets"
       >
         <FolderIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -152,8 +159,14 @@ const Toolbar = ({
       </button>
       
       <button 
-        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
-        onClick={() => setSetlistModalOpen(true)}
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors ${setlistsPanelOpen ? 'bg-white text-gray-700' : 'text-white hover:bg-gray-600'}`}
+        onClick={() => {
+          setSetlistsPanelOpen(!setlistsPanelOpen);
+          // Close sidebar if it's open
+          if (sidebarOpen) {
+            setSidebarOpen(false);
+          }
+        }}
         title="Manage Setlists"
       >
         <ListIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -208,11 +221,7 @@ const Toolbar = ({
         }}
       />
       
-      {/* Setlist Modal */}
-      <SetlistModal
-        isOpen={setlistModalOpen}
-        onClose={() => setSetlistModalOpen(false)}
-      />
+      {/* We don't render the setlist panel here - it will be rendered by the parent component */}
     </div>
   );
 };
