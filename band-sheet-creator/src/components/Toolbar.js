@@ -7,11 +7,13 @@ import { ReactComponent as PrintIcon } from "../assets/print.svg";
 import { ReactComponent as UserIcon } from "../assets/user.svg";
 import { ReactComponent as ArrowLeftFromLineIcon } from "../assets/arrow_left_from_line.svg";
 import { ReactComponent as ArrowRightFromLineIcon } from "../assets/arrow_right_from_line.svg";
+import { ReactComponent as ListIcon } from "../assets/list.svg";
 import { useAuth } from "../contexts/AuthContext";
 import AuthModal from "./Auth/AuthModal";
 import AuthRequiredModal from "./AuthRequiredModal";
 import ImportModal from "./ImportModal";
 import ExportModal from "./ExportModal";
+import SetlistModal from "./SetlistModal";
 import eventBus from "../utils/EventBus";
 
 /**
@@ -31,6 +33,7 @@ const Toolbar = ({
   const [authRequiredModalOpen, setAuthRequiredModalOpen] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [setlistModalOpen, setSetlistModalOpen] = useState(false);
   
   // State for authentication
   const [isAuthEnabled, setIsAuthEnabled] = useState(false);
@@ -148,6 +151,14 @@ const Toolbar = ({
         <ArrowRightFromLineIcon className="w-5 h-5 md:w-6 md:h-6" />
       </button>
       
+      <button 
+        className={`p-1 md:p-2 rounded-md ${isMobile ? 'mx-1' : 'mb-2'} transition-colors text-white hover:bg-gray-600`}
+        onClick={() => setSetlistModalOpen(true)}
+        title="Manage Setlists"
+      >
+        <ListIcon className="w-5 h-5 md:w-6 md:h-6" />
+      </button>
+      
       {/* Spacer - only show on desktop */}
       {!isMobile && <div className="flex-grow"></div>}
       
@@ -195,6 +206,12 @@ const Toolbar = ({
           // Don't automatically close the modal
           // Let the user close it manually
         }}
+      />
+      
+      {/* Setlist Modal */}
+      <SetlistModal
+        isOpen={setlistModalOpen}
+        onClose={() => setSetlistModalOpen(false)}
       />
     </div>
   );

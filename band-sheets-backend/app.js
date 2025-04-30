@@ -29,6 +29,7 @@ dotenv.config();
 const authRoutes = require('./routes/auth');
 const sheetRoutes = require('./routes/sheets');
 const importExportRoutes = require('./routes/importExport');
+const setlistRoutes = require('./routes/setlists');
 
 // Initialize app
 const app = express();
@@ -157,6 +158,7 @@ app.post('/api/test', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/sheets', sheetRoutes);
 app.use('/api/import-export', importExportRoutes);
+app.use('/api/setlists', setlistRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

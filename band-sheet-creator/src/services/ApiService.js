@@ -49,8 +49,8 @@ const makeRequest = async (url, options = {}) => {
       // For non-auth endpoints without a token, use localStorage instead
 
       
-      // If this is a sheets endpoint, we should return early and let the app use localStorage
-      if (url.includes('/sheets')) {
+      // If this is a sheets or setlists endpoint, we should return early and let the app use localStorage
+      if (url.includes('/sheets') || url.includes('/setlists')) {
         throw new Error('Not authenticated - using localStorage instead');
       }
     }

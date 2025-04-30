@@ -5,6 +5,8 @@ import { ReactComponent as MenuIcon } from '../assets/menu.svg';
 import ConfirmModal from "./ConfirmModal";
 import { deleteSheet } from "../services/SheetStorageService";
 import { exportSingleSheet } from "../services/ExportService";
+import { useSetlist } from "../contexts/SetlistContext";
+import SetlistModal from "./SetlistModal";
 
 export default function SavedSheetsPanel({
   open,
@@ -22,9 +24,14 @@ export default function SavedSheetsPanel({
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [exportStatus, setExportStatus] = useState({ message: '', error: '' });
+  const [setlistModalOpen, setSetlistModalOpen] = useState(false);
+  const [selectedSheetForSetlist, setSelectedSheetForSetlist] = useState(null);
   const inputRef = useRef();
   const panelRef = useRef();
   const navigate = useNavigate();
+  
+  // Get setlist context
+  const { addSheetToSetlist } = useSetlist();
 
   // State for custom confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState({
@@ -79,6 +86,13 @@ export default function SavedSheetsPanel({
     };
     localStorage.setItem(`sheet_${newId}`, JSON.stringify(duplicatedSheet));
     if (onUpdate) onUpdate();
+    setMenuOpenId(null);
+  };
+  
+  // Helper to open setlist modal for adding a sheet to a setlist
+  const handleAddToSetlist = (sheet) => {
+    setSelectedSheetForSetlist(sheet);
+    setSetlistModalOpen(true);
     setMenuOpenId(null);
   };
   
@@ -245,6 +259,19 @@ export default function SavedSheetsPanel({
           Export Sheet
         </div>
         <div
+          className="px-4 py-2 cursor-pointer whitespace-nowrap hover:bg-gray-100 transition-colors"
+          onClick={(e) => {
+            e.preventDefault(); // Prevent focus change
+            e.stopPropagation(); // Stop event bubbling
+            const sheet = savedSheets.find((s) => s.id === menuOpenId);
+            if (sheet) {
+              handleAddToSetlist(sheet);
+            }
+          }}
+        >
+          Add to Setlist
+        </div>
+        <div
           className="px-4 py-2 cursor-pointer whitespace-nowrap text-red-500 hover:bg-red-50 transition-colors"
           onClick={(e) => {
             e.preventDefault(); // Prevent focus change
@@ -400,6 +427,18 @@ export default function SavedSheetsPanel({
         cancelText="Cancel"
         confirmColor="red"
       />
+      
+      {/* Setlist Modal */}
+      {setlistModalOpen && selectedSheetForSetlist && (
+        <SetlistModal 
+          isOpen={setlistModalOpen} 
+          onClose={() => {
+            setSetlistModalOpen(false);
+            setSelectedSheetForSetlist(null);
+          }}
+          initialSheet={selectedSheetForSetlist}
+        />
+      )}
     </div>
   );
 }
