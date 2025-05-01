@@ -120,28 +120,45 @@ export default function BandSheetEditor({ initialSheetId }) {
     openEnergyDialog
   } = useUIState();
   
-  // State to track if we've already loaded the initial sheet
-  const [initialSheetLoaded, setInitialSheetLoaded] = useState(false);
+  // State to track which sheet ID is currently loaded
+  const [loadedSheetId, setLoadedSheetId] = useState(null);
+  
+  // State to track the source of the current sheet (url, internal, or history)
+  // This helps prevent circular updates between URL changes and sheet loading
+  const [sheetSource, setSheetSource] = useState(null);
+  
+  // Track the previous location to detect history navigation
+  const [previousLocation, setPreviousLocation] = useState(location.pathname);
   
   // Load initial sheet if ID is provided
   useEffect(() => {
     const loadInitialSheet = async () => {
-      // Only load if we have an ID and haven't loaded it yet
-      if (initialSheetId && !initialSheetLoaded) {
+      // Only load if we have an ID and it's different from the currently loaded sheet
+      // AND we're not handling a history navigation (which is handled by the location change effect)
+      if (initialSheetId && initialSheetId !== loadedSheetId && sheetSource !== 'history') {
         try {
+          console.log(`BandSheetEditor: Loading sheet with ID: ${initialSheetId} from URL parameter`);
+          
+          // Mark this sheet as loaded from URL to prevent circular updates
+          setSheetSource('url');
+          
+          // Load the sheet
           await loadSheet(initialSheetId);
           showNotification(`Sheet loaded successfully`);
-          // Mark as loaded so we don't reload
-          setInitialSheetLoaded(true);
+          
+          // Update the loaded sheet ID
+          setLoadedSheetId(initialSheetId);
+          
           // Clear any temporary draft since we loaded a real sheet
           clearTemporaryDraft();
         } catch (error) {
           console.error('BandSheetEditor: Error loading initial sheet:', error);
           showNotification(`Error loading sheet: ${error.message}`, 'error');
-          // Still mark as attempted so we don't retry
-          setInitialSheetLoaded(true);
+          
+          // Still update the loaded sheet ID to prevent retries
+          setLoadedSheetId(initialSheetId);
         }
-      } else if (!initialSheetId && !initialSheetLoaded && !draftLoaded) {
+      } else if (!initialSheetId && !loadedSheetId && !draftLoaded) {
         // Check for temporary draft if no sheet ID was provided
         const draft = loadTemporaryDraft();
         if (draft) {
@@ -184,14 +201,89 @@ export default function BandSheetEditor({ initialSheetId }) {
     };
     
     loadInitialSheet();
-  }, [initialSheetId, loadSheet, initialSheetLoaded, draftLoaded, showNotification, createNewSheetData, setSongData, addSection, addPart, updateSectionBackgroundColor]);
+  }, [initialSheetId, loadSheet, loadedSheetId, draftLoaded, showNotification, createNewSheetData, setSongData, addSection, addPart, updateSectionBackgroundColor, clearTemporaryDraft, setSheetSource, sheetSource]);
   
   // Update URL when sheet ID changes
   useEffect(() => {
-    if (currentSheetId && location.pathname !== `/sheet/${currentSheetId}`) {
-      navigate(`/sheet/${currentSheetId}`, { replace: true });
+    // Only update URL if:
+    // 1. We have a current sheet ID
+    // 2. The URL doesn't already match the current sheet ID
+    // 3. The sheet was NOT loaded from a URL parameter (to prevent circular updates)
+    if (currentSheetId && 
+        location.pathname !== `/sheet/${currentSheetId}` && 
+        sheetSource !== 'url' && 
+        sheetSource !== 'history') {
+      console.log(`BandSheetEditor: Updating URL to sheet/${currentSheetId} (internal navigation)`);
+      
+      // Add to browser history instead of replacing it
+      navigate(`/sheet/${currentSheetId}`);
     }
-  }, [currentSheetId, navigate, location.pathname]);
+  }, [currentSheetId, navigate, location.pathname, sheetSource]);
+  
+  // Handle location changes from browser history navigation
+  useEffect(() => {
+    // Extract sheet ID from the URL path
+    const match = location.pathname.match(/\/sheet\/([^/]+)/);
+    const urlSheetId = match ? match[1] : null;
+    
+    // If the location changed and it's not due to our own navigation
+    if (location.pathname !== previousLocation && urlSheetId) {
+      console.log(`BandSheetEditor: Location changed to ${location.pathname} (history navigation)`);
+      console.log(`BandSheetEditor: URL sheet ID: ${urlSheetId}, Loaded sheet ID: ${loadedSheetId}`);
+      
+      // Only load if the sheet ID in the URL is different from the currently loaded sheet
+      if (urlSheetId !== loadedSheetId) {
+        console.log(`BandSheetEditor: Loading sheet from history navigation: ${urlSheetId}`);
+        
+        // Use a function to update state to ensure we have the latest values
+        // This helps prevent race conditions with other effects
+        setSheetSource(prevSource => {
+          console.log(`BandSheetEditor: Updating sheet source from ${prevSource} to 'history'`);
+          return 'history';
+        });
+        
+        // Small delay to ensure state updates have propagated
+        // This helps prevent race conditions with other effects
+        setTimeout(() => {
+          // Load the sheet from the URL
+          loadSheet(urlSheetId)
+            .then(() => {
+              // Update the loaded sheet ID
+              setLoadedSheetId(urlSheetId);
+              showNotification(`Sheet loaded successfully`);
+            })
+            .catch(error => {
+              console.error('BandSheetEditor: Error loading sheet from history:', error);
+              showNotification(`Error loading sheet: ${error.message}`, 'error');
+            });
+        }, 50);
+      }
+    }
+    
+    // Update previous location
+    setPreviousLocation(location.pathname);
+  }, [location.pathname, loadedSheetId, loadSheet, showNotification, previousLocation]);
+  
+  // Helper function to handle internal sheet changes
+  // This is used when a sheet is changed internally (not from URL)
+  const handleInternalSheetChange = useCallback((sheetId) => {
+    console.log(`BandSheetEditor: Internal sheet change to ${sheetId}`);
+    // Mark this as an internal navigation to allow URL updates
+    // Use function form to ensure we have the latest state
+    setSheetSource(prevSource => {
+      console.log(`BandSheetEditor: Updating sheet source from ${prevSource} to 'internal'`);
+      return 'internal';
+    });
+  }, []);
+  
+  // Update sheetSource when currentSheetId changes but not from URL
+  useEffect(() => {
+    // If the current sheet ID changes and doesn't match the loaded sheet ID from URL,
+    // then it's an internal change (e.g., creating a new sheet)
+    if (currentSheetId && currentSheetId !== loadedSheetId && sheetSource !== 'url') {
+      handleInternalSheetChange(currentSheetId);
+    }
+  }, [currentSheetId, loadedSheetId, sheetSource, handleInternalSheetChange]);
   
   // Helper function to refresh the saved sheets list
   const refreshSavedSheets = useCallback(async () => {

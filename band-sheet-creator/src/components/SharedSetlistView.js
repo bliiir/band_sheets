@@ -69,18 +69,30 @@ export default function SharedSetlistView() {
   // Navigate to a sheet
   const navigateToSheet = async (sheetId) => {
     if (sheetId) {
-      console.log('Navigating to sheet:', sheetId);
+      console.log('SharedSetlistView: Navigating to sheet:', sheetId);
       
       // Ensure the sheet ID is properly formatted
       const formattedSheetId = sheetId.toString();
       
-      // Instead of using React Router navigation, use direct browser navigation
-      // This forces a complete page reload and avoids any state issues
-      const sheetUrl = `${window.location.origin}/sheet/${formattedSheetId}`;
-      console.log('Navigating to URL:', sheetUrl);
-      
-      // Use window.location.href to force a full page reload
-      window.location.href = sheetUrl;
+      // First, verify the sheet exists
+      try {
+        const sheet = await getSheetById(formattedSheetId);
+        if (!sheet) {
+          console.error('Sheet not found:', formattedSheetId);
+          setError(`Sheet not found: ${formattedSheetId}`);
+          return;
+        }
+        
+        // Use React Router's navigate function for client-side navigation
+        // This maintains the single-page application experience
+        console.log(`SharedSetlistView: Using React Router to navigate to /sheet/${formattedSheetId}`);
+        
+        // Navigate to the sheet URL - add to browser history
+        navigate(`/sheet/${formattedSheetId}`);
+      } catch (error) {
+        console.error('Error verifying sheet:', error);
+        setError(`Error loading sheet: ${error.message}`);
+      }
     }
   };
   

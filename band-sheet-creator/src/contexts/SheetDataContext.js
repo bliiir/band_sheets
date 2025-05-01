@@ -245,9 +245,6 @@ export function SheetDataProvider({ children }) {
       setIdCounter(sheet.id ? sheet.id + 2 : Date.now());
     }
     
-    // Update current sheet ID
-    setCurrentSheetId(id);
-    
     // Load parts module if available
     if (sheet.partsModule) {
       setPartsModule(sheet.partsModule);
@@ -257,7 +254,9 @@ export function SheetDataProvider({ children }) {
     }
     
     setTransposeValue(sheet.transposeValue || 0);
-    setCurrentSheetId(sheet.id || null);
+    // Update current sheet ID (only once at the end)
+    // Use the sheet's ID if available, otherwise use the requested ID
+    setCurrentSheetId(sheet.id || id);
     
     endApiCall();
     return true;
