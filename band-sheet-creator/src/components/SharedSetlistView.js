@@ -1,21 +1,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { getSetlistById, favoriteSetlist } from '../services/SetlistService';
 import { useAuth } from '../contexts/AuthContext';
 import { ReactComponent as StarIcon } from '../assets/list_plus.svg'; // Using list_plus instead of star
 import { ReactComponent as BackIcon } from '../assets/arrow_left_from_line.svg'; // Using arrow_left_from_line instead of arrow_left
 import { getSheetById } from '../services/SheetStorageService';
-import useSheetNavigation from '../hooks/useSheetNavigation';
+import { 
+  setCurrentSheetId, 
+  setNavigationSource, 
+  setLoadedSheetId, 
+  setPreviousLocation,
+  setNavigationInProgress,
+  resetNavigation
+} from '../redux/slices/navigationSlice';
 
 export default function SharedSetlistView() {
-  const { id } = useParams();
+  const { id: setlistId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   
   const [setlist, setSetlist] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [favoriteSuccess, setFavoriteSuccess] = useState(false);
+  
+  // Get Redux dispatch
+  const dispatch = useDispatch();
   
   // Show notification for errors or success messages
   const showNotification = useCallback((message, type = 'success') => {
@@ -24,19 +36,13 @@ export default function SharedSetlistView() {
     }
   }, []);
   
-  // Initialize sheet navigation hook
-  const { loadSheetFromUrl } = useSheetNavigation({
-    loadSheet: getSheetById,
-    showNotification,
-    navigate
-  });
-  
   // Load the setlist data
   useEffect(() => {
     const loadSetlist = async () => {
       try {
         setLoading(true);
-        const data = await getSetlistById(id);
+        console.log('Loading setlist with ID:', setlistId);
+        const data = await getSetlistById(setlistId);
         console.log('Loaded setlist data:', data);
         
         if (data && data.sheets) {
@@ -59,18 +65,18 @@ export default function SharedSetlistView() {
     };
     
     loadSetlist();
-  }, [id]);
+  }, [setlistId]);
   
   // Handle adding the setlist to user's favorites
   const handleFavoriteSetlist = async () => {
     if (!isAuthenticated) {
       // Redirect to login with return URL
-      navigate(`/login?returnTo=/setlist/${id}`);
+      navigate(`/login?returnTo=/setlist/${setlistId}`);
       return;
     }
     
     try {
-      await favoriteSetlist(id);
+      await favoriteSetlist(setlistId);
       setFavoriteSuccess(true);
       setTimeout(() => {
         setFavoriteSuccess(false);
@@ -81,30 +87,27 @@ export default function SharedSetlistView() {
     }
   };
   
-  // Navigate to a sheet using a reliable method - full page reload
+  // Navigate to a sheet using full page reload for guaranteed reliability
   const navigateToSheet = async (sheetId) => {
     if (sheetId) {
       console.log('SharedSetlistView: Navigating to sheet:', sheetId);
       
-      // Ensure the sheet ID is properly formatted
-      const formattedSheetId = sheetId.toString();
-      
       try {
         // First verify the sheet exists
-        const sheet = await getSheetById(formattedSheetId);
+        const sheet = await getSheetById(sheetId);
         if (!sheet) {
-          console.error('Sheet not found:', formattedSheetId);
-          setError(`Sheet not found: ${formattedSheetId}`);
+          console.error('Sheet not found:', sheetId);
+          setError(`Sheet not found: ${sheetId}`);
           return;
         }
         
-        // Use full page navigation for maximum reliability
-        console.log(`SharedSetlistView: Using full page navigation to /sheet/${formattedSheetId}`);
+        console.log(`SharedSetlistView: Navigating from setlist ${setlistId} to sheet ${sheetId}`);
         
-        // This approach guarantees a clean state for each sheet
-        window.location.href = `/sheet/${formattedSheetId}`;
+        // Use window.location.href for a full page reload
+        // This is the most reliable approach for browser history management
+        window.location.href = `/sheet/${sheetId}`;
       } catch (error) {
-        console.error('Error verifying sheet:', error);
+        console.error('Error navigating to sheet:', error);
         setError(`Error loading sheet: ${error.message}`);
       }
     }

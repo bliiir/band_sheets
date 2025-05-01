@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useSelector, useDispatch } from 'react-redux';
 import ColorPicker from './ColorPicker';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
 import Sidebar from './Sidebar';
 import SongInfoBar from './SongInfoBar';
@@ -17,12 +18,23 @@ import { useUIState } from '../contexts/UIStateContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllSheets, saveTemporaryDraft, loadTemporaryDraft, clearTemporaryDraft, hasTemporaryDraft } from '../services/SheetStorageService';
 import { generatePrintContent } from '../services/ExportService';
-import useSheetNavigation from '../hooks/useSheetNavigation';
-
+import { 
+  setNavigationSource,
+  setCurrentSheetId,
+  setLoadedSheetId,
+  resetNavigation,
+  selectNavigationSource,
+  selectCurrentSheetId,
+  selectLoadedSheetId,
+  selectNavigationInProgress
+} from '../redux/slices/navigationSlice';
 
 export default function BandSheetEditor({ initialSheetId }) {
-  // State for navigation
-  const [previousLocation, setPreviousLocation] = useState(null);
+  const dispatch = useDispatch();
+  const location = useLocation();
+  
+  // For tracking previously loaded sheet to prevent duplicate loads
+  const loadedSheetIdRef = useRef(null);
   // State to track if we're on a mobile device
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
@@ -122,24 +134,95 @@ export default function BandSheetEditor({ initialSheetId }) {
     openEnergyDialog
   } = useUIState();
   
-  // Add useSheetNavigation hook to handle all navigation-related logic
-  const {
-    loadedSheetId,
-    navSource,
-    loadSheetFromUrl,
-    handleInternalSheetChange
-  } = useSheetNavigation({
-    initialSheetId,
-    loadSheet,
-    showNotification,
-    navigate,
-    clearTemporaryDraft
-  });
+  // Get navigation state from Redux
+  const reduxLoadedSheetId = useSelector(selectLoadedSheetId);
+  const navSource = useSelector(selectNavigationSource);
+  const reduxCurrentSheetId = useSelector(selectCurrentSheetId);
+  const navigationInProgress = useSelector(selectNavigationInProgress);
+  
+  // Critical middleware between Redux and SheetDataContext
+  // This effect ensures sheets load properly from any navigation source
+  useEffect(() => {
+    // Skip if navigation is already in progress
+    if (navigationInProgress) {
+      console.log('BandSheetEditor: Navigation already in progress, skipping...');
+      return;
+    }
+    
+    const loadSheetFromRedux = async () => {
+      // Debug current state for troubleshooting
+      console.log(`BandSheetEditor debug - Current state: {
+        reduxCurrentSheetId: ${reduxCurrentSheetId},
+        loadedSheetIdRef.current: ${loadedSheetIdRef.current},
+        navSource: ${navSource}
+      }`);
+      
+      // Only proceed if we have a sheet ID to load
+      if (reduxCurrentSheetId) {
+        // IMPORTANT: For 'setlist' navigation or when navigating to a different sheet,
+        // we need to force a reload regardless of current state
+        const forceReload = navSource === 'setlist' || reduxCurrentSheetId !== loadedSheetIdRef.current;
+        
+        if (forceReload) {
+          console.log(`BandSheetEditor: Loading sheet ${reduxCurrentSheetId} (source: ${navSource}, force: ${forceReload})`);
+          
+          try {
+            // When navigating from setlist, first reset our state reference
+            // This ensures we always process the navigation properly
+            if (navSource === 'setlist') {
+              console.log('BandSheetEditor: Detected setlist navigation, resetting sheet references');
+              loadedSheetIdRef.current = null;
+            }
+            
+            // Use the SheetDataContext to load actual sheet data
+            console.log(`BandSheetEditor: Calling loadSheet with ID: ${reduxCurrentSheetId}`);
+            await loadSheet(reduxCurrentSheetId);
+            
+            // Update our reference to the freshly loaded sheet ID
+            loadedSheetIdRef.current = reduxCurrentSheetId;
+            console.log(`BandSheetEditor: Updated reference to: ${loadedSheetIdRef.current}`);
+            
+            // Show success notification to user
+            showNotification('Sheet loaded successfully');
+            
+            // Clear temporary draft (if any) since we loaded a real sheet
+            clearTemporaryDraft();
+          } catch (error) {
+            console.error(`Error loading sheet ${reduxCurrentSheetId}:`, error);
+            showNotification(`Error loading sheet: ${error.message}`, 'error');
+          }
+        } else {
+          console.log(`BandSheetEditor: Sheet ${reduxCurrentSheetId} already loaded, skipping reload`);
+        }
+      }
+    };
+    
+    loadSheetFromRedux();
+  }, [reduxCurrentSheetId, navSource, navigationInProgress, loadSheet, showNotification, clearTemporaryDraft]);
+  
+  // Ref to track previous pathname for history navigation
+  const prevPathRef = useRef(location.pathname);
+  
+  // Load initial sheet from URL parameter
+  useEffect(() => {
+    const loadInitialSheet = async () => {
+      if (initialSheetId && initialSheetId !== loadedSheetIdRef.current) {
+        console.log(`BandSheetEditor: Initial load from URL param: ${initialSheetId}`);
+        
+        // Update Redux navigation state
+        dispatch(setNavigationSource('url'));
+        dispatch(setCurrentSheetId(initialSheetId));
+        dispatch(setLoadedSheetId(initialSheetId));
+      }
+    };
+    
+    loadInitialSheet();
+  }, [initialSheetId, dispatch]);
   
   // Load draft if no sheet ID is provided
   useEffect(() => {
     const loadDraftIfNeeded = async () => {
-      if (!initialSheetId && !loadedSheetId && !draftLoaded) {
+      if (!initialSheetId && !reduxLoadedSheetId && !draftLoaded) {
         // Check for temporary draft if no sheet ID was provided
         const draft = loadTemporaryDraft();
         if (draft) {
@@ -182,19 +265,109 @@ export default function BandSheetEditor({ initialSheetId }) {
     };
     
     loadDraftIfNeeded();
-  }, [initialSheetId, loadedSheetId, draftLoaded, showNotification, createNewSheetData, setSongData, addSection, addPart, updateSectionBackgroundColor, loadTemporaryDraft, clearTemporaryDraft]);
+  }, [initialSheetId, reduxLoadedSheetId, draftLoaded, showNotification, createNewSheetData, setSongData, addSection, addPart, updateSectionBackgroundColor, loadTemporaryDraft, clearTemporaryDraft]);
   
   // Navigation is now handled by the useSheetNavigation hook
   // We've removed the URL update and browser history navigation effects that were here
   
-  // Listen for changes to currentSheetId to update navigation
-  // This happens when sheets are created or loaded directly via SheetDataContext
+  
+  // Sync SheetDataContext state with Redux
+  // When the user creates a new sheet or loads a sheet directly in SheetDataContext
   useEffect(() => {
-    if (currentSheetId && currentSheetId !== loadedSheetId && navSource !== 'url') {
-      // This is an internal sheet change (e.g., creating a new sheet)
-      handleInternalSheetChange(currentSheetId);
+    if (currentSheetId && currentSheetId !== reduxCurrentSheetId && navSource !== 'url') {
+      console.log(`BandSheetEditor: Syncing SheetDataContext sheet ID to Redux: ${currentSheetId}`);
+      
+      // Mark this as an internal navigation
+      dispatch(setNavigationSource('internal'));
+      
+      // Update Redux state with the sheet ID from SheetDataContext
+      dispatch(setCurrentSheetId(currentSheetId));
+      
+      // Update browser URL via React Router
+      navigate(`/sheet/${currentSheetId}`);
     }
-  }, [currentSheetId, loadedSheetId, navSource, handleInternalSheetChange]);
+  }, [currentSheetId, reduxCurrentSheetId, navSource, dispatch, navigate]);
+  
+  // Function to handle internal sheet changes (creating new sheets, etc.)
+  const handleInternalSheetChange = useCallback((sheetId) => {
+    if (!sheetId) return;
+    
+    console.log(`BandSheetEditor: Internal sheet change to ${sheetId}`);
+    
+    // Set navigation source
+    dispatch(setNavigationSource('internal'));
+    
+    // Update Redux state
+    dispatch(setCurrentSheetId(sheetId));
+    
+    // Navigate to the sheet
+    navigate(`/sheet/${sheetId}`);
+  }, [dispatch, navigate]);
+  
+  // Direct browser history handling with the popstate event
+  // This gives us more control than relying on React Router's location changes
+  useEffect(() => {
+    // This function handles browser back/forward button clicks
+    const handlePopState = (event) => {
+      console.log('BandSheetEditor: PopState event fired', event);
+      
+      // Skip if navigation is already in progress
+      if (navigationInProgress) {
+        console.log('Navigation in progress, skipping popstate handler');
+        return;
+      }
+      
+      // Get the current URL path after the popstate event
+      const currentPath = window.location.pathname;
+      console.log(`BandSheetEditor: Current path after popstate: ${currentPath}`);
+      
+      // Extract sheet ID if we're on a sheet page
+      const match = currentPath.match(/\/sheet\/([^/]+)/);
+      const sheetId = match ? match[1] : null;
+      
+      // Extract setlist ID if we're on a setlist page
+      const setlistMatch = currentPath.match(/\/setlist\/([^/]+)/);
+      const setlistId = setlistMatch ? setlistMatch[1] : null;
+      
+      // State from history (if available)
+      const historyState = event.state || {};
+      console.log('BandSheetEditor: History state:', historyState);
+      
+      // Handle different navigation scenarios
+      if (sheetId) {
+        // We're navigating to a sheet
+        console.log(`BandSheetEditor: Popstate navigating to sheet: ${sheetId}`);
+        
+        if (sheetId !== loadedSheetIdRef.current) {
+          // Need to load a different sheet
+          dispatch(resetNavigation());
+          dispatch(setNavigationSource('history'));
+          dispatch(setCurrentSheetId(sheetId));
+          dispatch(setLoadedSheetId(sheetId));
+          
+          // Update our reference
+          loadedSheetIdRef.current = sheetId;
+        }
+      } else if (setlistId) {
+        // We're navigating to a setlist - no action needed,
+        // the router will handle rendering the setlist component
+        console.log(`BandSheetEditor: Popstate navigating to setlist: ${setlistId}`);
+      }
+    };
+    
+    // Add the popstate event listener
+    window.addEventListener('popstate', handlePopState);
+    
+    // Clean up the event listener when component unmounts
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigationInProgress, dispatch]);
+  
+  // Update previous location tracking whenever location changes
+  useEffect(() => {
+    prevPathRef.current = location.pathname;
+  }, [location.pathname]);
   
   // Helper function to refresh the saved sheets list
   const refreshSavedSheets = useCallback(async () => {

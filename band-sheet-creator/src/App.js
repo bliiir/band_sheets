@@ -7,13 +7,13 @@ import AuthButton from './components/Auth/AuthButton';
 import Logo from './assets/logo3.png';
 import AppProviders from './contexts/AppProviders';
 
-// Sheet editor with URL parameter
-function SheetEditorWithId() {
+// SheetEditor component with ID parameter
+// Using a key based on sheetId forces component to remount when sheet changes
+// This is critical for correct navigation behavior
+const SheetEditorWithId = () => {
   const { sheetId } = useParams();
-  // Use a key based on sheetId to force complete remount when the ID changes
-  // This ensures the component's state is completely reset between navigations
-  return <BandSheetEditor key={sheetId} initialSheetId={sheetId} />;
-}
+  return <BandSheetEditor initialSheetId={sheetId} key={`sheet-${sheetId}`} />;
+};
 
 // Main App component
 function App() {
