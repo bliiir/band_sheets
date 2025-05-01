@@ -13,7 +13,7 @@ import AuthModal from "./Auth/AuthModal";
 import AuthRequiredModal from "./AuthRequiredModal";
 import ImportModal from "./ImportModal";
 import ExportModal from "./ExportModal";
-import SetlistModal from "./SetlistModal";
+// SetlistModal removed as we now use the side panel
 import eventBus from "../utils/EventBus";
 
 /**

@@ -5,7 +5,7 @@ import ConfirmModal from "./ConfirmModal";
 import { useSetlist } from "../contexts/SetlistContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSheetData } from "../contexts/SheetDataContext";
-import SetlistModal from "./SetlistModal";
+// SetlistModal removed as we now use the panel directly
 
 export default function SetlistsPanel({
   open,
@@ -20,7 +20,7 @@ export default function SetlistsPanel({
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [editingId, setEditingId] = useState(null);
   const [editingValue, setEditingValue] = useState("");
-  const [setlistModalOpen, setSetlistModalOpen] = useState(false);
+  // Modal state removed as we now use the panel directly
   const [editingSetlist, setEditingSetlist] = useState(null);
   const inputRef = useRef();
   const panelRef = useRef();
@@ -29,6 +29,7 @@ export default function SetlistsPanel({
   // Get setlist context
   const { 
     setlists, 
+    createSetlist,
     updateSetlist, 
     deleteSetlist, 
     addSheetToSetlist,
@@ -36,7 +37,7 @@ export default function SetlistsPanel({
     reorderSetlistSheets,
     isLoading,
     error,
-    loadAllSetlists
+    loadSetlists
   } = useSetlist();
   
   // Get current sheet data
@@ -51,6 +52,12 @@ export default function SetlistsPanel({
     title: "",
     message: "",
     onConfirm: () => {},
+    setlistId: null
+  });
+
+  // State for share notification
+  const [shareNotification, setShareNotification] = useState({
+    show: false,
     setlistId: null
   });
 
@@ -80,7 +87,7 @@ export default function SetlistsPanel({
         };
         await updateSetlist(setlist.id, updatedSetlist);
         // Refresh setlists after update
-        loadAllSetlists();
+        loadSetlists();
       } catch (error) {
         console.error('Error updating setlist name:', error);
       }
@@ -94,11 +101,31 @@ export default function SetlistsPanel({
     setEditingId(null);
     setEditingValue("");
   };
+  
+  // Handle input key down events
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const setlist = setlists.find(s => s.id === editingId);
+      if (setlist) {
+        commitRename(setlist);
+      }
+    } else if (e.key === 'Escape') {
+      cancelRename();
+    }
+  };
+  
+  // Handle input blur event
+  const handleInputBlur = () => {
+    const setlist = setlists.find(s => s.id === editingId);
+    if (setlist) {
+      commitRename(setlist);
+    }
+  };
 
   // Function to open the edit modal
   const handleEditSetlist = (setlist) => {
-    setEditingSetlist(setlist);
-    setSetlistModalOpen(true);
+    setEditingId(setlist.id);
+    setEditingValue(setlist.name);
     setMenuOpenId(null);
   };
 
@@ -124,7 +151,7 @@ export default function SetlistsPanel({
             // Force a small delay to ensure the dialog is closed before refreshing
             setTimeout(() => {
               // Refresh the setlist list
-              loadAllSetlists();
+              loadSetlists();
             }, 100);
           } catch (error) {
             console.error('SetlistsPanel: Error deleting setlist:', error);
@@ -180,12 +207,14 @@ export default function SetlistsPanel({
   const renderMenu = () => {
     if (!menuOpenId) return null;
     
+    console.log('Rendering menu for setlist:', menuOpenId, 'at position:', menuPos);
+    
     return (
       <div
-        className="setlist-menu-container absolute bg-white shadow-lg rounded-md py-1 z-50 min-w-[150px]"
+        className="setlist-menu-container fixed bg-white shadow-lg rounded-md py-1 z-50 min-w-[150px] border border-gray-200"
         style={{
-          top: menuPos.y,
-          left: menuPos.x,
+          top: `${menuPos.y}px`,
+          left: `${menuPos.x}px`,
         }}
       >
         <div
@@ -215,6 +244,16 @@ export default function SetlistsPanel({
           Edit
         </div>
         <div
+          className="px-4 py-2 cursor-pointer whitespace-nowrap hover:bg-gray-100 transition-colors"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleShareSetlist(menuOpenId);
+          }}
+        >
+          Share
+        </div>
+        <div
           className="px-4 py-2 cursor-pointer whitespace-nowrap text-red-500 hover:bg-red-50 transition-colors"
           onClick={(e) => {
             e.preventDefault();
@@ -238,10 +277,25 @@ export default function SetlistsPanel({
     );
   };
 
-  // Create a new setlist
-  const handleCreateSetlist = () => {
-    setEditingSetlist(null);
-    setSetlistModalOpen(true);
+  // Create a new setlist directly in the panel
+  const handleCreateSetlist = async () => {
+    try {
+      const newSetlist = {
+        name: 'New Setlist',
+        sheets: []
+      };
+      
+      const createdSetlist = await createSetlist(newSetlist);
+      
+      // Set to editing mode immediately
+      setEditingId(createdSetlist.id);
+      setEditingValue(createdSetlist.name);
+      
+      // Refresh setlists
+      loadSetlists();
+    } catch (error) {
+      console.error('Error creating setlist:', error);
+    }
   };
   
   // Toggle setlist expansion
@@ -251,6 +305,36 @@ export default function SetlistsPanel({
     } else {
       setExpandedSetlistId(setlistId); // Expand this setlist
     }
+  };
+  
+  // Handle sharing a setlist
+  const handleShareSetlist = (setlistId) => {
+    const shareUrl = `${window.location.origin}/setlist/${setlistId}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        // Show notification
+        setShareNotification({
+          show: true,
+          setlistId
+        });
+        
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+          setShareNotification({
+            show: false,
+            setlistId: null
+          });
+        }, 3000);
+      })
+      .catch(err => {
+        console.error('Could not copy URL to clipboard:', err);
+        alert('Could not copy URL to clipboard. Please try again.');
+      });
+      
+    // Close the menu
+    setMenuOpenId(null);
   };
   
   // Handle adding current sheet to setlist
@@ -275,7 +359,7 @@ export default function SetlistsPanel({
       
       await addSheetToSetlist(setlistId, sheet);
       // Refresh setlists after adding sheet
-      loadAllSetlists();
+      loadSetlists();
     } catch (error) {
       console.error('Error adding sheet to setlist:', error);
     }
@@ -286,7 +370,7 @@ export default function SetlistsPanel({
     try {
       await removeSheetFromSetlist(setlistId, sheetId);
       // Refresh setlists after removing sheet
-      loadAllSetlists();
+      loadSetlists();
     } catch (error) {
       console.error('Error removing sheet from setlist:', error);
     }
@@ -307,7 +391,7 @@ export default function SetlistsPanel({
     try {
       await reorderSetlistSheets(setlistId, sheetIndex, newIndex);
       // Refresh setlists after reordering
-      loadAllSetlists();
+      loadSetlists();
     } catch (error) {
       console.error('Error reordering sheets:', error);
     }
@@ -368,19 +452,17 @@ export default function SetlistsPanel({
                 toggleSetlistExpansion(setlist.id);
               }}
             >
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 overflow-hidden">
                 {editingId === setlist.id ? (
                   <input
-                    ref={inputRef}
                     type="text"
+                    ref={inputRef}
+                    className="w-full px-2 py-1 border border-blue-400 rounded"
                     value={editingValue}
-                    className="w-full font-medium text-base px-1 border-b border-blue-200 focus:border-blue-500 focus:bg-blue-50 outline-none bg-transparent transition-all rounded"
                     onChange={(e) => setEditingValue(e.target.value)}
-                    onBlur={() => commitRename(setlist)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitRename(setlist);
-                      if (e.key === "Escape") cancelRename();
-                    }}
+                    onKeyDown={handleInputKeyDown}
+                    onBlur={handleInputBlur}
+                    autoFocus
                   />
                 ) : (
                   <div className="font-medium flex items-center">
@@ -395,19 +477,30 @@ export default function SetlistsPanel({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                     {setlist.name || "(Untitled Setlist)"}
+                    
+                    {/* Share notification */}
+                    {shareNotification.show && shareNotification.setlistId === setlist.id && (
+                      <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full animate-pulse">
+                        Link copied!
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className="text-xs text-gray-500">{setlist.description || ""}</div>
                 <div className="text-[11px] text-gray-400">{setlist.sheets?.length || 0} sheets</div>
               </div>
               <button
-                className="bg-none border-none cursor-pointer p-1 ml-2 hover:bg-gray-200 rounded"
+                type="button"
+                className="flex items-center justify-center p-1.5 ml-2 hover:bg-gray-200 rounded"
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
+                  
+                  // Toggle menu state
                   if (menuOpenId === setlist.id) {
                     setMenuOpenId(null);
                   } else {
+                    // Get position of the button for menu placement
                     const rect = e.currentTarget.getBoundingClientRect();
                     setMenuOpenId(setlist.id);
                     
@@ -415,8 +508,6 @@ export default function SetlistsPanel({
                     const viewportWidth = window.innerWidth;
                     
                     // Calculate menu position
-                    // For mobile devices, position the menu to the left of the button instead of right
-                    const isTouchDevice = 'ontouchstart' in window || window.innerWidth < 768;
                     const menuWidth = 150; // Approximate width of the menu
                     
                     // If positioning at rect.right would push the menu off-screen, position it to the left
@@ -424,15 +515,20 @@ export default function SetlistsPanel({
                       ? rect.left - menuWidth 
                       : rect.right;
                     
+                    // Set the menu position
                     setMenuPos({ 
                       x: xPos, 
-                      y: isTouchDevice ? rect.top : rect.bottom 
+                      y: rect.bottom 
                     });
+                    
+                    console.log('Menu opened for setlist:', setlist.id, 'at position:', { x: xPos, y: rect.bottom });
                   }
                 }}
                 aria-label="Setlist menu"
               >
-                <MenuIcon style={{ width: 20, height: 20, color: "#888" }} />
+                <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+                </svg>
               </button>
             </div>
             
@@ -540,19 +636,7 @@ export default function SetlistsPanel({
         confirmColor="red"
       />
       
-      {/* Setlist Modal */}
-      {setlistModalOpen && (
-        <SetlistModal 
-          isOpen={setlistModalOpen} 
-          onClose={() => {
-            setSetlistModalOpen(false);
-            setEditingSetlist(null);
-            // Refresh setlists after closing modal
-            loadAllSetlists();
-          }}
-          initialSetlist={editingSetlist}
-        />
-      )}
+      {/* Setlist Modal removed as we now use the panel directly */}
     </div>
   );
 }

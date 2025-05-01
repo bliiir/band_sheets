@@ -7,7 +7,8 @@ const {
   deleteSetlist,
   addSheetToSetlist,
   removeSheetFromSetlist,
-  reorderSetlistSheets
+  reorderSetlistSheets,
+  favoriteSetlist
 } = require('../controllers/setlistController');
 const { protect, optionalAuth } = require('../middleware/auth');
 
@@ -38,5 +39,10 @@ router
 router
   .route('/:id/reorder')
   .put(protect, reorderSetlistSheets);
+
+// Favorite a setlist (create a copy for the current user)
+router
+  .route('/:id/favorite')
+  .post(protect, favoriteSetlist);
 
 module.exports = router;

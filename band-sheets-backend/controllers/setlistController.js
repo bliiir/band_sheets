@@ -438,3 +438,44 @@ exports.reorderSetlistSheets = async (req, res) => {
     });
   }
 };
+
+/**
+ * Favorite a setlist (create a copy for the current user)
+ * @route POST /api/setlists/:id/favorite
+ * @access Private
+ */
+exports.favoriteSetlist = async (req, res) => {
+  try {
+    // Find the original setlist
+    const originalSetlist = await Setlist.findById(req.params.id)
+      .populate('sheets.sheet', 'title artist bpm key');
+    
+    if (!originalSetlist) {
+      return res.status(404).json({ success: false, error: 'Setlist not found' });
+    }
+    
+    // Create a new setlist as a copy
+    const newSetlist = new Setlist({
+      name: `${originalSetlist.name} (Copy)`,
+      description: originalSetlist.description,
+      owner: req.user.id,
+      sheets: originalSetlist.sheets,
+      originalSetlistId: originalSetlist._id,
+      originalCreator: originalSetlist.owner,
+      favorited: Date.now()
+    });
+    
+    // Save the new setlist
+    await newSetlist.save();
+    
+    // Return the new setlist
+    res.status(201).json({
+      success: true,
+      message: 'Setlist added to your collection',
+      setlist: newSetlist
+    });
+  } catch (error) {
+    console.error('Error favoriting setlist:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};

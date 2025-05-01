@@ -269,33 +269,62 @@ export const removeSheetFromSetlist = async (setlistId, sheetId) => {
  * @throws {Error} If user is not authenticated
  */
 export const reorderSetlistSheets = async (setlistId, oldIndex, newIndex) => {
-  // Check if user is authenticated by looking for token
-  const token = localStorage.getItem('token');
-  
-  // Only allow authenticated users to modify setlists
-  if (!token) {
-    throw new Error('You must be logged in to reorder sheets in a setlist');
-  }
-  
   try {
-    // First verify the setlist exists
-    const setlist = await getSetlistById(setlistId);
-    
-    if (!setlist) {
-      throw new Error('Setlist not found');
+    // Require authentication
+    const response = await fetchWithAuth(
+      `${API_URL}/setlists/${setlistId}/reorder`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldIndex,
+          newIndex,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to reorder setlist sheets: ${response.status}`);
     }
-    
-    // Use direct API endpoint for reordering sheets in a setlist
-    console.log(`Reordering sheets in setlist ${setlistId} from index ${oldIndex} to ${newIndex}`);
-    const data = await fetchWithAuth(`${API_URL}/setlists/${setlistId}/reorder`, {
-      method: 'PUT',
-      body: JSON.stringify({ oldIndex, newIndex })
-    });
-    
+
+    const data = await response.json();
     console.log('Sheets reordered successfully:', data);
     return data.setlist;
   } catch (error) {
     console.error('Error reordering sheets in setlist:', error);
+    throw error;
+  }
+};
+
+/**
+ * Add a setlist to the user's favorites (creates a copy for the user)
+ * @param {string} setlistId - ID of the setlist to favorite
+ * @returns {Promise<Object>} The newly created setlist copy
+ * @throws {Error} If user is not authenticated
+ */
+export const favoriteSetlist = async (setlistId) => {
+  try {
+    // Require authentication
+    const response = await fetchWithAuth(
+      `${API_URL}/setlists/${setlistId}/favorite`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to favorite setlist: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.setlist;
+  } catch (error) {
+    console.error('Error favoriting setlist:', error);
     throw error;
   }
 };

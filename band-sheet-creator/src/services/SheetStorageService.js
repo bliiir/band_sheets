@@ -27,14 +27,18 @@ const isAuthenticated = () => {
  * @returns {Object|null} The loaded sheet or null if not found
  */
 export const getSheetById = async (id) => {
+  // Ensure the ID is properly formatted
+  const formattedId = id.toString();
+  console.log(`Getting sheet ${formattedId} from storage`);
+  
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log(`Getting sheet ${id} from MongoDB`);
+      console.log(`Getting sheet ${formattedId} from MongoDB with authentication`);
       const token = localStorage.getItem('token');
       
       // Make the API request with full URL
-      const response = await fetch(`${API_URL}/sheets/${id}`, {
+      const response = await fetch(`${API_URL}/sheets/${formattedId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -50,11 +54,11 @@ export const getSheetById = async (id) => {
       }
       
       const data = await response.json();
-      console.log(`Successfully loaded sheet ${id} from MongoDB`);
+      console.log(`Successfully loaded sheet ${formattedId} from MongoDB`);
       return data.data;
     } catch (error) {
-      console.error(`Error fetching sheet ${id} from API:`, error);
-      return null; // No fallback to localStorage for authenticated users
+      console.error(`Error fetching sheet ${formattedId} from MongoDB:`, error);
+      // Fall through to try public access
     }
   } else {
     // For unauthenticated users
@@ -66,25 +70,46 @@ export const getSheetById = async (id) => {
     // For other sheets, try to access via API without authentication
     // This will work for public sheets
     try {
-      console.log(`Getting public sheet ${id} from MongoDB without authentication`);
+      console.log(`Getting public sheet ${formattedId} from MongoDB without authentication`);
+      console.log('API URL:', `${API_URL}/sheets/${formattedId}`);
+      
+      // Add a special query parameter to help debug the issue
+      const debugUrl = `${API_URL}/sheets/${formattedId}?debug=true&client=incognito`;
+      console.log('Debug URL:', debugUrl);
       
       // Make the API request with full URL but without token
-      const response = await fetch(`${API_URL}/sheets/${id}`, {
+      const response = await fetch(debugUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
-      // Log the response status
+      // Log the response status and details
       console.log('API response status for public access:', response.status, response.statusText);
+      console.log('API response headers:', [...response.headers.entries()]);
+      
+      // Clone the response to log its content without consuming it
+      const responseClone = response.clone();
+      const responseText = await responseClone.text();
+      try {
+        const data = JSON.parse(responseText);
+        console.log('API response data:', data);
+        
+        // Check for specific error conditions
+        if (data.success === false) {
+          console.error('API error details:', data.error);
+        }
+      } catch (e) {
+        console.log('API response text (not JSON):', responseText);
+      }
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log(`Successfully loaded public sheet ${id} from MongoDB`);
+      console.log(`Successfully loaded public sheet ${formattedId} from MongoDB`);
       return data.data;
     } catch (error) {
       console.error(`Error fetching public sheet ${id} from API:`, error);

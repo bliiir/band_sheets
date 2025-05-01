@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import BandSheetEditor from './components/BandSheetEditor';
+import SharedSetlistView from './components/SharedSetlistView';
 import AuthButton from './components/Auth/AuthButton';
 import Logo from './assets/logo3.png';
 import AppProviders from './contexts/AppProviders';
@@ -40,6 +41,7 @@ function App() {
           <Routes>
             <Route path="/" element={<BandSheetEditor />} />
             <Route path="/sheet/:sheetId" element={<SheetEditorWithId />} />
+            <Route path="/setlist/:id" element={<SharedSetlistView />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppProviders>

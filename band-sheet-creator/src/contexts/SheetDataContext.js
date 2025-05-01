@@ -201,9 +201,17 @@ export function SheetDataProvider({ children }) {
    */
   const loadSheet = useCallback(async (id) => {
     beginApiCall();
+    console.log('SheetDataContext: Loading sheet with ID:', id);
     try {
-      const sheet = await getSheetById(id);
+      // Ensure the ID is properly formatted
+      const formattedId = id.toString();
+      console.log('SheetDataContext: Using formatted ID:', formattedId);
+      
+      const sheet = await getSheetById(formattedId);
+      console.log('SheetDataContext: Sheet loaded:', sheet ? 'Success' : 'Not found');
+      
       if (!sheet) {
+        console.error('SheetDataContext: Sheet not found for ID:', formattedId);
         endApiCall(new Error('Sheet not found'));
         return false;
       }

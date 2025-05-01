@@ -180,7 +180,6 @@ export default function BandSheetEditor({ initialSheetId }) {
             showNotification('Error loading draft', 'error');
           }
         }
-        setInitialSheetLoaded(true);
       }
     };
     
