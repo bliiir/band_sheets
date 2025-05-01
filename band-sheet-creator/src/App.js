@@ -10,7 +10,9 @@ import AppProviders from './contexts/AppProviders';
 // Sheet editor with URL parameter
 function SheetEditorWithId() {
   const { sheetId } = useParams();
-  return <BandSheetEditor initialSheetId={sheetId} />;
+  // Use a key based on sheetId to force complete remount when the ID changes
+  // This ensures the component's state is completely reset between navigations
+  return <BandSheetEditor key={sheetId} initialSheetId={sheetId} />;
 }
 
 // Main App component

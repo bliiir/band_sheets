@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSetlistById, favoriteSetlist } from '../services/SetlistService';
 import { useAuth } from '../contexts/AuthContext';
 import { ReactComponent as StarIcon } from '../assets/list_plus.svg'; // Using list_plus instead of star
 import { ReactComponent as BackIcon } from '../assets/arrow_left_from_line.svg'; // Using arrow_left_from_line instead of arrow_left
 import { getSheetById } from '../services/SheetStorageService';
+import useSheetNavigation from '../hooks/useSheetNavigation';
 
 export default function SharedSetlistView() {
   const { id } = useParams();
@@ -15,6 +16,20 @@ export default function SharedSetlistView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [favoriteSuccess, setFavoriteSuccess] = useState(false);
+  
+  // Show notification for errors or success messages
+  const showNotification = useCallback((message, type = 'success') => {
+    if (type === 'error') {
+      setError(message);
+    }
+  }, []);
+  
+  // Initialize sheet navigation hook
+  const { loadSheetFromUrl } = useSheetNavigation({
+    loadSheet: getSheetById,
+    showNotification,
+    navigate
+  });
   
   // Load the setlist data
   useEffect(() => {
@@ -66,7 +81,7 @@ export default function SharedSetlistView() {
     }
   };
   
-  // Navigate to a sheet
+  // Navigate to a sheet using a reliable method - full page reload
   const navigateToSheet = async (sheetId) => {
     if (sheetId) {
       console.log('SharedSetlistView: Navigating to sheet:', sheetId);
@@ -74,8 +89,8 @@ export default function SharedSetlistView() {
       // Ensure the sheet ID is properly formatted
       const formattedSheetId = sheetId.toString();
       
-      // First, verify the sheet exists
       try {
+        // First verify the sheet exists
         const sheet = await getSheetById(formattedSheetId);
         if (!sheet) {
           console.error('Sheet not found:', formattedSheetId);
@@ -83,12 +98,11 @@ export default function SharedSetlistView() {
           return;
         }
         
-        // Use React Router's navigate function for client-side navigation
-        // This maintains the single-page application experience
-        console.log(`SharedSetlistView: Using React Router to navigate to /sheet/${formattedSheetId}`);
+        // Use full page navigation for maximum reliability
+        console.log(`SharedSetlistView: Using full page navigation to /sheet/${formattedSheetId}`);
         
-        // Navigate to the sheet URL - add to browser history
-        navigate(`/sheet/${formattedSheetId}`);
+        // This approach guarantees a clean state for each sheet
+        window.location.href = `/sheet/${formattedSheetId}`;
       } catch (error) {
         console.error('Error verifying sheet:', error);
         setError(`Error loading sheet: ${error.message}`);

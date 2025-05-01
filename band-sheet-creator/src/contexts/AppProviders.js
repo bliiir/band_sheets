@@ -4,6 +4,7 @@ import { EditingProvider } from './EditingContext';
 import { SheetDataProvider } from './SheetDataContext';
 import { UIStateProvider } from './UIStateContext';
 import { SetlistProvider } from './SetlistContext';
+import { NavigationProvider } from './NavigationContext';
 
 /**
  * AppProviders component that wraps the application with all context providers
@@ -16,13 +17,15 @@ const AppProviders = ({ children }) => {
   return (
     <AuthProvider>
       <UIStateProvider>
-        <SheetDataProvider>
-          <SetlistProvider>
-            <EditingProvider>
-              {children}
-            </EditingProvider>
-          </SetlistProvider>
-        </SheetDataProvider>
+        <NavigationProvider>
+          <SheetDataProvider>
+            <SetlistProvider>
+              <EditingProvider>
+                {children}
+              </EditingProvider>
+            </SetlistProvider>
+          </SheetDataProvider>
+        </NavigationProvider>
       </UIStateProvider>
     </AuthProvider>
   );
