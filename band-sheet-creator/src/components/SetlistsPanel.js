@@ -311,7 +311,7 @@ export default function SetlistsPanel({
   const handleShareSetlist = (setlistId) => {
     const shareUrl = `${window.location.origin}/setlist/${setlistId}`;
     
-    // Copy to clipboard
+    // Copy to clipboard and open in new tab
     navigator.clipboard.writeText(shareUrl)
       .then(() => {
         // Show notification
@@ -319,6 +319,9 @@ export default function SetlistsPanel({
           show: true,
           setlistId
         });
+        
+        // Open the setlist in a new tab
+        window.open(shareUrl, '_blank');
         
         // Hide notification after 3 seconds
         setTimeout(() => {
