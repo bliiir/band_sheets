@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getSetlistById, favoriteSetlist } from '../services/SetlistService';
 import { getSheetById } from '../services/SheetStorageService';
+import { exportSetlistToPDF, exportSheetToPDF } from '../services/ExportService';
 import { 
   setCurrentSheetId, 
   setNavigationSource, 
@@ -14,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { ReactComponent as StarIcon } from '../assets/list_plus.svg';
 import { ReactComponent as BackIcon } from '../assets/arrow_left_from_line.svg';
+import { ReactComponent as PrintIcon } from '../assets/print.svg';
 import AuthModal from './Auth/AuthModal';
 import eventBus from '../utils/EventBus';
 
@@ -28,6 +30,10 @@ const SharedSetlistView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [favoriteSuccess, setFavoriteSuccess] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [printingSheet, setPrintingSheet] = useState(null); // Tracks which sheet is being printed
   const [authModalOpen, setAuthModalOpen] = useState(false);
   
   // Effect to load the setlist
@@ -221,6 +227,71 @@ const SharedSetlistView = () => {
   const handleBack = () => {
     navigate('/');
   };
+
+  // Handle exporting all sheets in the setlist as a single PDF
+  const handleExportSetlist = async () => {
+    if (!setlistId || !setlist || !setlist.sheets || setlist.sheets.length === 0) {
+      setExportError('No sheets available to export');
+      return;
+    }
+
+    try {
+      setExporting(true);
+      setExportError(null);
+      
+      // Default export options
+      const options = {
+        includeChordProgressions: true,
+        includeSectionColors: true
+      };
+      
+      const result = await exportSetlistToPDF(setlistId, options);
+      
+      if (result.success) {
+        setExportSuccess(true);
+        // Clear success message after a few seconds
+        setTimeout(() => setExportSuccess(false), 5000);
+      } else {
+        setExportError(result.error || 'Failed to export setlist');
+      }
+    } catch (error) {
+      console.error('Error exporting setlist to PDF:', error);
+      setExportError(error.message || 'An unexpected error occurred during export');
+    } finally {
+      setExporting(false);
+    }
+  };
+  
+  // Handle exporting a single sheet to PDF
+  const handlePrintSheet = async (sheetId) => {
+    if (!sheetId) {
+      setExportError('Invalid sheet ID');
+      return;
+    }
+    
+    try {
+      setPrintingSheet(sheetId);
+      setExportError(null);
+      
+      // Default export options
+      const options = {
+        includeChordProgressions: true,
+        includeSectionColors: true
+      };
+      
+      const result = await exportSheetToPDF(sheetId, options);
+      
+      if (!result.success) {
+        setExportError(`Failed to export sheet: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error exporting sheet to PDF:', error);
+      setExportError(error.message || 'An unexpected error occurred during export');
+    } finally {
+      // Clear the printing indicator after a short delay
+      setTimeout(() => setPrintingSheet(null), 1000);
+    }
+  };
   
   // Close auth modal
   const closeAuthModal = () => {
@@ -296,6 +367,15 @@ const SharedSetlistView = () => {
                 </div>
                 <div className="flex space-x-2">
                   <button 
+                    onClick={handleExportSetlist}
+                    disabled={exporting}
+                    className="bg-white text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-150 ease-in-out mr-2"
+                    aria-label="Export all sheets as PDF"
+                    title="Export all sheets as PDF"
+                  >
+                    <PrintIcon className="w-6 h-6" />
+                  </button>
+                  <button 
                     onClick={handleFavoriteSetlist}
                     className="bg-white text-pink-500 hover:text-pink-700 p-2 rounded-full transition duration-150 ease-in-out"
                     aria-label="Add to my setlists"
@@ -313,6 +393,25 @@ const SharedSetlistView = () => {
               </div>
             )}
             
+            {exportSuccess && (
+              <div className="p-3 bg-green-100 text-green-700 text-center">
+                All sheets exported successfully! Check your browser's print dialog.
+              </div>
+            )}
+            
+            {exportError && (
+              <div className="p-3 bg-red-100 text-red-700 text-center">
+                {exportError}
+              </div>
+            )}
+            
+            {exporting && (
+              <div className="p-3 bg-blue-100 text-blue-700 text-center flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
+                Preparing sheets for export...
+              </div>
+            )}
+            
             <div className="p-6">
               <h2 className="text-xl font-bold mb-4">Sheets in this setlist</h2>
               
@@ -320,22 +419,37 @@ const SharedSetlistView = () => {
                 <ul className="divide-y divide-gray-200">
                   {setlist.sheets.map((sheet, index) => (
                     <li key={sheet.id || index} className="py-4">
-                      <button 
-                        onClick={() => navigateToSheet(sheet.id)}
-                        className="w-full text-left hover:bg-gray-50 p-2 rounded transition duration-150 ease-in-out"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="text-lg font-semibold">{sheet.title || 'Untitled Sheet'}</h3>
-                            <p className="text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
+                      <div className="flex w-full items-center">
+                        <button 
+                          onClick={() => navigateToSheet(sheet.id)}
+                          className="flex-grow text-left hover:bg-gray-50 p-2 rounded transition duration-150 ease-in-out"
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="text-lg font-semibold">{sheet.title || 'Untitled Sheet'}</h3>
+                              <p className="text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {sheet.bpm && `${sheet.bpm} BPM`}
+                              {sheet.bpm && sheet.key && ' • '}
+                              {sheet.key && `Key: ${sheet.key}`}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {sheet.bpm && `${sheet.bpm} BPM`}
-                            {sheet.bpm && sheet.key && ' • '}
-                            {sheet.key && `Key: ${sheet.key}`}
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+                        <button
+                          onClick={() => handlePrintSheet(sheet.id)}
+                          disabled={printingSheet === sheet.id}
+                          className="ml-2 p-2 bg-gray-200 hover:bg-gray-300 rounded transition duration-150 ease-in-out flex items-center justify-center"
+                          aria-label="Print this sheet"
+                          title="Print this sheet"
+                        >
+                          {printingSheet === sheet.id ? (
+                            <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-gray-800 rounded-full"></div>
+                          ) : (
+                            <PrintIcon className="w-4 h-4 text-gray-700" />
+                          )}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
