@@ -440,42 +440,100 @@ exports.reorderSetlistSheets = async (req, res) => {
 };
 
 /**
- * Favorite a setlist (create a copy for the current user)
+ * Save a setlist as a copy to the current user's collection ("Save As" functionality)
  * @route POST /api/setlists/:id/favorite
  * @access Private
  */
 exports.favoriteSetlist = async (req, res) => {
   try {
-    // Find the original setlist
-    const originalSetlist = await Setlist.findById(req.params.id)
-      .populate('sheets.sheet', 'title artist bpm key');
+    console.log('========== START FAVORITING SETLIST ==========');
+    console.log('API Request to favorite setlist, original ID:', req.params.id);
+    console.log('Request user:', req.user ? { id: req.user.id, email: req.user.email } : 'No user');
+    console.log('Request headers:', req.headers);
+    
+    // Verify user is authenticated
+    if (!req.user || !req.user.id) {
+      console.log('Authentication error: No user in request');
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Authentication required to save setlists' 
+      });
+    }
+    
+    // Find the original setlist by string ID
+    console.log(`Looking for setlist with ID: ${req.params.id}`);
+    const originalSetlist = await Setlist.findOne({ id: req.params.id });
+    
+    console.log('Original setlist found:', originalSetlist ? 'Yes' : 'No');
+    if (originalSetlist) {
+      console.log('Setlist details:', {
+        id: originalSetlist.id,
+        name: originalSetlist.name,
+        owner: originalSetlist.owner,
+        sheetCount: originalSetlist.sheets ? originalSetlist.sheets.length : 0
+      });
+    }
     
     if (!originalSetlist) {
+      console.log('Error: Setlist not found with ID:', req.params.id);
       return res.status(404).json({ success: false, error: 'Setlist not found' });
     }
     
-    // Create a new setlist as a copy
+    // Generate timestamp for the new ID and modified date
+    const timestamp = Date.now();
+    console.log('Generating new setlist ID with timestamp:', timestamp);
+    
+    // Create new setlist with the "Save As" pattern
+    console.log('Creating new setlist object');
     const newSetlist = new Setlist({
+      // Core setlist properties
+      id: `setlist_${timestamp}`,  
       name: `${originalSetlist.name} (Copy)`,
       description: originalSetlist.description,
-      owner: req.user.id,
       sheets: originalSetlist.sheets,
-      originalSetlistId: originalSetlist._id,
+      
+      // Ownership and metadata
+      owner: req.user.id,
+      isPublic: true,
+      
+      // Reference to original
+      originalSetlistId: originalSetlist.id,
       originalCreator: originalSetlist.owner,
-      favorited: Date.now()
+      
+      // Timestamps
+      createdAt: new Date(timestamp),
+      updatedAt: new Date(timestamp),
+      favorited: new Date(timestamp)
+    });
+    
+    console.log('Created new setlist copy with ID:', newSetlist.id);
+    console.log('New setlist details:', {
+      id: newSetlist.id,
+      name: newSetlist.name,
+      owner: newSetlist.owner,
+      sheetsCount: newSetlist.sheets ? newSetlist.sheets.length : 0
     });
     
     // Save the new setlist
-    await newSetlist.save();
+    console.log('Attempting to save the new setlist to database...');
+    try {
+      await newSetlist.save();
+      console.log('Successfully saved new setlist to database');
+    } catch (saveError) {
+      console.error('Error saving new setlist:', saveError);
+      throw saveError; // Re-throw to be caught by the outer try/catch
+    }
     
-    // Return the new setlist
+    // Return the new setlist with a 201 Created status
+    console.log('Sending success response to client');
     res.status(201).json({
       success: true,
-      message: 'Setlist added to your collection',
+      message: 'Setlist saved to your collection',
       setlist: newSetlist
     });
+    console.log('========== END FAVORITING SETLIST ==========');
   } catch (error) {
-    console.error('Error favoriting setlist:', error);
+    console.error('Error saving setlist as copy:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };

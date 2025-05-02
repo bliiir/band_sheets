@@ -17,6 +17,8 @@ if (window.location.hostname !== 'localhost') {
   API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
 }
 
+console.log('API URL configured as:', API_URL);
+
 // Export the API_URL so it can be imported by other services
 export { API_URL };
 
@@ -46,11 +48,21 @@ const makeRequest = async (url, options = {}) => {
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     } else if (!isAuthEndpoint) {
-      // For non-auth endpoints without a token, use localStorage instead
-
+      // Always require authentication for endpoints that need it
+      const authRequiredEndpoints = ['/favorite', '/sheets/add', '/sheets/remove', '/reorder'];
       
-      // If this is a sheets or setlists endpoint, we should return early and let the app use localStorage
-      if (url.includes('/sheets') || url.includes('/setlists')) {
+      // Check if this is an operation that absolutely requires authentication
+      const requiresAuth = authRequiredEndpoints.some(endpoint => url.includes(endpoint));
+      
+      if (requiresAuth) {
+        console.error('Authentication required for endpoint:', url);
+        throw new Error('Authentication required for this operation');
+      }
+      
+      // For non-auth endpoints without a token, use localStorage for read operations
+      else if ((url.includes('/sheets') || url.includes('/setlists')) && 
+               (!options.method || options.method.toUpperCase() === 'GET')) {
+        console.log('Unauthenticated read operation, using localStorage if available');
         throw new Error('Not authenticated - using localStorage instead');
       }
     }

@@ -305,26 +305,78 @@ export const reorderSetlistSheets = async (setlistId, oldIndex, newIndex) => {
  * @throws {Error} If user is not authenticated
  */
 export const favoriteSetlist = async (setlistId) => {
+  console.log(`Starting favoriteSetlist operation for setlistId: ${setlistId}`);
+  console.log('API_URL:', API_URL);
+  
+  // Get the authentication token
+  const token = localStorage.getItem('token');
+  console.log('Token exists:', !!token);
+  if (token) {
+    // Log first few characters of token for debugging (avoid showing the full token)
+    console.log('Token preview:', token.substring(0, 15) + '...');
+  }
+  
+  if (!token) {
+    console.error('No authentication token available');
+    throw new Error('You must be logged in to add a setlist to your collection');
+  }
+  
+  // Construct the API endpoint
+  const endpoint = `${API_URL}/setlists/${setlistId}/favorite`;
+  console.log(`Making API request to: ${endpoint}`);
+  console.log('Request method: POST');
+  
   try {
-    // Require authentication
-    const response = await fetchWithAuth(
-      `${API_URL}/setlists/${setlistId}/favorite`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
-    );
+    // Make a direct fetch request to the API with proper authentication
+    console.log('Making fetch request with the following config:');
+    const config = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      // Empty body since we're just creating a copy
+      body: JSON.stringify({}),
+      credentials: 'include',
+      mode: 'cors'
+    };
+    console.log('Request config:', JSON.stringify(config, null, 2));
+    
+    const response = await fetch(endpoint, config);
 
+    console.log(`API response status: ${response.status}`);
+    
+    // Get the raw response text for debugging
+    const responseText = await response.text();
+    console.log('API Response raw text:', responseText ? responseText.substring(0, 100) + '...' : '');
+    
+    // Try to parse the response as JSON
+    let data = null;
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (jsonError) {
+        console.error('Response is not valid JSON:', jsonError);
+      }
+    }
+    
+    // Check if the request was successful
     if (!response.ok) {
-      throw new Error(`Failed to favorite setlist: ${response.status}`);
+      const errorMsg = data?.error || `Failed to add setlist: ${response.status}`;
+      throw new Error(errorMsg);
     }
 
-    const data = await response.json();
-    return data.setlist;
+    // Return the created setlist, or a success indicator if no data
+    if (data && data.setlist) {
+      return data.setlist;
+    } else if (data && data.success) {
+      return { success: true, message: 'Setlist added to your collection' };
+    } else {
+      return { success: true, message: 'Setlist added successfully' };
+    }
   } catch (error) {
-    console.error('Error favoriting setlist:', error);
+    console.error('Error adding setlist to favorites:', error);
     throw error;
   }
 };

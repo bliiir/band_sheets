@@ -21,20 +21,38 @@ const LoginRegister = ({ onClose }) => {
     setLoading(true);
     setLocalError('');
     
+    // Check if there's a pending favorite before login
+    const pendingSetlistIdBefore = localStorage.getItem('pendingFavoriteSetlistId');
+    console.log('LOGIN ATTEMPT: Pending favorite setlist before login:', pendingSetlistIdBefore);
+    
     try {
       let success;
       
       if (isLogin) {
+        console.log('LOGIN ATTEMPT: Attempting login...');
         success = await login(email, password);
       } else {
+        console.log('LOGIN ATTEMPT: Attempting registration...');
         success = await register(username, email, password);
       }
       
-      if (success && onClose) {
-        onClose();
+      if (success) {
+        console.log('LOGIN SUCCESS: Authentication successful');
+        
+        // Check if there's a pending favorite after login
+        const pendingSetlistId = localStorage.getItem('pendingFavoriteSetlistId');
+        console.log('LOGIN SUCCESS: Pending favorite setlist after login:', pendingSetlistId);
+        
+        // Close the modal
+        if (onClose) {
+          console.log('LOGIN SUCCESS: Closing auth modal');
+          onClose();
+        }
+      } else {
+        console.log('LOGIN FAILURE: Authentication failed');
       }
     } catch (err) {
-      console.error('Authentication error:', err);
+      console.error('LOGIN ERROR: Authentication error:', err);
       setLocalError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
