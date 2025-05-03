@@ -1,11 +1,18 @@
 // src/App.js
 import React from 'react';
 import { Routes, Route, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import AppProviders from './contexts/AppProviders';
+import AppLayout from './layouts/AppLayout';
+import HomePage from './pages/HomePage';
+import SheetsPage from './pages/SheetsPage';
+import SetlistsPage from './pages/SetlistsPage';
+import NewSheetPage from './pages/NewSheetPage';
+import NewSetlistPage from './pages/NewSetlistPage';
+import SheetEditorPage from './pages/SheetEditorPage';
+import SetlistViewPage from './pages/SetlistViewPage';
 import BandSheetEditor from './components/BandSheetEditor';
 import SharedSetlistView from './components/SharedSetlistView';
-import AuthButton from './components/Auth/AuthButton';
-import Logo from './assets/logo3.png';
-import AppProviders from './contexts/AppProviders';
+import GlobalAuthModal from './components/Auth/GlobalAuthModal';
 
 // SheetEditor component with ID parameter
 // Using a key based on sheetId forces component to remount when sheet changes
@@ -21,39 +28,37 @@ function App() {
   const [searchParams] = useSearchParams();
   const isPrintMode = searchParams.get('print') === 'true';
   
+  // If in print mode, render just the editor without the layout
+  if (isPrintMode) {
+    return (
+      <AppProviders>
+        <Routes>
+          <Route path="/" element={<BandSheetEditor />} />
+          <Route path="/sheet/:sheetId" element={<SheetEditorWithId />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppProviders>
+    );
+  }
+  
+  // Normal mode with full layout
   return (
-    <div className="flex flex-col min-h-screen w-full">
-      {/* Only show header and footer when not in print mode */}
-      {!isPrintMode && (
-        <header className="bg-gray-800 text-white p-2 md:p-4 flex items-center sticky top-0 z-50">
-          <div className="flex-shrink-0 mr-2 md:mr-6">
-            <img src={Logo} alt="Band Sheet Creator" className="h-8 md:h-12" />
-          </div>
-          <div className="text-left flex-1 flex flex-nowrap items-center">
-            <span className="text-xs md:text-xl font-bold mr-2 md:mr-6 whitespace-nowrap">Band Sheet Creator</span>
-            <span className="hidden md:inline opacity-80">Create and edit song structure sheets for your band</span>
-          </div>
-          <AppProviders>
-            <AuthButton />
-          </AppProviders>
-        </header>
-      )}
-      <main className={`flex-1 min-w-0 min-h-0 m-0 p-0 bg-white ${isPrintMode ? 'pt-0' : ''}`}>
-        <AppProviders>
-          <Routes>
-            <Route path="/" element={<BandSheetEditor />} />
-            <Route path="/sheet/:sheetId" element={<SheetEditorWithId />} />
-            <Route path="/setlist/:id" element={<SharedSetlistView />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AppProviders>
-      </main>
-      {!isPrintMode && (
-        <footer className="p-4 text-center text-gray-500 text-xs bg-gray-100 mt-auto">
-          <p>Band Sheet Creator - {new Date().getFullYear()}</p>
-        </footer>
-      )}
-    </div>
+    <AppProviders>
+      {/* Add GlobalAuthModal outside of Routes but inside AppProviders 
+          to ensure it can be triggered from anywhere */}
+      <GlobalAuthModal />
+      
+      <Routes>
+        <Route path="/" element={<AppLayout><HomePage /></AppLayout>} />
+        <Route path="/sheets" element={<AppLayout><SheetsPage /></AppLayout>} />
+        <Route path="/setlists" element={<AppLayout><SetlistsPage /></AppLayout>} />
+        <Route path="/sheet/new" element={<AppLayout><NewSheetPage /></AppLayout>} />
+        <Route path="/sheet/:sheetId" element={<AppLayout><SheetEditorPage /></AppLayout>} />
+        <Route path="/setlist/new" element={<AppLayout><NewSetlistPage /></AppLayout>} />
+        <Route path="/setlist/:id" element={<AppLayout><SetlistViewPage /></AppLayout>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppProviders>
   );
 }
 

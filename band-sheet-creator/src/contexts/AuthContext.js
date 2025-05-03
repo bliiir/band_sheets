@@ -31,6 +31,7 @@ export function AuthProviderWithoutNav({ children, navigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [authChangeCounter, setAuthChangeCounter] = useState(0);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Check if user is logged in on app load
   useEffect(() => {
@@ -175,6 +176,24 @@ export function AuthProviderWithoutNav({ children, navigate }) {
     return { authChangeCounter };
   }, [authChangeCounter]);
   
+  /**
+   * Shows the authentication modal
+   */
+  const showAuthModal = useCallback(() => {
+    setIsAuthModalOpen(true);
+    // Emit an event for the modal to open
+    eventBus.emit('show-auth-modal', true);
+  }, []);
+
+  /**
+   * Hides the authentication modal
+   */
+  const hideAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+    // Emit an event for the modal to close
+    eventBus.emit('show-auth-modal', false);
+  }, []);
+
   // Context value
   const value = {
     currentUser,
@@ -185,7 +204,10 @@ export function AuthProviderWithoutNav({ children, navigate }) {
     logout,
     isAuthenticated: !!currentUser,
     authChangeCounter,
-    onAuthChange
+    onAuthChange,
+    showAuthModal,
+    hideAuthModal,
+    isAuthModalOpen
   };
 
   return (
