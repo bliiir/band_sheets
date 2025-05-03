@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
+import eventBus from "../utils/EventBus";
 import { useSelector, useDispatch } from 'react-redux';
 import ColorPicker from './ColorPicker';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
-import Sidebar from './Sidebar';
 import SongInfoBar from './SongInfoBar';
 import SheetHeader from './SheetHeader';
 import Section from './Section';
@@ -11,7 +11,6 @@ import PartsModule from './PartsModule';
 import ContextMenu from './ContextMenu';
 import EnergyDialog from './EnergyDialog';
 import ConfirmModal from './ConfirmModal';
-import SetlistsPanel from './SetlistsPanel';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
@@ -29,7 +28,18 @@ import {
   selectNavigationInProgress
 } from '../redux/slices/navigationSlice';
 
-export default function BandSheetEditor({ initialSheetId }) {
+export default function BandSheetEditor({ 
+  initialSheetId,
+  // External toolbar integration props
+  useExternalToolbar = false,
+  externalSidebarOpen,
+  externalSetSidebarOpen,
+  externalSetlistsPanelOpen,
+  externalSetSetlistsPanelOpen,
+  // Modal control props
+  setImportModalOpen = () => {},
+  setExportModalOpen = () => {}
+}) {
   const dispatch = useDispatch();
   const location = useLocation();
   
@@ -37,9 +47,6 @@ export default function BandSheetEditor({ initialSheetId }) {
   const loadedSheetIdRef = useRef(null);
   // State to track if we're on a mobile device
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  
-  // State for setlists panel
-  const [setlistsPanelOpen, setSetlistsPanelOpen] = useState(false);
   
   // Add resize listener to update isMobile state
   useEffect(() => {
@@ -50,6 +57,30 @@ export default function BandSheetEditor({ initialSheetId }) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // Add event listeners for editor actions
+  useEffect(() => {
+    // Listen for editor events from the AppLayout
+    const newSheetUnsub = eventBus.on('editor:new', handleNewSheet);
+    const saveUnsub = eventBus.on('editor:save', handleSave);
+    const importUnsub = eventBus.on('editor:import', () => setImportModalOpen(true));
+    const exportUnsub = eventBus.on('editor:export', () => setExportModalOpen(true));
+    
+    // Clean up event listeners
+    return () => {
+      newSheetUnsub();
+      saveUnsub();
+      importUnsub();
+      exportUnsub();
+    };
+  }, []);
+  
+  // State for setlists panel - use external state if provided
+  const [internalSetlistsPanelOpen, setInternalSetlistsPanelOpen] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const setlistsPanelOpen = useExternalToolbar ? externalSetlistsPanelOpen : internalSetlistsPanelOpen;
+  const setSetlistsPanelOpen = useExternalToolbar ? externalSetSetlistsPanelOpen : setInternalSetlistsPanelOpen;
   // State for save notification
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
   
@@ -946,66 +977,25 @@ export default function BandSheetEditor({ initialSheetId }) {
   
   // Regular editor view
   return (
-    <div className="flex h-full min-h-screen bg-white relative">
-      {/* Toolbar Component */}
-      <Toolbar
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        handleNewSheet={handleNewSheet}
-        handleSave={handleSave}
-        handleSaveAs={handleSaveAs}
-        handleExport={handleExport}
-        isMobile={isMobile}
-        setlistsPanelOpen={setlistsPanelOpen}
-        setSetlistsPanelOpen={setSetlistsPanelOpen}
-      />
-      
-      {/* Sidebar */}
-      <Sidebar 
-        sidebarOpen={sidebarOpen}
-        savedSheets={savedSheets}
-        setSidebarOpen={setSidebarOpen}
-        isMobile={isMobile}
-        loadSheet={async (id) => {
-          try {
-            loadSheet(id).then(() => {
-              closeSidebar();
-              showNotification('Sheet loaded successfully');
-            }).catch(() => {
-              showNotification('Failed to load sheet', 'error');
-            });
-          } catch (error) {
-            console.error('BandSheetEditor: Error loading sheet:', error);
-            showNotification(`Error loading sheet: ${error.message}`, 'error');
-          }
-        }}
-      />
-      
-      {/* Setlists Panel */}
-      {setlistsPanelOpen && (
-        <div className="z-20 transition-all duration-200 block fixed left-14 top-[60px] bottom-0">
-          <SetlistsPanel
-            open={setlistsPanelOpen}
-            onClose={() => setSetlistsPanelOpen(false)}
-            onSelectSetlist={(setlist) => {
-              // Future enhancement: Load the setlist
-              console.log('Selected setlist:', setlist);
-              setSetlistsPanelOpen(false);
-            }}
-            isMobile={isMobile}
-          />
-        </div>
-      )}
-      
-      {/* Mobile overlay backdrop for setlists panel */}
-      {setlistsPanelOpen && isMobile && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-30 md:hidden z-10" 
-          onClick={() => setSetlistsPanelOpen(false)} 
+    <div className="flex h-full min-h-screen bg-background relative">
+      {/* Only show the internal toolbar when not using external toolbar */}
+      {!useExternalToolbar && (
+        <Toolbar
+          sidebarOpen={sidebarOpen || false}
+          setSidebarOpen={setSidebarOpen || (() => {})}
+          handleNewSheet={handleNewSheet}
+          handleSave={handleSave}
+          handleSaveAs={handleSaveAs}
+          handleExport={handleExport}
+          isMobile={isMobile}
+          setlistsPanelOpen={setlistsPanelOpen || false}
+          setSetlistsPanelOpen={setSetlistsPanelOpen || (() => {})}
         />
       )}
-      {/* Main content area */}
-      <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : 'ml-14'} overflow-hidden`}>
+      
+      {/* Sidebar and setlists panel have been removed */}
+      {/* Main content area - adjust margins based on toolbar visibility */}
+      <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : useExternalToolbar ? 'ml-0' : 'ml-16'} overflow-hidden`}>
         {/* Song info bar - positioned above the sheet in the visual stack */}
         <SongInfoBar songData={songData} setSongData={setSongData} />
 

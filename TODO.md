@@ -1,6 +1,7 @@
 # Feature requests
-- [ ] Setlists
-- [ ] Add to setlist
+- [x] Setlists
+- [x] Add to setlist
+- [ ] Voting on sheets in the setlists
 - [ ] Search all users sheets
 - [ ] Paid users can make sheets private
 - [ ] Autogenerate sheets from Lyrics

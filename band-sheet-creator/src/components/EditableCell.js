@@ -70,7 +70,7 @@ const EditableCell = ({
       case 'number':
         return (
           <input
-            className="w-full bg-white rounded px-2 py-1 text-sm"
+            className="w-full bg-background border border-input rounded px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-primary"
             type="number"
             min="1"
             value={editValue}
@@ -83,7 +83,7 @@ const EditableCell = ({
       case 'textarea':
         return (
           <textarea
-            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto ${contentType === 'lyrics' || contentType === 'chords' ? "font-['Inconsolata']" : ''}`}
+            className={`w-full bg-background border border-input rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} min-h-[48px] resize-vertical overflow-y-auto text-foreground focus:ring-1 focus:ring-primary ${contentType === 'lyrics' || contentType === 'chords' ? "font-['Inconsolata']" : ''}`}
             value={editValue}
             onChange={handleTextareaChange}
             onFocus={handleTextareaFocus}
@@ -96,7 +96,7 @@ const EditableCell = ({
       default:
         return (
           <input
-            className={`w-full bg-white rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'}`}
+            className={`w-full bg-background border border-input rounded px-2 py-1 ${small ? 'text-xs' : 'text-sm'} text-foreground focus:ring-1 focus:ring-primary`}
             type="text"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
@@ -113,12 +113,12 @@ const EditableCell = ({
     if (type === 'textarea') {
       return (
         <div className={`${contentType === 'lyrics' || contentType === 'chords' ? "whitespace-pre font-['Inconsolata']" : "whitespace-pre-line"}`}>
-          {value || (placeholder && <span className="text-gray-400 italic">{placeholder}</span>)}
+          {value || (placeholder && <span className="text-muted-foreground italic">{placeholder}</span>)}
         </div>
       );
     }
     
-    return value || (placeholder && <span className="text-gray-400 italic">{placeholder}</span>) || '';
+    return value || (placeholder && <span className="text-muted-foreground italic">{placeholder}</span>) || '';
   };
 
   return (

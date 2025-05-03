@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import eventBus from "../utils/EventBus";
 import { 
   FileTextIcon, 
   FolderIcon, 
   ListIcon, 
   PrinterIcon, 
   SettingsIcon, 
-  UserIcon 
+  UserIcon,
+  FilePlusIcon,
+  SaveIcon,
+  ImportIcon,
+  UploadIcon
 } from "lucide-react";
 import SidebarButton from "../components/SidebarButton";
 import AuthModal from "../components/Auth/AuthModal";
@@ -14,15 +19,34 @@ import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Main application layout with header and sidebar
+ * @param {Object} props Component props
+ * @param {React.ReactNode} props.children Child components
+ * @param {Function} [props.handleNewSheet] Function to create a new sheet
+ * @param {Function} [props.handleSave] Function to save the current sheet
+ * @param {Function} [props.handleImport] Function to import sheets
+ * @param {Function} [props.handleExport] Function to export sheets
  */
 const AppLayout = ({ children }) => {
+  // State for modals
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const location = useLocation();
   const { currentUser, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("sheets");
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
+  const navigate = useNavigate();
   
-  // Set active tab based on current route
+  // Set active tab based on current route and check if we're in the editor
   useEffect(() => {
+    // Check if we're in the editor view (single sheet editor)
+    const inEditor = location.pathname.match(/\/sheet\/[a-zA-Z0-9_-]+/);
+    const isInEditor = !!inEditor;
+    console.log('Current path:', location.pathname, 'isEditor:', isInEditor);
+    setIsEditor(isInEditor);
+    
+    // Set active tab
     if (location.pathname.includes("/sheets") || location.pathname.includes("/sheet/")) {
       setActiveTab("sheets");
     } else if (location.pathname.includes("/setlists") || location.pathname.includes("/setlist/")) {
@@ -44,41 +68,56 @@ const AppLayout = ({ children }) => {
       <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 w-full">
         <div className="flex items-center">
           <Link to="/" className="text-primary text-xl font-bold">Band Sheets</Link>
-          <p className="text-sm text-muted-foreground ml-4">
-            Create and edit song structure sheets for your band
-          </p>
         </div>
 
-        <div>
-          {isAuthenticated ? (
-            <button
-              onClick={handleLogoutClick}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Logout {currentUser?.username ? `(${currentUser.username})` : ""}
-            </button>
-          ) : (
-            <button
-              onClick={handleLoginClick}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Login
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Main content area with sidebar and content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left sidebar */}
-        <div className="w-16 h-full bg-card border-r border-border flex flex-col items-center py-4">
-          <div className="flex flex-col items-center gap-2">
+        <div className="flex items-center space-x-2">
+          {/* Main Navigation - moved to right side */}
+          <nav className="hidden md:flex space-x-1 mr-2">
+            {/* Editor-specific actions */}
+            {isEditor && (
+              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => eventBus.emit('editor:new')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="New Sheet"
+                >
+                  <FilePlusIcon className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:save')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Save Sheet"
+                >
+                  <SaveIcon className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:import')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Import Sheet"
+                >
+                  <ImportIcon className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:export')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Export Sheet"
+                >
+                  <UploadIcon className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            
+            {/* Main navigation tabs */}
             <SidebarButton
               icon={FileTextIcon}
               active={activeTab === "sheets"}
               label="Sheets"
               to="/sheets"
               onClick={() => setActiveTab("sheets")}
+              variant="horizontal"
             />
 
             <SidebarButton
@@ -87,39 +126,87 @@ const AppLayout = ({ children }) => {
               label="Setlists"
               to="/setlists"
               onClick={() => setActiveTab("setlists")}
+              variant="horizontal"
             />
-
-            <SidebarButton
-              icon={ListIcon}
-              active={activeTab === "shared"}
-              label="Shared"
-              onClick={() => setActiveTab("shared")}
-            />
-
-            <SidebarButton
-              icon={PrinterIcon}
-              active={activeTab === "export"}
-              label="Export"
-              onClick={() => setActiveTab("export")}
-            />
-          </div>
-
-          <div className="mt-auto flex flex-col items-center gap-2">
-            <SidebarButton
-              icon={SettingsIcon}
-              active={activeTab === "settings"}
-              label="Settings"
-              onClick={() => setActiveTab("settings")}
-            />
-
-            <SidebarButton
-              icon={UserIcon}
-              active={activeTab === "profile"}
-              label="Profile"
-              onClick={() => setActiveTab("profile")}
-            />
+          </nav>
+          
+          {/* Account Menu */}
+          <div className="relative">
+            {isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  Account
+                </button>
+                
+                {/* Account Dropdown Menu */}
+                {accountMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-md py-1 z-50">
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setActiveTab("profile");
+                        console.log('Navigate to profile page');
+                      }}
+                    >
+                      <UserIcon className="w-4 h-4 mr-2" />
+                      Profile
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setActiveTab("settings");
+                        console.log('Navigate to settings page');
+                      }}
+                    >
+                      <SettingsIcon className="w-4 h-4 mr-2" />
+                      Settings
+                    </button>
+                    <div className="border-t border-gray-200 my-1"></div>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        handleLogoutClick();
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                      </svg>
+                      Logout ({currentUser?.username})
+                    </button>
+                  </div>
+                )}
+                
+                {/* Click outside to close menu */}
+                {accountMenuOpen && (
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setAccountMenuOpen(false)}
+                  ></div>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={handleLoginClick}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
+      </header>
+
+      {/* Main content area with content */}
+      <div className="flex flex-1 overflow-hidden">
 
         {/* Content area */}
         <main className="flex-1 overflow-auto p-4">{children}</main>

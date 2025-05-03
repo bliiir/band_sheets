@@ -205,7 +205,7 @@ const Section = ({
   return (
     <div
       key={section.id} 
-      className={`border-b border-gray-200 ${isSectionSelected ? 'bg-blue-50' : ''}`}
+      className={`border-b border-border ${isSectionSelected ? 'bg-primary/5' : ''}`}
       onClick={handleSectionClick}
       style={sectionStyle}
     >
@@ -221,7 +221,7 @@ const Section = ({
         />
 
         {/* Parts container */}
-        <div className="flex-1">
+        <div className="flex-1 bg-background">
           {section.parts.map((part, pi) => (
             <Part
               key={part.id}

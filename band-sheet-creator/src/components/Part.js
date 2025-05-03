@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ReactComponent as MenuIcon } from "../assets/menu.svg";
+import { MoreVertical } from "lucide-react";
 import EditableCell from './EditableCell';
 import { useEditing } from '../contexts/EditingContext';
 import { useUIState } from '../contexts/UIStateContext';
@@ -227,16 +227,16 @@ const Part = ({
   return (
     <div 
       key={part.id} 
-      className={`flex flex-col md:flex-row min-h-[40px] border-b border-gray-100 last:border-b-0 ${isPartSelected ? 'bg-blue-50' : ''}`}
+      className={`flex flex-col md:flex-row min-h-[40px] border-b border-border/50 last:border-b-0 ${isPartSelected ? 'bg-primary/5' : ''}`}
       onMouseEnter={() => setHoverState({ type: 'part', si, pi })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
       onClick={handlePartClick}
     >
       {/* Mobile view: Part and Bars in one row */}
-      <div className="flex md:hidden w-full border-b border-gray-100 md:border-b-0">
+      <div className="flex md:hidden w-full border-b border-border/30 md:border-b-0">
         {/* Part label cell */}
         <div className="w-1/2 px-4 py-2 flex items-center">
-          <div className="text-xs text-gray-500 mr-2 font-semibold">Part:</div>
+          <div className="text-xs text-muted-foreground mr-2 font-medium">Part:</div>
           <EditableCell
             type="text"
             isEditing={isEditing(si, pi, 'part')}
@@ -252,7 +252,7 @@ const Part = ({
         
         {/* Bars cell */}
         <div className="w-1/2 px-2 py-2 flex items-center">
-          <div className="text-xs text-gray-500 mr-2 font-semibold">Bars:</div>
+          <div className="text-xs text-muted-foreground mr-2 font-medium">Bars:</div>
           <EditableCell
             type="number"
             isEditing={isEditing(si, pi, 'bars')}
@@ -298,8 +298,8 @@ const Part = ({
       </div>
       
       {/* Lyrics cell */}
-      <div className="w-full md:flex-1 px-2 py-2 md:py-1 text-gray-500 overflow-y-auto font-['Inconsolata']">
-        <div className="block md:hidden text-xs text-gray-500 mb-1 font-semibold">Lyrics:</div>
+      <div className="w-full md:flex-1 px-2 py-2 md:py-1 text-foreground overflow-y-auto font-['Inconsolata']">
+        <div className="block md:hidden text-xs text-muted-foreground mb-1 font-medium">Lyrics:</div>
         <EditableCell
           type="textarea"
           contentType="lyrics"
@@ -315,8 +315,8 @@ const Part = ({
       </div>
       
       {/* Notes cell */}
-      <div className="w-full md:w-[200px] md:min-w-[200px] px-2 py-2 md:py-1 text-xs text-gray-500 overflow-y-auto">
-        <div className="block md:hidden text-xs text-gray-500 mb-1 font-semibold">Notes:</div>
+      <div className="w-full md:w-[200px] md:min-w-[200px] px-2 py-2 md:py-1 text-xs text-muted-foreground overflow-y-auto">
+        <div className="block md:hidden text-xs text-muted-foreground mb-1 font-medium">Notes:</div>
         <EditableCell
           type="textarea"
           isEditing={isEditing(si, pi, 'notes')}
@@ -337,7 +337,7 @@ const Part = ({
           onClick={(e) => handleContextMenu(e, "part", si, pi)}
           className="cursor-pointer"
         >
-          <MenuIcon className="w-3 h-3 text-gray-400 hover:text-gray-600" />
+          <MoreVertical className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
         </div>
       </div>
     </div>

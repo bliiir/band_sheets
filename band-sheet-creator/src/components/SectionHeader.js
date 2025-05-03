@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactComponent as MenuIcon } from "../assets/menu.svg";
+import { MoreVertical } from "lucide-react";
 import EditableCell from './EditableCell';
 import { useEditing } from '../contexts/EditingContext';
 import { getEnergyLineWidth, ENERGY_LINE_CONFIG } from '../services/StyleService';
@@ -25,12 +25,12 @@ const SectionHeader = ({
   const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div 
-      className="md:w-[120px] md:min-w-[120px] w-full border-r-0 md:border-r border-b md:border-b-0 border-gray-300 p-4 flex flex-col justify-between relative"
+      className="md:w-[120px] md:min-w-[120px] w-full border-r-0 md:border-r border-b md:border-b-0 border-border bg-card p-4 flex flex-col justify-between relative"
       onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
     >
       <div className="flex justify-between items-start">
-        <div className="font-semibold flex-1">
+        <div className="font-medium flex-1">
           <EditableCell
             type="text"
             isEditing={isEditing(si, null, 'name', 'section')}
@@ -41,17 +41,17 @@ const SectionHeader = ({
             saveEdit={saveEdit}
             setEditing={setEditing}
             placeholder="Untitled Section"
-            className="font-semibold"
+            className="font-medium text-foreground"
           />
         </div>
         <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
-          <MenuIcon className="w-3 h-3 text-gray-500 hover:text-gray-700" />
+          <MoreVertical className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
         </div>
       </div>
       
-      {/* Energy indicator - black line at bottom with width based on energy level */}
+      {/* Energy indicator - accent colored line at bottom with width based on energy level */}
       <div 
-        className="absolute bottom-0 left-0 bg-black energy-indicator"
+        className="absolute bottom-0 left-0 bg-primary energy-indicator"
         style={{ 
           width: getEnergyLineWidth(section.energy),
           height: `${ENERGY_LINE_CONFIG.HEIGHT}px`

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { getSetlistById, favoriteSetlist } from '../services/SetlistService';
+import { updateSetlist } from '../services/SetlistStorageService';
 import { getSheetById } from '../services/SheetStorageService';
 import { exportSetlistToPDF, exportSheetToPDF } from '../services/ExportService';
 import { 
@@ -36,6 +37,22 @@ const SharedSetlistView = () => {
   const [printingSheet, setPrintingSheet] = useState(null); // Tracks which sheet is being printed
   const [authModalOpen, setAuthModalOpen] = useState(false);
   
+  // State for sheet management
+  const [isReordering, setIsReordering] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [showAddSheetModal, setShowAddSheetModal] = useState(false);
+  const [availableSheets, setAvailableSheets] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // State for editable title and description
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  
   // Effect to load the setlist
   useEffect(() => {
     if (setlistId) {
@@ -45,6 +62,8 @@ const SharedSetlistView = () => {
           const data = await getSetlistById(setlistId);
           if (data) {
             setSetlist(data);
+            setEditedTitle(data.name);
+            setEditedDescription(data.description || '');
           } else {
             setError('Setlist not found');
           }
@@ -73,255 +92,280 @@ const SharedSetlistView = () => {
   useEffect(() => {
     console.log('FAVORITE CHECK: Authentication state =', isAuthenticated, 'Setlist ID =', setlistId);
     
-    // Only proceed if the user is authenticated
-    if (!isAuthenticated) {
-      console.log('User not authenticated, skipping favorite check');
-      return;
-    }
-    
-    const pendingSetlistId = localStorage.getItem('pendingFavoriteSetlistId');
-    console.log('PENDING FAVORITE: Checking localStorage for pending favorite, found:', pendingSetlistId);
-    
-    // If there's a pending setlist to favorite
-    if (pendingSetlistId) {
-      console.log('PENDING FAVORITE: Will attempt to favorite setlist:', pendingSetlistId);
+    // Only process auto-favorite if user is authenticated and we have a setlist
+    if (isAuthenticated && setlist) {
+      // Check if we have a pending favorite setlist ID
+      const pendingFavoriteId = localStorage.getItem('pendingFavoriteSetlistId');
+      console.log('FAVORITE CHECK: Pending ID found:', pendingFavoriteId);
       
-      // If the pending setlist is the current one being viewed
-      if (pendingSetlistId === setlistId) {
-        console.log('PENDING FAVORITE: Current setlist matches pending favorite');
+      if (pendingFavoriteId === setlistId) {
+        console.log('FAVORITE CHECK: Executing pending favorite operation');
         
-        // Allow some time for auth state to fully update
-        console.log('PENDING FAVORITE: Setting timeout to favorite setlist in 2 seconds');
-        const timeoutId = setTimeout(() => {
-          console.log('PENDING FAVORITE: Timeout triggered, calling handleFavoriteSetlist()');
-          localStorage.removeItem('pendingFavoriteSetlistId');
-          handleFavoriteSetlist();
-        }, 2000);
-        
-        // Clean up timeout if component unmounts
-        return () => {
-          console.log('PENDING FAVORITE: Clearing timeout');
-          clearTimeout(timeoutId);
-        };
-      } else {
-        console.log('PENDING FAVORITE: Current setlist does not match pending favorite, clearing');
+        // Clear the pending ID first
         localStorage.removeItem('pendingFavoriteSetlistId');
+        
+        // Execute the favorite operation
+        favoriteSetlist(setlistId)
+          .then(res => {
+            setFavoriteSuccess(true);
+            setTimeout(() => setFavoriteSuccess(false), 3000);
+          })
+          .catch(err => console.error('Error favoriting setlist:', err));
       }
     }
-  }, [isAuthenticated, setlistId]); // Run when authentication state changes
-
-  // Handle adding the setlist to user's favorites
-  const handleFavoriteSetlist = async () => {
-    console.log('Starting to favorite setlist, auth state:', { isAuthenticated });
-    console.log('Current setlist ID:', setlistId);
-    
-    // If not authenticated, show login modal and set flag for auto-favorite
-    if (!isAuthenticated) {
-      console.log('User not authenticated, showing auth modal');
-      showAuthModalForFavorite();
-      return;
-    }
-    
+  }, [isAuthenticated, setlist, setlistId]);
+  
+  // Load available sheets for adding to setlist
+  const loadAvailableSheets = async () => {
     try {
-      // Check if we have a valid setlist ID
-      if (!setlistId) {
-        console.error('No setlist ID available');
-        setError('Cannot add setlist to collection: setlist ID is missing');
-        return;
-      }
-      
-      // Check for authentication token
-      const token = localStorage.getItem('token');
-      console.log('Authentication token exists:', !!token);
-      
-      if (!token) {
-        console.error('No token found despite isAuthenticated being true');
-        setError('You must be logged in to add a setlist to your collection.');
-        showAuthModalForFavorite();
-        return;
-      }
-      
-      // Call the API directly instead of using the service
-      const endpoint = `${process.env.REACT_APP_API_URL || 'http://localhost:5050/api'}/setlists/${setlistId}/favorite`;
-      console.log(`Making direct API request to: ${endpoint}`);
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({}),
-        credentials: 'include'
-      });
-      
-      console.log('API response status:', response.status);
-      
-      const data = await response.json();
-      console.log('API response data:', data);
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to add setlist to collection');
-      }
-      
-      // Show success feedback
-      setFavoriteSuccess(true);
-      
-      // Navigate to home to see updated setlists after a brief delay
-      setTimeout(() => {
-        console.log('Redirecting to home page to show updated setlists');
-        setFavoriteSuccess(false);
-        navigate('/');
-      }, 2000);
+      // Import getAllSheets function dynamically
+      const { getAllSheets } = await import('../services/SheetStorageService');
+      const sheets = await getAllSheets();
+      setAvailableSheets(sheets || []);
     } catch (error) {
-      console.error('Error favoriting setlist:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
-      // Provide more specific error messages based on the error
-      if (error.message.includes('Authentication required')) {
-        setError('Authentication required. Please log in to add this setlist to your collection.');
-        navigate(`/login?returnTo=/setlist/${setlistId}`);
-      } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-        setError('Your login session has expired. Please log in again to add this setlist.');
-        // Clear token and redirect to login
-        localStorage.removeItem('token');
-        navigate(`/login?returnTo=/setlist/${setlistId}`);
-      } else {
-        setError(`Failed to add setlist to your collection: ${error.message}`);
-      }
+      console.error('Error loading available sheets:', error);
     }
   };
   
-  // Navigate to a sheet using full page reload for guaranteed reliability
-  const navigateToSheet = async (sheetId) => {
-    try {
-      // First verify the sheet exists
-      const sheet = await getSheetById(sheetId);
-      if (!sheet) {
-        console.error('Sheet not found:', sheetId);
-        setError(`Sheet not found: ${sheetId}`);
-        return;
-      }
-      
-      console.log(`SharedSetlistView: Navigating from setlist ${setlistId} to sheet ${sheetId}`);
-      
-      // Reset navigation state first
-      dispatch(resetNavigation());
-      
-      // Set navigation in progress
-      dispatch(setNavigationInProgress(true));
-      
-      // Navigate with full page reload
-      window.location.href = `/sheet/${sheetId}`;
-    } catch (error) {
-      console.error('Error navigating to sheet:', error);
-      setError('Failed to navigate to sheet. Please try again.');
-    }
-  };
-  
-  // Return to home
+  // Go back to the main setlists page
   const handleBack = () => {
-    navigate('/');
+    navigate('/setlists');
   };
-
-  // Handle exporting all sheets in the setlist as a single PDF
+  
+  // Export the entire setlist as PDF
   const handleExportSetlist = async () => {
-    if (!setlistId || !setlist || !setlist.sheets || setlist.sheets.length === 0) {
-      setExportError('No sheets available to export');
+    if (!setlist || !setlist.sheets || setlist.sheets.length === 0) {
+      setExportError('No sheets to export');
+      setTimeout(() => setExportError(null), 3000);
       return;
     }
-
+    
     try {
       setExporting(true);
-      setExportError(null);
-      
-      // Default export options
-      const options = {
-        includeChordProgressions: true,
-        includeSectionColors: true
-      };
-      
-      const result = await exportSetlistToPDF(setlistId, options);
-      
-      if (result.success) {
+      const success = await exportSetlistToPDF(setlist);
+      if (success) {
         setExportSuccess(true);
-        // Clear success message after a few seconds
-        setTimeout(() => setExportSuccess(false), 5000);
+        setTimeout(() => setExportSuccess(false), 3000);
       } else {
-        setExportError(result.error || 'Failed to export setlist');
+        setExportError('Failed to export setlist');
+        setTimeout(() => setExportError(null), 3000);
       }
     } catch (error) {
-      console.error('Error exporting setlist to PDF:', error);
-      setExportError(error.message || 'An unexpected error occurred during export');
+      console.error('Error exporting setlist:', error);
+      setExportError(`Error: ${error.message || 'Failed to export'}`);
+      setTimeout(() => setExportError(null), 3000);
     } finally {
       setExporting(false);
     }
   };
   
-  // Handle exporting a single sheet to PDF
+  // Print a single sheet
   const handlePrintSheet = async (sheetId) => {
-    if (!sheetId) {
-      setExportError('Invalid sheet ID');
+    try {
+      setPrintingSheet(sheetId);
+      const sheet = setlist.sheets.find(s => s.id === sheetId);
+      
+      if (!sheet) {
+        throw new Error('Sheet not found');
+      }
+      
+      await exportSheetToPDF(sheet);
+    } catch (error) {
+      console.error('Error printing sheet:', error);
+      // Note: We don't show an error message here to avoid cluttering the UI
+    } finally {
+      setPrintingSheet(null);
+    }
+  };
+  
+  // Navigate to a sheet
+  const navigateToSheet = (sheetId) => {
+    // Skip if reordering mode is active
+    if (isReordering) return;
+    
+    dispatch(setNavigationSource('setlist'));
+    dispatch(setCurrentSheetId(sheetId));
+    dispatch(setPreviousLocation(`/setlists/${setlistId}`));
+    navigate(`/sheets/${sheetId}`);
+  };
+  
+  // Move a sheet up or down in the setlist
+  const moveSheet = (index, direction) => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (newIndex < 0 || newIndex >= setlist.sheets.length) return;
+    
+    // Create a copy of the sheets array
+    const items = Array.from(setlist.sheets);
+    
+    // Swap the items
+    [items[index], items[newIndex]] = [items[newIndex], items[index]];
+    
+    // Update local state only
+    setSetlist({
+      ...setlist,
+      sheets: items
+    });
+    
+    // Mark that we have unsaved changes
+    setHasUnsavedChanges(true);
+  };
+  
+  // Save changes to the setlist
+  const saveSetlistChanges = async (updatedSetlist) => {
+    if (!updatedSetlist || !isAuthenticated) {
+      setSaveError('You must be logged in to save changes');
       return;
     }
     
     try {
-      setPrintingSheet(sheetId);
-      setExportError(null);
+      setIsSaving(true);
+      setSaveError(null);
       
-      // Default export options
-      const options = {
-        includeChordProgressions: true,
-        includeSectionColors: true
-      };
-      
-      const result = await exportSheetToPDF(sheetId, options);
-      
-      if (!result.success) {
-        setExportError(`Failed to export sheet: ${result.error || 'Unknown error'}`);
+      // Send update to API
+      const result = await updateSetlist(updatedSetlist.id, updatedSetlist);
+      if (result) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        
+        // Reset unsaved changes flag
+        setHasUnsavedChanges(false);
+      } else {
+        setSaveError('Failed to save changes');
       }
     } catch (error) {
-      console.error('Error exporting sheet to PDF:', error);
-      setExportError(error.message || 'An unexpected error occurred during export');
+      console.error('Error saving setlist changes:', error);
+      setSaveError(`Error: ${error.message || 'Failed to save changes'}`);
     } finally {
-      // Clear the printing indicator after a short delay
-      setTimeout(() => setPrintingSheet(null), 1000);
+      setIsSaving(false);
     }
   };
   
+  // Handle favorite button
+  const handleFavoriteSetlist = () => {
+    if (!isAuthenticated) {
+      saveSetlistIdAndOpenAuth();
+      return;
+    }
+    
+    favoriteSetlist(setlistId)
+      .then(res => {
+        setFavoriteSuccess(true);
+        setTimeout(() => setFavoriteSuccess(false), 3000);
+      })
+      .catch(err => console.error('Error favoriting setlist:', err));
+  };
+  
+  // Handle title editing
+  const startTitleEdit = () => {
+    setIsEditingTitle(true);
+  };
+
+  const saveTitleEdit = () => {
+    if (editedTitle.trim() === '') return;
+    
+    setIsEditingTitle(false);
+    if (setlist) {
+      // Update local state only
+      setSetlist(prev => ({
+        ...prev,
+        name: editedTitle.trim()
+      }));
+      
+      // Mark that we have unsaved changes
+      setHasUnsavedChanges(true);
+    }
+  };
+
+  // Handle description editing
+  const startDescriptionEdit = () => {
+    setIsEditingDescription(true);
+  };
+
+  const saveDescriptionEdit = () => {
+    setIsEditingDescription(false);
+    if (setlist) {
+      // Update local state only
+      setSetlist(prev => ({
+        ...prev,
+        description: editedDescription.trim()
+      }));
+      
+      // Mark that we have unsaved changes
+      setHasUnsavedChanges(true);
+    }
+  };
+  
+  // Remove a sheet from the setlist
+  const removeSheetFromSetlist = async (sheetId) => {
+    try {
+      const updatedSheets = setlist.sheets.filter(sheet => sheet.id !== sheetId);
+      const updatedSetlist = {
+        ...setlist,
+        sheets: updatedSheets
+      };
+      
+      // Update local state only
+      setSetlist(updatedSetlist);
+      
+      // Mark that we have unsaved changes
+      setHasUnsavedChanges(true);
+    } catch (error) {
+      console.error('Error removing sheet from setlist:', error);
+      setSaveError(`Error: ${error.message || 'Failed to remove sheet'}`);
+    }
+  };
+
   // Close auth modal
   const closeAuthModal = () => {
     setAuthModalOpen(false);
-    // Clear any pending favorite setlist when modal is closed without logging in
-    localStorage.removeItem('pendingFavoriteSetlistId');
   };
   
-  // Show auth modal and set flag to auto-favorite after login
-  const showAuthModalForFavorite = () => {
-    // Store the current setlist ID in localStorage to favorite after login
+  // Add a sheet to the setlist
+  const addSheetToSetlist = async (sheetId) => {
     try {
-      console.log('SAVING FAVORITE INTENT: Storing setlist ID in localStorage:', setlistId);
+      // Import getSheetById function dynamically
+      const { getSheetById } = await import('../services/SheetStorageService');
+      const sheetToAdd = await getSheetById(sheetId);
+      
+      if (!sheetToAdd) {
+        setSaveError('Sheet not found');
+        return;
+      }
+      
+      const updatedSheets = [...setlist.sheets, sheetToAdd];
+      const updatedSetlist = {
+        ...setlist,
+        sheets: updatedSheets
+      };
+      
+      // Update local state only
+      setSetlist(updatedSetlist);
+      
+      // Mark that we have unsaved changes
+      setHasUnsavedChanges(true);
+      
+      // Close modal
+      setShowAddSheetModal(false);
+    } catch (error) {
+      console.error('Error adding sheet to setlist:', error);
+      setSaveError(`Error: ${error.message || 'Failed to add sheet'}`);
+    }
+  };
+  
+  // Save setlist ID to localStorage and open auth modal
+  const saveSetlistIdAndOpenAuth = () => {
+    try {
       localStorage.setItem('pendingFavoriteSetlistId', setlistId);
-      
-      // Double-check that it was saved correctly
-      const storedId = localStorage.getItem('pendingFavoriteSetlistId');
-      console.log('SAVING FAVORITE INTENT: Verification - stored ID:', storedId);
-      
-      // Show auth modal
       setAuthModalOpen(true);
     } catch (error) {
       console.error('Error storing pending favorite setlist ID:', error);
-      // Show auth modal anyway
       setAuthModalOpen(true);
     }
   };
   
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white">
       {/* Auth Modal */}
       <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} />
 
@@ -349,114 +393,232 @@ const SharedSetlistView = () => {
           </div>
         </div>
       ) : setlist ? (
-        <div className="container mx-auto px-4 py-8">
-          <button 
-            onClick={handleBack}
-            className="flex items-center text-blue-500 hover:text-blue-700 mb-6 transition duration-150 ease-in-out"
-          >
-            <BackIcon className="w-5 h-5 mr-2" />
-            Back to Home
-          </button>
-          
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-6 bg-gradient-to-r from-purple-500 to-blue-500 text-white">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">{setlist.name}</h1>
-                  <p className="text-lg opacity-90">{setlist.description || 'No description'}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={handleExportSetlist}
-                    disabled={exporting}
-                    className="bg-white text-blue-500 hover:text-blue-700 p-2 rounded-full transition duration-150 ease-in-out mr-2"
-                    aria-label="Export all sheets as PDF"
-                    title="Export all sheets as PDF"
-                  >
-                    <PrintIcon className="w-6 h-6" />
-                  </button>
-                  <button 
-                    onClick={handleFavoriteSetlist}
-                    className="bg-white text-pink-500 hover:text-pink-700 p-2 rounded-full transition duration-150 ease-in-out"
-                    aria-label="Add to my setlists"
-                    title="Add to my setlists"
-                  >
-                    <StarIcon className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
+        <div className="min-h-screen bg-white">
+          {/* Top navigation/action bar */}
+          <div className="flex items-center justify-between py-4 px-6 border-b">
+            <div className="flex items-center">
+              <button 
+                onClick={handleBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 mr-4 transition duration-150 ease-in-out"
+              >
+                <BackIcon className="w-5 h-5 mr-2" />
+                Back
+              </button>
+              <h1 className="text-xl font-bold">{setlist.name}</h1>
             </div>
             
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => {
+                  setShowAddSheetModal(true);
+                  loadAvailableSheets();
+                }}
+                className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Add Sheet
+              </button>
+              
+              <button 
+                onClick={() => setIsReordering(!isReordering)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out ${isReordering ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
+              >
+                {isReordering ? 'Done' : 'Reorder'}
+              </button>
+
+              <button 
+                onClick={() => saveSetlistChanges(setlist)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out ${hasUnsavedChanges ? 'bg-black hover:bg-gray-800 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+                disabled={isSaving || !hasUnsavedChanges}
+                title={hasUnsavedChanges ? 'Save your changes' : 'No unsaved changes'}
+              >
+                {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'No Changes'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Main content area */}
+          <div className="container mx-auto px-6 py-6">
+            {/* Status messages */}
             {favoriteSuccess && (
-              <div className="p-3 bg-green-100 text-green-700 text-center">
+              <div className="mb-4 p-2 bg-green-100 text-green-700 text-center rounded">
                 Setlist added to your collection successfully!
               </div>
             )}
             
             {exportSuccess && (
-              <div className="p-3 bg-green-100 text-green-700 text-center">
+              <div className="mb-4 p-2 bg-green-100 text-green-700 text-center rounded">
                 All sheets exported successfully! Check your browser's print dialog.
               </div>
             )}
             
             {exportError && (
-              <div className="p-3 bg-red-100 text-red-700 text-center">
+              <div className="mb-4 p-2 bg-red-100 text-red-700 text-center rounded">
                 {exportError}
               </div>
             )}
             
-            {exporting && (
-              <div className="p-3 bg-blue-100 text-blue-700 text-center flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-                Preparing sheets for export...
+            {saveSuccess && (
+              <div className="mb-4 p-2 bg-green-100 text-green-700 text-center rounded">
+                Setlist updated successfully!
               </div>
             )}
             
-            <div className="p-6">
-              <h2 className="text-xl font-bold mb-4">Sheets in this setlist</h2>
-              
-              {setlist.sheets && setlist.sheets.length > 0 ? (
-                <ul className="divide-y divide-gray-200">
-                  {setlist.sheets.map((sheet, index) => (
-                    <li key={sheet.id || index} className="py-4">
-                      <div className="flex w-full items-center">
-                        <button 
-                          onClick={() => navigateToSheet(sheet.id)}
-                          className="flex-grow text-left hover:bg-gray-50 p-2 rounded transition duration-150 ease-in-out"
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="text-lg font-semibold">{sheet.title || 'Untitled Sheet'}</h3>
-                              <p className="text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {sheet.bpm && `${sheet.bpm} BPM`}
-                              {sheet.bpm && sheet.key && ' • '}
-                              {sheet.key && `Key: ${sheet.key}`}
-                            </div>
+            {saveError && (
+              <div className="mb-4 p-2 bg-red-100 text-red-700 text-center rounded">
+                {saveError}
+              </div>
+            )}
+            
+            {/* Description */}
+            {setlist.description && (
+              <p className="text-gray-500 mb-6">{setlist.description}</p>
+            )}
+            
+            {/* Sheets list section */}
+            <h2 className="text-xl font-semibold mb-4">Sheets in this setlist</h2>
+            
+            {setlist.sheets && setlist.sheets.length > 0 ? (
+              <ul className="divide-y divide-gray-200">
+                {setlist.sheets.map((sheet, index) => (
+                  <li 
+                    key={sheet.id || index}
+                    className={`py-3 ${isReordering ? 'bg-gray-50' : ''}`}
+                  >
+                    <div className="flex w-full items-center">
+                      {isReordering && (
+                        <div className="flex flex-col mr-2">
+                          <button
+                            onClick={() => moveSheet(index, 'up')}
+                            disabled={index === 0}
+                            className={`p-1 ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                            title="Move up"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => moveSheet(index, 'down')}
+                            disabled={index === setlist.sheets.length - 1}
+                            className={`p-1 ${index === setlist.sheets.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700'}`}
+                            title="Move down"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                      
+                      <button 
+                        onClick={() => navigateToSheet(sheet.id)}
+                        className="flex-grow text-left hover:bg-gray-50 p-2 rounded transition duration-150 ease-in-out"
+                        disabled={isReordering}
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h3 className="text-lg font-medium text-gray-900">{sheet.title || 'Untitled Sheet'}</h3>
+                            <p className="text-sm text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
                           </div>
-                        </button>
-                        <button
-                          onClick={() => handlePrintSheet(sheet.id)}
-                          disabled={printingSheet === sheet.id}
-                          className="ml-2 p-2 bg-gray-200 hover:bg-gray-300 rounded transition duration-150 ease-in-out flex items-center justify-center"
-                          aria-label="Print this sheet"
-                          title="Print this sheet"
-                        >
-                          {printingSheet === sheet.id ? (
-                            <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-gray-800 rounded-full"></div>
-                          ) : (
-                            <PrintIcon className="w-4 h-4 text-gray-700" />
-                          )}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 italic">This setlist doesn't contain any sheets.</p>
-              )}
-            </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {sheet.bpm && `${sheet.bpm} BPM`}
+                          </div>
+                        </div>
+                      </button>
+                      
+                      {!isReordering && (
+                        <div className="flex">
+                          <button
+                            onClick={() => removeSheetFromSetlist(sheet.id)}
+                            className="ml-2 p-2 text-gray-500 hover:text-red-500 transition duration-150 ease-in-out"
+                            aria-label="Remove sheet"
+                            title="Remove sheet"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="bg-gray-50 p-6 text-center rounded-lg">
+                <p className="text-gray-500">No sheets in this setlist yet.</p>
+                <button
+                  onClick={() => {
+                    setShowAddSheetModal(true);
+                    loadAvailableSheets();
+                  }}
+                  className="mt-4 bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
+                >
+                  Add your first sheet
+                </button>
+              </div>
+            )}
+            
+            {/* Add Sheet Modal */}
+            {showAddSheetModal && (
+              <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black bg-opacity-30 transition-opacity" onClick={() => setShowAddSheetModal(false)}></div>
+                <div className="bg-white rounded-lg max-w-lg w-full mx-auto p-6 relative z-10">
+                  <h3 className="text-lg font-medium mb-4">Add Sheets to Setlist</h3>
+                  
+                  <div className="mb-4">
+                    <input
+                      type="text"
+                      placeholder="Search sheets..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="max-h-80 overflow-y-auto mb-4">
+                    {availableSheets.length > 0 ? (
+                      <ul className="divide-y divide-gray-200">
+                        {availableSheets
+                          .filter(sheet => 
+                            !setlist.sheets.some(s => s.id === sheet.id) &&
+                            (sheet.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             sheet.artist?.toLowerCase().includes(searchTerm.toLowerCase()))
+                          )
+                          .map(sheet => (
+                            <li key={sheet.id} className="py-2">
+                              <button
+                                onClick={() => addSheetToSetlist(sheet.id)}
+                                className="w-full text-left p-2 hover:bg-gray-50 rounded transition duration-150 ease-in-out"
+                              >
+                                <div>
+                                  <p className="font-medium">{sheet.title || 'Untitled Sheet'}</p>
+                                  <p className="text-sm text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
+                                </div>
+                              </button>
+                            </li>
+                          ))
+                        }
+                      </ul>
+                    ) : (
+                      <p className="text-center text-gray-500 py-4">Loading available sheets...</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setShowAddSheetModal(false)}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
