@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FolderIcon, PlusIcon, SearchIcon, MoreVertical, Edit, Copy, Trash, Share, Download, ListPlus } from "lucide-react";
+import { FolderIcon, PlusIcon, SearchIcon, MoreVertical, Edit, Copy, Trash, Share, Download, ListPlus, ExternalLink } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -434,6 +434,52 @@ const SetlistsPage = () => {
                 >
                   <Share className="h-4 w-4 mr-2" />
                   Share
+                </button>
+                
+                <button 
+                  className="flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setShowDropdown(false);
+                    
+                    // Open all sheets in new tabs
+                    if (setlist.sheets && setlist.sheets.length > 0) {
+                      setlist.sheets.forEach(sheet => {
+                        // Use setTimeout with increasing delay to avoid popup blockers
+                        setTimeout(() => {
+                          const sheetUrl = `${window.location.origin}/sheet/${sheet.id}?print=true`;
+                          window.open(sheetUrl, `_sheet_${sheet.id}`);
+                        }, 100);
+                      });
+                      
+                      // Show success notification
+                      const notification = document.createElement('div');
+                      notification.className = 'fixed right-4 top-20 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+                      notification.innerHTML = `<p>Opening ${setlist.sheets.length} sheets in print preview</p>`;
+                      document.body.appendChild(notification);
+                      
+                      // Remove notification after 3 seconds
+                      setTimeout(() => {
+                        notification.remove();
+                      }, 3000);
+                    } else {
+                      // Show notification if no sheets in setlist
+                      const notification = document.createElement('div');
+                      notification.className = 'fixed right-4 top-20 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded z-50';
+                      notification.innerHTML = `<p>No sheets in this setlist</p>`;
+                      document.body.appendChild(notification);
+                      
+                      // Remove notification after 3 seconds
+                      setTimeout(() => {
+                        notification.remove();
+                      }, 3000);
+                    }
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open All
                 </button>
                 
                 <button 
