@@ -51,6 +51,7 @@ const SharedSetlistView = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
+  const [notification, setNotification] = useState(null);
   const [editedDescription, setEditedDescription] = useState('');
   
   // Effect to load the setlist
@@ -426,6 +427,51 @@ const SharedSetlistView = () => {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out ${isReordering ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
               >
                 {isReordering ? 'Done' : 'Reorder'}
+              </button>
+              
+              <button 
+                onClick={() => {
+                  // Open all sheets in new tabs
+                  if (setlist.sheets && setlist.sheets.length > 0) {
+                    setlist.sheets.forEach(sheet => {
+                      // Use setTimeout with increasing delay to avoid popup blockers
+                      setTimeout(() => {
+                        const sheetUrl = `${window.location.origin}/sheet/${sheet.id}?print=true`;
+                        window.open(sheetUrl, `_sheet_${sheet.id}`);
+                      }, 100);
+                    });
+                    
+                    // Show success notification
+                    setNotification({
+                      message: `Opening ${setlist.sheets.length} sheets in print preview`,
+                      type: 'success'
+                    });
+                    
+                    // Clear notification after 3 seconds
+                    setTimeout(() => {
+                      setNotification(null);
+                    }, 3000);
+                  } else {
+                    // Show notification if no sheets in setlist
+                    setNotification({
+                      message: 'No sheets in this setlist',
+                      type: 'warning'
+                    });
+                    
+                    // Clear notification after 3 seconds
+                    setTimeout(() => {
+                      setNotification(null);
+                    }, 3000);
+                  }
+                }}
+                className="px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Open All
               </button>
 
               <button 
