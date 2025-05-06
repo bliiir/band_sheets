@@ -186,6 +186,24 @@ const Section = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItems, deleteSection, duplicateSection, clearSelection, editing, moveSection, sections.length, setSelectedItems]);
+  
+  // Create a forced test background color for debugging
+  // const forcedTestColor = '#ffdddd';
+  
+  // Now that we've confirmed styling works, use the actual section.backgroundColor
+  // Apply selection highlighting if there's no background color
+  const backgroundColor = section.backgroundColor || null;
+  
+  // Log the color to help with debugging
+  if (section.backgroundColor) {
+    console.log(`Section ${si} with ID ${section.id} has background color: ${section.backgroundColor}`);
+  }
+  
+  // Create style object based on whether we have a background color
+  const sectionStyle = backgroundColor ? {
+    backgroundColor: backgroundColor
+  } : {};
+
   // Determine if this section is selected
   const isSectionSelected = isItemSelected('section', si);
   
@@ -194,34 +212,36 @@ const Section = ({
     // Toggle selection with Cmd/Ctrl for multi-select
     toggleItemSelection('section', si, null, e.metaKey || e.ctrlKey);
   };
-  
-  // Create style object for background color
-  const sectionStyle = {};
-  if (section.backgroundColor) {
-    sectionStyle.backgroundColor = section.backgroundColor;
 
-  }
-  
   return (
-    <div
-      key={section.id} 
-      className={`border-b border-border ${isSectionSelected ? 'bg-primary/5' : ''}`}
-      onClick={handleSectionClick}
-      style={sectionStyle}
+    <div 
+      className={`flex-1 border-b border-border relative ${isItemSelected('section', si) ? 'bg-primary/5' : ''}`}
+      onClick={(e) => {
+        // Toggle selection with Cmd/Ctrl key for multi-select
+        if (e.metaKey || e.ctrlKey) {
+          toggleItemSelection('section', si);
+        }
+        // Otherwise, only select if it's the primary click target (not a child element)
+        else if (e.target === e.currentTarget) {
+          clearSelection();
+          toggleItemSelection('section', si);
+        }
+      }}
+      style={backgroundColor ? { backgroundColor } : undefined}
     >
       <div className="flex flex-col md:flex-row">
         {/* Section header */}
-        <SectionHeader
+        <SectionHeader 
           section={section}
           sectionIndex={si}
           hoverState={hoverState}
           setHoverState={setHoverState}
           handleContextMenu={handleContextMenu}
-          // No longer passing editing-related props - they come from EditingContext
+          backgroundColor={backgroundColor}
         />
 
         {/* Parts container */}
-        <div className="flex-1 bg-background">
+        <div className="flex-1">
           {section.parts.map((part, pi) => (
             <Part
               key={part.id}

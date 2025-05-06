@@ -370,14 +370,27 @@ export function SheetDataProvider({ children }) {
   
   // Update section background color
   const updateSectionBackgroundColor = (sectionIndex, backgroundColor) => {
+    console.log('Updating section background color:', sectionIndex, backgroundColor);
+    
+    // Create a proper deep copy to ensure React detects the changes
     setSections(prev => {
-      const newSections = [...prev];
+      // Create a deep copy of the sections array
+      const newSections = JSON.parse(JSON.stringify(prev));
+      
+      // Update the backgroundColor property
       newSections[sectionIndex] = {
         ...newSections[sectionIndex],
         backgroundColor
       };
+      
+      console.log('New sections state with updated color:', newSections);
       return newSections;
     });
+    
+    // We may need to trigger an additional state update to force a render
+    setTimeout(() => {
+      setSections(prev => [...prev]);
+    }, 100);
   };
   
   const duplicateSection = (sectionIndex) => {

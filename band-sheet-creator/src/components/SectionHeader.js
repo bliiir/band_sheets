@@ -19,7 +19,8 @@ const SectionHeader = ({
   sectionIndex: si,
   hoverState,
   setHoverState,
-  handleContextMenu
+  handleContextMenu,
+  backgroundColor
 }) => {
   // Use the EditingContext to access editing state and functions
   const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
@@ -28,6 +29,7 @@ const SectionHeader = ({
       className="md:w-[120px] md:min-w-[120px] w-full border-r-0 md:border-r border-b md:border-b-0 border-border bg-card p-4 flex flex-col justify-between relative"
       onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
+      style={backgroundColor ? { backgroundColor } : undefined}
     >
       <div className="flex justify-between items-start">
         <div className="font-medium flex-1">

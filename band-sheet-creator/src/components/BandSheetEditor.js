@@ -1075,20 +1075,21 @@ export default function BandSheetEditor({
             updateSectionBackgroundColor(colorPicker.sectionIndex, color);
             
             // Log the update for debugging
-
+            console.log('Color changed for section:', colorPicker.sectionIndex, 'to:', color);
             
             // Force an immediate save to ensure the color is persisted
             setTimeout(() => {
-
+              console.log('Auto-saving after color change');
               saveCurrentSheet();
             }, 500);
           }}
           onClose={() => {
+            console.log('Color picker closed, saving final color');
             setColorPicker(prev => ({ ...prev, isOpen: false }));
             
             // Also save when closing the color picker
             setTimeout(() => {
-
+              console.log('Final save after color picker closed');
               saveCurrentSheet();
             }, 500);
           }}
