@@ -107,6 +107,26 @@ const AppLayout = ({ children }) => {
                 >
                   <UploadIcon className="w-5 h-5" />
                 </button>
+                
+                <button
+                  onClick={() => {
+                    console.log('PDF button clicked');
+                    // Get the sheet ID from the current URL
+                    const match = location.pathname.match(/\/sheet\/([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                      const sheetId = match[1];
+                      // Open the print view directly in a new tab
+                      const printUrl = `/sheet/${sheetId}?print=true&color=true&chords=true`;
+                      window.open(printUrl, '_blank');
+                    } else {
+                      console.error('Could not determine sheet ID from URL');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="PDF"
+                >
+                  <PrinterIcon className="w-5 h-5" />
+                </button>
               </div>
             )}
             

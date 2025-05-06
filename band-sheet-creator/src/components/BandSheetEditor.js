@@ -58,13 +58,28 @@ export default function BandSheetEditor({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Add event listeners for editor actions
+  // Add event listeners for editor actions - we'll add the PDF handler later after exportSheet is defined
   useEffect(() => {
     // Listen for editor events from the AppLayout
-    const newSheetUnsub = eventBus.on('editor:new', handleNewSheet);
-    const saveUnsub = eventBus.on('editor:save', handleSave);
-    const importUnsub = eventBus.on('editor:import', () => setImportModalOpen(true));
-    const exportUnsub = eventBus.on('editor:export', () => setExportModalOpen(true));
+    const newSheetUnsub = eventBus.on('editor:new', () => {
+      console.log('New sheet event received');
+      handleNewSheet();
+    });
+    
+    const saveUnsub = eventBus.on('editor:save', () => {
+      console.log('Save event received');
+      handleSave();
+    });
+    
+    const importUnsub = eventBus.on('editor:import', () => {
+      console.log('Import event received');
+      setImportModalOpen(true);
+    });
+    
+    const exportUnsub = eventBus.on('editor:export', () => {
+      console.log('Export event received');
+      setExportModalOpen(true);
+    });
     
     // Clean up event listeners
     return () => {
@@ -732,8 +747,24 @@ export default function BandSheetEditor({
 
   // Export handler that uses the context function
   const handleExport = () => {
+    console.log('Export handler called');
     exportSheet();
   };
+  
+  // Register the PDF event handler now that exportSheet is available
+  useEffect(() => {
+    const pdfUnsub = eventBus.on('editor:pdf', () => {
+      console.log('PDF event received');
+      handleExport();
+    });
+    
+    return () => {
+      pdfUnsub();
+    };
+  }, []);
+  
+  // Make the PDF function globally accessible for direct access
+  window.handleSheetExport = handleExport;
 
   // If we're in print mode, render the print-friendly version
   if (isPrintMode) {

@@ -407,8 +407,28 @@ const SetlistsPage = () => {
                     e.stopPropagation();
                     e.preventDefault();
                     setShowDropdown(false);
-                    // Share functionality would go here
-                    alert(`Sharing setlist ${setlist.id} (feature coming soon)`);
+                    
+                    // Create the shareable URL
+                    const shareUrl = `${window.location.origin}/setlist/${setlist.id}`;
+                    
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(shareUrl)
+                      .then(() => {
+                        // Show success notification
+                        const notification = document.createElement('div');
+                        notification.className = 'fixed right-4 top-20 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+                        notification.innerHTML = `<p>Setlist link copied to clipboard!</p>`;
+                        document.body.appendChild(notification);
+                        
+                        // Remove after 3 seconds
+                        setTimeout(() => {
+                          notification.remove();
+                        }, 3000);
+                      })
+                      .catch((err) => {
+                        console.error('Could not copy text: ', err);
+                        alert('Failed to copy link to clipboard');
+                      });
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
                 >
