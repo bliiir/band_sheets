@@ -179,15 +179,17 @@ const SharedSetlistView = () => {
     }
   };
   
-  // Navigate to a sheet
+  // Navigate to a sheet with simplified approach
   const navigateToSheet = (sheetId) => {
     // Skip if reordering mode is active
     if (isReordering) return;
     
-    dispatch(setNavigationSource('setlist'));
-    dispatch(setCurrentSheetId(sheetId));
-    dispatch(setPreviousLocation(`/setlists/${setlistId}`));
-    navigate(`/sheets/${sheetId}`);
+    // Use direct navigation without complex state management
+    // This avoids potential issues with the routing system
+    window.location.href = `/sheet/${sheetId}`;
+    
+    // Note: This approach loses the back navigation state
+    // but provides more reliable sheet opening
   };
   
   // Move a sheet up or down in the setlist
