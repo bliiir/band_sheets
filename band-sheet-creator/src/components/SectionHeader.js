@@ -46,7 +46,20 @@ const SectionHeader = ({
             className="font-medium text-foreground"
           />
         </div>
-        <div className="cursor-pointer ml-1" onClick={(e) => handleContextMenu(e, "section", si)}>
+        <div 
+          className="cursor-pointer ml-1" 
+          onClick={(e) => {
+            console.log(`SectionHeader: Context menu trigger clicked for section ${si}`);
+            // Log the handleContextMenu function to ensure it's defined
+            console.log('handleContextMenu function:', typeof handleContextMenu);
+            try {
+              handleContextMenu(e, "section", si);
+              console.log(`SectionHeader: handleContextMenu called successfully`);
+            } catch (error) {
+              console.error(`SectionHeader: Error calling handleContextMenu:`, error);
+            }
+          }}
+        >
           <MoreVertical className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
         </div>
       </div>

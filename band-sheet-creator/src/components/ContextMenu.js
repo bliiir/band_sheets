@@ -86,6 +86,10 @@ const ContextMenu = ({ menuItems = [] }) => {
   }, [visible, x, y]);
 
   if (!visible) return null;
+  
+  // Debug logging to see what items are being passed
+  console.log('ContextMenu rendering with items:', menuItems);
+  console.log('ContextMenu state:', { visible, x, y, contextType: contextMenu.type, sectionIndex: contextMenu.si, partIndex: contextMenu.pi });
 
   return (
     <div
@@ -96,24 +100,37 @@ const ContextMenu = ({ menuItems = [] }) => {
         left: x
       }}
     >
-      {menuItems.map((item, index) => (
-        <div
-          key={index}
-          className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
-            item.disabled ? 'opacity-50 cursor-not-allowed' : ''
-          } ${
-            item.danger ? 'text-red-500' : ''
-          }`}
-          onClick={() => {
-            if (!item.disabled && item.action) {
-              item.action();
-              onClose();
-            }
-          }}
-        >
-          {item.label}
-        </div>
-      ))}
+      {menuItems.length === 0 ? (
+        <div className="px-4 py-2 italic text-gray-500">No actions available</div>
+      ) : (
+        menuItems.map((item, index) => (
+          <div
+            key={index}
+            className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
+              item.disabled ? 'opacity-50 cursor-not-allowed' : ''
+            } ${
+              item.danger ? 'text-red-500' : ''
+            }`}
+            onClick={(e) => {
+              // Debug logging when an item is clicked
+              console.log(`ContextMenu item clicked: ${item.label}`);
+              e.stopPropagation(); // Prevent event bubbling
+              if (!item.disabled && item.action) {
+                console.log(`Executing action for: ${item.label}`);
+                try {
+                  item.action();
+                  console.log(`Action executed successfully for: ${item.label}`);
+                } catch (error) {
+                  console.error(`Error executing action for ${item.label}:`, error);
+                }
+                onClose();
+              }
+            }}
+          >
+            {item.label}
+          </div>
+        ))
+      )}
     </div>
   );
 };

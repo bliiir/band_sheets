@@ -223,18 +223,56 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
  * @returns {boolean} Whether the deletion was successful
  */
 export const deleteSheet = async (id) => {
+  console.log(`Attempting to delete sheet with ID: ${id}`);
+  
+  // Check authentication
   if (!isAuthenticated()) {
     console.error('Authentication required to delete sheets');
     return false;
   }
   
+  // Get token for direct use
+  const token = localStorage.getItem('token');
+  console.log('Auth token exists:', !!token);
+  if (token) {
+    console.log('Auth token (first 10 chars):', token.substring(0, 10) + '...');
+  } else {
+    console.error('No auth token found when trying to delete sheet');
+    return false;
+  }
+  
   try {
-    await fetchWithAuth(`${API_URL}/sheets/${id}`, {
-      method: 'DELETE'
+    // Make a direct fetch call instead of using fetchWithAuth wrapper
+    const deleteUrl = `${API_URL}/sheets/${id}`;
+    console.log(`Making direct DELETE request to: ${deleteUrl}`);
+    
+    const response = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      mode: 'cors',
+      credentials: 'include'
     });
-    return true;
+    
+    console.log('Delete response status:', response.status);
+    
+    // Log response details
+    const responseText = await response.text();
+    console.log('Response body:', responseText || '(empty response)');
+    
+    // Success is based on status code
+    if (response.status >= 200 && response.status < 300) {
+      console.log(`Successfully deleted sheet ${id}`);
+      return true;
+    } else {
+      console.error(`Server returned error status ${response.status} when deleting sheet ${id}`);
+      return false;
+    }
   } catch (error) {
     console.error(`Error deleting sheet ${id} from API:`, error);
+    console.error('Error details:', error.message);
     return false;
   }
 };

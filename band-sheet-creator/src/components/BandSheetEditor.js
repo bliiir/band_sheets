@@ -542,7 +542,26 @@ export default function BandSheetEditor({
       
       menuItems.push({
         label: 'Delete Section',
-        action: () => handleMenuAction('delete'),
+        action: () => {
+          // Call deleteSection directly on click
+          try {
+            // Get the section index from contextMenu directly at execution time
+            const index = Number(contextMenu.si);
+            console.log('Deleting section at index:', index);
+            
+            // Hide the context menu
+            hideContextMenu();
+            
+            // Use the more direct approach, bypass the timeout
+            deleteSection(index);
+            
+            // Show notification
+            showNotification('Section deleted successfully');
+          } catch (error) {
+            console.error('Delete section error:', error);
+            showNotification(`Error deleting section: ${error.message}`, 'error');
+          }
+        },
         danger: true
       });
     } else if (type === 'part') {
@@ -574,7 +593,27 @@ export default function BandSheetEditor({
       
       menuItems.push({
         label: 'Delete Part',
-        action: () => handleMenuAction('delete'),
+        action: () => {
+          // Call deletePart directly on click
+          try {
+            // Get the indices from contextMenu directly at execution time
+            const sectionIndex = Number(contextMenu.si);
+            const partIndex = Number(contextMenu.pi);
+            console.log('Deleting part at section:', sectionIndex, 'part:', partIndex);
+            
+            // Hide the context menu
+            hideContextMenu();
+            
+            // Use the more direct approach, bypass the timeout
+            deletePart(sectionIndex, partIndex);
+            
+            // Show notification
+            showNotification('Part deleted successfully');
+          } catch (error) {
+            console.error('Delete part error:', error);
+            showNotification(`Error deleting part: ${error.message}`, 'error');
+          }
+        },
         danger: true
       });
     }
@@ -582,7 +621,30 @@ export default function BandSheetEditor({
     return menuItems;
   };
 
-  // Menu actions
+  // Direct menu action handlers - these are defined outside the main handler to ensure they work correctly
+  const handleDeleteSection = (sectionIndex) => {
+    // Use the deleteSection function from SheetDataContext
+    try {
+      deleteSection(sectionIndex);
+      showNotification('Section deleted successfully');
+    } catch (error) {
+      console.error('Error deleting section:', error);
+      showNotification(`Failed to delete section: ${error.message}`, 'error');
+    }
+  };
+  
+  const handleDeletePart = (sectionIndex, partIndex) => {
+    // Use the deletePart function from SheetDataContext
+    try {
+      deletePart(sectionIndex, partIndex);
+      showNotification('Part deleted successfully');
+    } catch (error) {
+      console.error('Error deleting part:', error);
+      showNotification(`Failed to delete part: ${error.message}`, 'error');
+    }
+  };
+  
+  // Menu actions - completely rewritten for reliability
   const handleMenuAction = (action) => {
     // Store the values locally to avoid using stale contextMenu state
     // Convert indices to numbers to ensure consistent handling
@@ -596,49 +658,70 @@ export default function BandSheetEditor({
     // Clear hover state to prevent menu icon from showing on wrong section
     setHoverState({ type: null, si: null, pi: null });
     
-    // Handle set background color action
-    if (action === 'setBackgroundColor' && type === 'section') {
-      const currentColor = sections[sectionIndex].backgroundColor || '#ffffff';
-      setColorPicker({
-        isOpen: true,
-        x: contextMenu.x,
-        y: contextMenu.y,
-        sectionIndex,
-        initialColor: currentColor
-      });
-      return;
+    // Handle each action type directly
+    switch (action) {
+      case 'setBackgroundColor':
+        if (type === 'section') {
+          const currentColor = sections[sectionIndex]?.backgroundColor || '#ffffff';
+          setColorPicker({
+            isOpen: true,
+            x: contextMenu.x,
+            y: contextMenu.y,
+            sectionIndex,
+            initialColor: currentColor
+          });
+        }
+        break;
+        
+      case 'duplicate':
+        if (type === 'section') {
+          setTimeout(() => duplicateSection(sectionIndex), 50);
+        } else if (type === 'part') {
+          setTimeout(() => duplicatePart(sectionIndex, partIndex), 50);
+        }
+        break;
+        
+      case 'delete':
+        if (type === 'section') {
+          // Use the direct handler to ensure this works reliably
+          setTimeout(() => handleDeleteSection(sectionIndex), 50);
+        } else if (type === 'part') {
+          setTimeout(() => handleDeletePart(sectionIndex, partIndex), 50);
+        }
+        break;
+        
+      case 'moveUp':
+        if (type === 'section') {
+          setTimeout(() => moveSection(sectionIndex, 'up'), 50);
+        } else if (type === 'part') {
+          setTimeout(() => movePart(sectionIndex, partIndex, 'up'), 50);
+        }
+        break;
+        
+      case 'moveDown':
+        if (type === 'section') {
+          setTimeout(() => moveSection(sectionIndex, 'down'), 50);
+        } else if (type === 'part') {
+          setTimeout(() => movePart(sectionIndex, partIndex, 'down'), 50);
+        }
+        break;
+        
+      case 'setEnergyLevel':
+        if (type === 'section') {
+          setTimeout(() => openEnergyDialog(sectionIndex), 50);
+        }
+        break;
+        
+      case 'add':
+        if (type === 'part') {
+          setTimeout(() => addPart(sectionIndex), 50);
+        }
+        break;
+        
+      default:
+        // Unknown action
+        break;
     }
-    
-    // Add a longer delay to ensure state is fully updated before performing the action
-    // This prevents issues with multiple operations in sequence
-    setTimeout(() => {
-      // Execute the action with the stored values
-      if (type === "section") {
-        if (action === "duplicate") {
-          duplicateSection(sectionIndex);
-        } else if (action === "delete") {
-          deleteSection(sectionIndex);
-        } else if (action === "moveUp") {
-          moveSection(sectionIndex, 'up');
-        } else if (action === "moveDown") {
-          moveSection(sectionIndex, 'down');
-        } else if (action === "setEnergyLevel") {
-          openEnergyDialog(sectionIndex);
-        }
-      } else if (type === "part") {
-        if (action === "add") {
-          addPart(sectionIndex);
-        } else if (action === "duplicate") {
-          duplicatePart(sectionIndex, partIndex);
-        } else if (action === "delete") {
-          deletePart(sectionIndex, partIndex);
-        } else if (action === "moveUp") {
-          movePart(sectionIndex, partIndex, 'up');
-        } else if (action === "moveDown") {
-          movePart(sectionIndex, partIndex, 'down');
-        }
-      }
-    }, 50); // Longer delay to ensure state updates completely
   };
 
   // Note: Energy dialog functions have been moved to the EnergyDialog component

@@ -160,19 +160,35 @@ const SheetsPage = () => {
   };
 
   const handleSheetDelete = async (sheetId) => {
+    console.log('handleSheetDelete called with ID:', sheetId);
+    
     try {
       // Call the actual service function from SheetStorageService
+      console.log('Calling deleteSheet service function...');
       const success = await deleteSheet(sheetId);
+      console.log('deleteSheet result:', success);
+      
       if (success) {
+        console.log('Sheet deleted successfully, updating UI state...');
         // Update local state by removing the deleted sheet
-        setMySheets(prevSheets => prevSheets.filter(sheet => sheet.id !== sheetId));
-        alert(`Sheet deleted successfully`); 
+        setMySheets(prevSheets => {
+          console.log('Current sheets count:', prevSheets.length);
+          const filteredSheets = prevSheets.filter(sheet => {
+            console.log('Comparing sheet.id:', sheet.id, 'with sheetId:', sheetId);
+            return sheet.id !== sheetId;
+          });
+          console.log('New sheets count:', filteredSheets.length);
+          return filteredSheets;
+        });
+        alert(`Sheet deleted successfully`);
       } else {
+        console.error('deleteSheet returned false');
         alert('Failed to delete sheet. Please try again.');
       }
     } catch (error) {
-      console.error('Error deleting sheet:', error);
-      alert('Error deleting sheet: ' + error.message);
+      console.error('Error in handleSheetDelete:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      alert('Error deleting sheet: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -273,31 +289,44 @@ const SheetsPage = () => {
   
   // Function for opening the delete confirmation dialog
   const confirmDeleteSheet = (id) => {
+    console.log('confirmDeleteSheet called with sheet ID:', id);
     try {
       // Find the sheet in the mySheets array
       const sheet = mySheets.find(s => s.id === id);
-      if (!sheet) return;
+      console.log('Found sheet:', sheet ? 'Yes' : 'No');
+      
+      if (!sheet) {
+        console.error('Sheet not found in mySheets array');
+        console.log('Current mySheets:', mySheets);
+        return;
+      }
       
       const title = sheet.title || 'Untitled';
+      console.log('Preparing confirmation dialog for sheet:', title);
       
       // Show custom confirmation dialog
+      console.log('Setting confirm dialog state to open');
       setConfirmDialog({
         isOpen: true,
         title: "Delete Sheet",
         message: `Are you sure you want to delete "${title}"?`,
         onConfirm: async () => {
+          console.log('Confirmation dialog confirmed for sheet ID:', id);
           try {
+            console.log('Calling handleSheetDelete with ID:', id);
             await handleSheetDelete(id);
+            console.log('handleSheetDelete completed successfully');
             // Close the dialog
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
           } catch (error) {
-            console.error('Error deleting sheet:', error);
+            console.error('Error in confirmation dialog onConfirm function:', error);
             alert('Failed to delete sheet. Please try again.');
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
           }
         },
         sheetId: id
       });
+      console.log('Confirm dialog state set, dialog should be visible');
     } catch (error) {
       console.error('Error preparing delete confirmation:', error);
     }
@@ -550,6 +579,9 @@ const SheetsPage = () => {
                     e.stopPropagation();
                     e.preventDefault();
                     setShowDropdown(false);
+                    // Add logging to track the sheet ID before deletion
+                    console.log('Delete button clicked for sheet ID:', sheet.id);
+                    console.log('Sheet data:', sheet);
                     confirmDeleteSheet(sheet.id);
                   }}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -663,7 +695,27 @@ const SheetsPage = () => {
         </Tabs>
       )}
       
-      {/* Confirm Delete Modal */}
+      {/* Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+      
+      {/* Setlist Modal */}
+      {setlistModalOpen && (
+        <SetlistModal
+          isOpen={setlistModalOpen}
+          onClose={() => setSetlistModalOpen(false)}
+          sheet={selectedSheetForSetlist}
+          onAddToSetlist={addSheetToSetlist}
+        />
+      )}
     </div>
   );
 };

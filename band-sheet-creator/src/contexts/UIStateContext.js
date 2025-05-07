@@ -111,6 +111,9 @@ export function UIStateProvider({ children }) {
   
   // Function to handle context menu events
   const handleContextMenu = (event, type, si, pi = null) => {
+    console.log(`UIStateContext.handleContextMenu called with:`, { type, si, pi });
+    console.log(`Event details:`, { clientX: event.clientX, clientY: event.clientY });
+    
     // Prevent default browser context menu
     event.preventDefault();
     
@@ -120,6 +123,8 @@ export function UIStateProvider({ children }) {
     // Store the current section/part indices to ensure consistency
     const sectionIndex = Number(si);
     const partIndex = pi !== null ? Number(pi) : null;
+    
+    console.log(`Setting context menu state for ${type} at index ${sectionIndex}`);
     
     // Set context menu state with explicit values
     setContextMenu({
@@ -132,12 +137,25 @@ export function UIStateProvider({ children }) {
       isNew: true // Used for position adjustment on first render
     });
     
+    // Log the context menu state after setting it
+    console.log(`Context menu state set:`, { 
+      visible: true, 
+      x: event.clientX, 
+      y: event.clientY, 
+      type, 
+      si: sectionIndex, 
+      pi: partIndex 
+    });
+    
     // Set isNew to false after a short delay to avoid position adjustment issues
     setTimeout(() => {
-      setContextMenu(prev => ({
-        ...prev,
-        isNew: false
-      }));
+      setContextMenu(prev => {
+        console.log(`Updating isNew flag to false`);
+        return {
+          ...prev,
+          isNew: false
+        };
+      });
     }, 50);
     
     // Also set the hover state to match the context menu
