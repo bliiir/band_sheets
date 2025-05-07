@@ -4,6 +4,25 @@
 @import './tailwind-custom.css';
 /* @import "./components/BandSheetEditor.css"; */
 
+/* Fix for sheet content being cut off by white areas */
+.main-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-wrapper {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* Ensure text doesn't get cut off */
+.lyrics-cell, .notes-cell {
+  overflow: visible !important;
+  word-break: break-word;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

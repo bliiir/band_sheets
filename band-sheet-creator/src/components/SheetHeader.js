@@ -6,7 +6,7 @@ import React from 'react';
  */
 const SheetHeader = () => {
   return (
-    <div className="hidden md:flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+    <div className="hidden md:flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800 relative">
       <div className="w-[160px] min-w-[160px] px-4 py-2 flex items-center">Section</div>
       <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center">Part</div>
       <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">Bars</div>

@@ -298,7 +298,7 @@ const Part = ({
       </div>
       
       {/* Lyrics cell */}
-      <div className="w-full md:flex-1 px-2 py-2 md:py-1 text-foreground overflow-y-auto font-['Inconsolata']">
+      <div className="w-full md:flex-1 px-2 py-2 md:py-1 text-foreground font-['Inconsolata'] lyrics-cell">
         <div className="block md:hidden text-xs text-muted-foreground mb-1 font-medium">Lyrics:</div>
         <EditableCell
           type="textarea"
@@ -315,7 +315,7 @@ const Part = ({
       </div>
       
       {/* Notes cell */}
-      <div className="w-full md:w-[300px] md:min-w-[300px] px-2 py-2 md:py-1 text-xs text-muted-foreground overflow-y-auto">
+      <div className="w-full md:w-[300px] md:min-w-[300px] px-2 py-2 md:py-1 text-xs text-muted-foreground notes-cell">
         <div className="block md:hidden text-xs text-muted-foreground mb-1 font-medium">Notes:</div>
         <EditableCell
           type="textarea"

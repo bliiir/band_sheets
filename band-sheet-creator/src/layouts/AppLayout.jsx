@@ -80,9 +80,9 @@ const AppLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header - extends full width across the top */}
-      <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 w-full">
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
+      {/* Header - fixed at the top */}
+      <header className="sticky top-0 z-50 h-14 border-b border-border bg-card flex items-center justify-between px-4 w-full bg-background">
         <div className="flex items-center">
           <Link to="/" className="text-primary text-xl font-bold">Band Sheets</Link>
         </div>
@@ -286,8 +286,8 @@ const AppLayout = ({ children }) => {
       {/* Main content area with content */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Content area */}
-        <main className="flex-1 overflow-auto p-4 w-full">{children}</main>
+        {/* Content area - this is where scrolling should happen */}
+        <main className="flex-1 w-full h-full overflow-auto">{children}</main>
         
         {/* Auth Modal */}
         <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
