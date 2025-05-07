@@ -49,7 +49,7 @@ const makeRequest = async (url, options = {}) => {
       headers.Authorization = `Bearer ${token}`;
     } else if (!isAuthEndpoint) {
       // Always require authentication for endpoints that need it
-      const authRequiredEndpoints = ['/favorite', '/sheets/add', '/sheets/remove', '/reorder'];
+      const authRequiredEndpoints = ['/favorite', '/sheets/add', '/sheets/remove', '/reorder', '/setlists'];
       
       // Check if this is an operation that absolutely requires authentication
       const requiresAuth = authRequiredEndpoints.some(endpoint => url.includes(endpoint));

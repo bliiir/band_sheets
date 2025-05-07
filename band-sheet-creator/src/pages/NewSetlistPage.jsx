@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlusIcon } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { createSetlist } from '../services/SetlistStorageService';
 
 /**
  * Page component for creating a new setlist.
@@ -16,25 +17,57 @@ const NewSetlistPage = () => {
   const handleCreateSetlist = async (e) => {
     e.preventDefault();
     
+    // Check auth status with debug info
+    console.log('Authentication status:', isAuthenticated ? 'Authenticated' : 'Not authenticated');
+    const token = localStorage.getItem('token');
+    console.log('Token exists:', !!token);
+    
     if (!isAuthenticated) {
+      console.log('User not authenticated, showing auth modal');
       showAuthModal();
       return;
     }
 
     if (!setlistName.trim()) {
+      console.log('Empty setlist name, aborting');
       return;
     }
 
     setIsSubmitting(true);
+    console.log('Setting isSubmitting to true');
     
     try {
-      // In a real implementation, this would call the setlist creation API
-      // For now, we'll just redirect back to the setlists page
-      setTimeout(() => {
+      console.log('Creating new setlist with name:', setlistName);
+      
+      // Create new setlist data
+      const newSetlist = {
+        name: setlistName.trim(),
+        description: '', // Explicitly add description field
+        sheets: [],
+        dateCreated: new Date().toISOString(),
+        dateModified: new Date().toISOString()
+      };
+      
+      console.log('Sending setlist data to API:', newSetlist);
+      
+      // Call the service function to create the setlist
+      const createdSetlist = await createSetlist(newSetlist);
+      console.log('API response for create setlist:', createdSetlist);
+      
+      if (createdSetlist) {
+        console.log('Setlist created successfully, ID:', createdSetlist._id || createdSetlist.id);
+        // Navigate to the setlists page
         navigate('/setlists');
-      }, 500);
+      } else {
+        console.error('Failed to create setlist - received null or undefined response');
+        alert('Failed to create setlist. Please check console for details.');
+        setIsSubmitting(false);
+      }
     } catch (error) {
       console.error('Error creating setlist:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      alert(`Error creating setlist: ${error.message || 'Unknown error'}`);
       setIsSubmitting(false);
     }
   };

@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../contexts/AuthContext";
 import { useUIState } from "../contexts/UIStateContext";
+import { useSetlistActions } from "../contexts/SetlistActionsContext";
 import { getAllSetlists, deleteSetlist, updateSetlist } from "../services/SetlistStorageService";
 import ConfirmModal from "../components/ConfirmModal";
 
@@ -72,6 +73,7 @@ const SetlistsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const { isAuthenticated, showAuthModal, authChangeCounter } = useAuth();
   const { handleContextMenu: uiHandleContextMenu } = useUIState();
+  const { setSetlistActions } = useSetlistActions();
   const [isLoading, setIsLoading] = useState(true);
   const [mySetlists, setMySetlists] = useState([]);
   const [bandSetlists, setBandSetlists] = useState([]);
@@ -90,6 +92,17 @@ const SetlistsPage = () => {
     onConfirm: () => {},
     setlistId: null
   });
+  
+  // Register the setlist actions with the context
+  useEffect(() => {
+    if (setSetlistActions) {
+      setSetlistActions({
+        handleCreateSetlist: () => {
+          handleCreateSetlist();
+        }
+      });
+    }
+  }, [setSetlistActions]);
   
   // Fetch setlists from the API directly
   useEffect(() => {
@@ -276,11 +289,13 @@ const SetlistsPage = () => {
   };
 
   const handleCreateSetlist = () => {
+    console.log('handleCreateSetlist called');
     if (!isAuthenticated) {
       showAuthModal();
       return;
     }
-    // Navigation will be handled by the Link component
+    // Directly navigate to the new setlist page
+    navigate('/setlist/new');
   };
 
   // Define the setlist card component with dropdown menu
@@ -515,12 +530,6 @@ const SetlistsPage = () => {
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Setlists</h1>
-        <Link to="/setlist/new">
-          <Button onClick={handleCreateSetlist}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Setlist
-          </Button>
-        </Link>
       </div>
       
       <div className="mb-6">

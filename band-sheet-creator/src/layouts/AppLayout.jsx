@@ -11,11 +11,13 @@ import {
   FilePlusIcon,
   SaveIcon,
   ImportIcon,
-  UploadIcon
+  UploadIcon,
+  FolderPlusIcon
 } from "lucide-react";
 import SidebarButton from "../components/SidebarButton";
 import AuthModal from "../components/Auth/AuthModal";
 import { useAuth } from "../contexts/AuthContext";
+import { useSetlistActions } from "../contexts/SetlistActionsContext";
 
 /**
  * Main application layout with header and sidebar
@@ -36,7 +38,9 @@ const AppLayout = ({ children }) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
+  const [isSetlists, setIsSetlists] = useState(false);
   const navigate = useNavigate();
+  const { setlistActions } = useSetlistActions();
   
   // Set active tab based on current route and check if we're in the editor
   useEffect(() => {
@@ -45,6 +49,11 @@ const AppLayout = ({ children }) => {
     const isInEditor = !!inEditor;
     console.log('Current path:', location.pathname, 'isEditor:', isInEditor);
     setIsEditor(isInEditor);
+    
+    // Check if we're in the setlists view
+    const inSetlists = location.pathname === "/setlists";
+    console.log('Current path:', location.pathname, 'isSetlists:', inSetlists);
+    setIsSetlists(inSetlists);
     
     // Set active tab
     if (location.pathname.includes("/sheets") || location.pathname.includes("/sheet/")) {
@@ -73,6 +82,7 @@ const AppLayout = ({ children }) => {
         <div className="flex items-center space-x-2">
           {/* Main Navigation - moved to right side */}
           <nav className="hidden md:flex space-x-1 mr-2">
+            {/* Page-specific actions */}
             {/* Editor-specific actions */}
             {isEditor && (
               <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
@@ -126,6 +136,26 @@ const AppLayout = ({ children }) => {
                   title="PDF"
                 >
                   <PrinterIcon className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            
+            {/* Setlist-specific actions */}
+            {isSetlists && (
+              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => {
+                    console.log('Create setlist button clicked');
+                    if (setlistActions && setlistActions.handleCreateSetlist) {
+                      setlistActions.handleCreateSetlist();
+                    } else {
+                      navigate('/setlist/new');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Create Setlist"
+                >
+                  <FolderPlusIcon className="w-5 h-5" />
                 </button>
               </div>
             )}

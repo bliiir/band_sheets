@@ -6,6 +6,7 @@ import { UIStateProvider } from './UIStateContext';
 import { SetlistProvider } from './SetlistContext';
 import { NavigationProvider } from './NavigationContext';
 import { EditorActionsProvider } from './EditorActionsContext';
+import { SetlistActionsProvider } from './SetlistActionsContext';
 
 /**
  * AppProviders component that wraps the application with all context providers
@@ -23,7 +24,9 @@ const AppProviders = ({ children }) => {
             <SetlistProvider>
               <EditingProvider>
                 <EditorActionsProvider>
-                  {children}
+                  <SetlistActionsProvider>
+                    {children}
+                  </SetlistActionsProvider>
                 </EditorActionsProvider>
               </EditingProvider>
             </SetlistProvider>

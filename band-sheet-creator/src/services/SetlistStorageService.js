@@ -29,30 +29,17 @@ export const getSetlistById = async (id) => {
   if (isAuthenticated()) {
     try {
       console.log(`Getting setlist ${formattedId} from MongoDB with authentication`);
-      const token = localStorage.getItem('token');
       
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/setlists/${formattedId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+      // Use fetchWithAuth for consistent authentication handling
+      const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
+        method: 'GET'
       });
       
-      // Log the response status
-      console.log('API response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('API response data:', data);
-      
+      console.log('Get setlist response:', data);
       return data.data || null;
     } catch (error) {
       console.error('Error fetching setlist from API:', error);
+      console.error('Error details:', error.message);
       return null;
     }
   } else {
@@ -72,70 +59,46 @@ export const getAllSetlists = async (sortByNewest = true) => {
     try {
       console.log('Getting setlists from MongoDB using URL:', `${API_URL}/setlists`);
       
-      // Get the token for debugging
-      const token = localStorage.getItem('token');
-      console.log('Using authentication token:', token ? 'Token exists' : 'No token found');
-      
-      // Make the API request with full URL and add debug parameters
+      // Use fetchWithAuth for consistent authentication handling
       const debugUrl = `${API_URL}/setlists?debug=true&client=web`;
       console.log('Debug URL for setlists:', debugUrl);
       
-      const response = await fetch(debugUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await fetchWithAuth(debugUrl, {
+        method: 'GET'
       });
       
-      // Log the response status and headers for detailed debugging
-      console.log('API response status:', response.status, response.statusText);
-      console.log('API response headers:', [...response.headers.entries()]);
+      console.log('Setlists API response:', data);
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
+      // The backend returns setlists in a 'setlists' field, not 'data'
+      const setlistsArray = data.setlists || data.data || [];
+      console.log('Extracted setlists array:', setlistsArray);
       
-      // Clone the response to log its content without consuming it
-      const responseClone = response.clone();
-      const responseText = await responseClone.text();
-      
-      try {
-        // Attempt to parse the response
-        const data = JSON.parse(responseText);
-        console.log('API response data:', data);
+      if (Array.isArray(setlistsArray)) {
+        // Sort setlists if requested
+        const setlists = sortByNewest && setlistsArray.length > 0
+          ? [...setlistsArray].sort((a, b) => {
+              const dateA = a.dateModified || a.updatedAt || a.dateCreated || a.createdAt;
+              const dateB = b.dateModified || b.updatedAt || b.dateCreated || b.createdAt;
+              return new Date(dateB) - new Date(dateA);
+            })
+          : setlistsArray;
         
-        // Check for specific error conditions
-        if (data.success === false) {
-          console.error('API error details:', data.error);
-          throw new Error(`API error: ${data.error || 'Unknown error'}`);
-        }
-        
-        // The API returns setlists in the 'setlists' field, not 'data'
-        const setlists = data.setlists || data.data || [];
-        console.log(`Received ${setlists.length} setlists from API`);
+        console.log(`Returning ${setlists.length} setlists from MongoDB`);
         
         // Log the first setlist for debugging if available
         if (setlists.length > 0) {
-          console.log('First setlist preview:', {
-            id: setlists[0].id || setlists[0]._id,
-            name: setlists[0].name,
-            sheets: setlists[0].sheets ? setlists[0].sheets.length : 0
-          });
-        }
-        
-        // Sort if needed
-        if (sortByNewest && setlists.length > 0) {
-          setlists.sort((a, b) => {
-            return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
+          const firstSetlist = setlists[0];
+          console.log('First setlist sample:', {
+            id: firstSetlist._id || firstSetlist.id,
+            name: firstSetlist.name,
+            sheetCount: (firstSetlist.sheets && firstSetlist.sheets.length) || 0
           });
         }
         
         return setlists;
-      } catch (parseError) {
-        console.error('Error parsing API response:', parseError);
-        console.log('Raw response text:', responseText);
-        throw new Error('Failed to parse API response');
+      } else {
+        console.error('API returned invalid data format:', data);
+        return [];
       }
     } catch (error) {
       console.error('Error fetching setlists from API:', error);
@@ -162,27 +125,17 @@ export const deleteSetlist = async (id) => {
   if (isAuthenticated()) {
     try {
       console.log(`Deleting setlist ${formattedId} from MongoDB with authentication`);
-      const token = localStorage.getItem('token');
       
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/setlists/${formattedId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+      // Use fetchWithAuth for consistent authentication handling
+      const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
+        method: 'DELETE'
       });
       
-      // Log the response status
-      console.log('API response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
+      console.log('Delete setlist response:', data);
       return true;
     } catch (error) {
       console.error('Error deleting setlist from API:', error);
+      console.error('Error details:', error.message);
       return false;
     }
   } else {
@@ -200,26 +153,42 @@ export const createSetlist = async (setlistData) => {
   if (isAuthenticated()) {
     try {
       console.log('Creating new setlist in MongoDB with authentication');
-      const token = localStorage.getItem('token');
+      console.log('Setlist data:', setlistData);
+      console.log(`API URL: ${API_URL}/setlists`);
       
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/setlists`, {
+      // Make sure we're sending the correct fields that the backend expects
+      // Note: The backend requires an 'id' field in the schema
+      const requestData = {
+        id: setlistData.id || `setlist_${Date.now()}`, // Ensure we have an ID (backend will generate one if missing, but let's be explicit)
+        name: setlistData.name,
+        description: setlistData.description || '',
+        sheets: setlistData.sheets || [],
+        dateCreated: setlistData.dateCreated,
+        dateModified: setlistData.dateModified
+      };
+      
+      console.log('Formatted request data:', requestData);
+      
+      // Use fetchWithAuth instead of direct fetch call to ensure consistent auth handling
+      const response = await fetchWithAuth(`${API_URL}/setlists`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(setlistData)
+        body: JSON.stringify(requestData)
       });
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
+      console.log('Create setlist response:', response);
       
-      const data = await response.json();
-      return data.data || null;
+      // Backend returns { success: true, setlist: {...} } format
+      if (response && response.success && response.setlist) {
+        return response.setlist;
+      } else if (response && response.data) {
+        return response.data;
+      } else {
+        console.error('Unexpected response format:', response);
+        return null;
+      }
     } catch (error) {
       console.error('Error creating setlist in API:', error);
+      console.error('Error details:', error.message);
       return null;
     }
   } else {
@@ -241,28 +210,14 @@ export const updateSetlist = async (id, setlistData) => {
     try {
       console.log(`Updating setlist ${formattedId} in MongoDB with authentication`);
       console.log('Update payload:', setlistData);
-      const token = localStorage.getItem('token');
+      console.log(`API URL: ${API_URL}/setlists/${formattedId}`);
       
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/setlists/${formattedId}`, {
+      // Use fetchWithAuth for consistent authentication handling
+      const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify(setlistData)
       });
       
-      // Log response status for debugging
-      console.log('API response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
       console.log('Update setlist response:', data);
       
       // Better handling of different API response formats
