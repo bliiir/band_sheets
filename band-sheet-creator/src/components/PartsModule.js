@@ -33,7 +33,7 @@ const PartsModule = () => {
   };
 
   return (
-    <div className="bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
+    <div className="bg-white rounded-md shadow border border-gray-200">
       <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-lg font-bold">Chord progressions</h2>
         <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ const PartsModule = () => {
         <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">Bars</div>
         <div className="flex-1 px-2 py-2 flex items-center">Original Chords</div>
         <div className="flex-1 px-2 py-2 flex items-center">Transposed Chords</div>
-        <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center"></div>
+        <div className="w-[40px] min-w-[40px] px-2 py-2 pr-6 flex justify-center items-center"></div>
       </div>
       
       {/* Parts list */}
@@ -108,7 +108,7 @@ const PartsModule = () => {
           </div>
           
           {/* Actions */}
-          <div className="w-[40px] min-w-[40px] px-2 py-2 flex justify-center items-center">
+          <div className="w-[40px] min-w-[40px] px-2 py-2 pr-6 flex justify-center items-center">
             <button 
               className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-100 rounded"
               onClick={() => {

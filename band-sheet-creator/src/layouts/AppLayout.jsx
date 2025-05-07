@@ -287,7 +287,7 @@ const AppLayout = ({ children }) => {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Content area */}
-        <main className="flex-1 overflow-auto p-4">{children}</main>
+        <main className="flex-1 overflow-auto p-4 w-full">{children}</main>
         
         {/* Auth Modal */}
         <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />

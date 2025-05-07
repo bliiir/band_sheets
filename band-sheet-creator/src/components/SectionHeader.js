@@ -26,7 +26,7 @@ const SectionHeader = ({
   const { isEditing, beginEdit, saveEdit, editValue, setEditValue, setEditing } = useEditing();
   return (
     <div 
-      className="md:w-[120px] md:min-w-[120px] w-full border-r-0 md:border-r border-b md:border-b-0 border-border bg-card p-4 flex flex-col justify-between relative"
+      className="md:w-[160px] md:min-w-[160px] w-full border-r-0 md:border-r border-b md:border-b-0 border-border bg-card p-4 flex flex-col justify-between relative"
       onMouseEnter={() => setHoverState({ type: 'section', si, pi: null })}
       onMouseLeave={() => setHoverState({ type: null, si: null, pi: null })}
       style={backgroundColor ? { backgroundColor } : undefined}

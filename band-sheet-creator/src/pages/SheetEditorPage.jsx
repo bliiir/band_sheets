@@ -60,7 +60,7 @@ const SheetEditorPage = () => {
   }, [setEditorActions]);
   
   return (
-    <div className="h-full w-full relative">
+    <div className="h-full w-full max-w-full relative overflow-hidden">
       {/* Use the BandSheetEditor with its built-in toolbar for sheet-related actions */}
       <BandSheetEditor
         ref={editorRef}

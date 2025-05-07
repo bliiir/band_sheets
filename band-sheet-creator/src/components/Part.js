@@ -268,7 +268,7 @@ const Part = ({
       </div>
       
       {/* Desktop view: Part label cell */}
-      <div className="hidden md:flex w-[60px] min-w-[60px] px-4 py-1 items-center">
+      <div className="hidden md:flex w-[80px] min-w-[80px] px-4 py-1 items-center">
         <EditableCell
           type="text"
           isEditing={isEditing(si, pi, 'part')}
@@ -283,7 +283,7 @@ const Part = ({
       </div>
       
       {/* Desktop view: Bars cell */}
-      <div className="hidden md:flex w-[60px] min-w-[60px] px-2 py-1 items-center">
+      <div className="hidden md:flex w-[80px] min-w-[80px] px-2 py-1 items-center">
         <EditableCell
           type="number"
           isEditing={isEditing(si, pi, 'bars')}
@@ -315,7 +315,7 @@ const Part = ({
       </div>
       
       {/* Notes cell */}
-      <div className="w-full md:w-[200px] md:min-w-[200px] px-2 py-2 md:py-1 text-xs text-muted-foreground overflow-y-auto">
+      <div className="w-full md:w-[300px] md:min-w-[300px] px-2 py-2 md:py-1 text-xs text-muted-foreground overflow-y-auto">
         <div className="block md:hidden text-xs text-muted-foreground mb-1 font-medium">Notes:</div>
         <EditableCell
           type="textarea"
@@ -332,7 +332,7 @@ const Part = ({
       </div>
       
       {/* Actions cell - always visible on both mobile and desktop */}
-      <div className="w-full md:w-[40px] md:min-w-[40px] px-2 py-2 md:py-1 flex justify-end md:justify-center items-center">
+      <div className="w-full md:w-[40px] md:min-w-[40px] px-2 py-2 md:py-1 pr-6 flex justify-end md:justify-center items-center">
         <div
           onClick={(e) => handleContextMenu(e, "part", si, pi)}
           className="cursor-pointer"
