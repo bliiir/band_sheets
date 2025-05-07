@@ -33,7 +33,7 @@ const PartsModule = () => {
   };
 
   return (
-    <div className="mt-6 mb-6 ml-4 mr-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
+    <div className="bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
       <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-lg font-bold">Chord progressions</h2>
         <div className="flex items-center gap-3">

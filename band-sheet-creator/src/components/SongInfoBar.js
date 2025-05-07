@@ -9,7 +9,7 @@ import React from 'react';
  */
 const SongInfoBar = ({ songData, setSongData }) => {
   return (
-    <div className="flex flex-col gap-4 p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm sticky top-0 z-45">
+    <div className="flex flex-col gap-4 p-4 bg-gray-50 border-b border-gray-200 rounded-t-xl shadow-sm">
       {/* Title - Full width on all devices */}
       <div className="w-full">
         <input

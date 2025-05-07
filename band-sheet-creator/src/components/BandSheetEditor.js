@@ -1109,13 +1109,12 @@ export default function BandSheetEditor({
       
       {/* Sidebar and setlists panel have been removed */}
       {/* Main content area - adjust margins based on toolbar visibility */}
-      <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : useExternalToolbar ? 'ml-0' : 'ml-16'} overflow-hidden`}>
+      <div className={`flex-1 flex flex-col ${isMobile ? 'mt-10' : useExternalToolbar ? 'ml-0' : 'ml-16'} overflow-y-auto overflow-x-hidden`}>
         {/* Song info bar - positioned above the sheet in the visual stack */}
         <SongInfoBar songData={songData} setSongData={setSongData} />
 
         {/* Sheet container - positioned below the SongInfoBar in the visual stack */}
-        <div className="mt-8 mx-4 mb-4 bg-white rounded-md shadow border border-gray-200 overflow-x-auto">
-
+        <div className="mt-8 mx-4 mb-4 pb-10 bg-white rounded-md shadow border border-gray-200 w-full">
           {/* Sheet header row */}
           <SheetHeader />
 
@@ -1132,15 +1131,18 @@ export default function BandSheetEditor({
               // No longer passing editing-related props - they'll come from EditingContext
             />
           ))}
+          
           {/* Add new section button at the bottom */}
           <div className="flex flex-col items-center justify-center mt-6 mb-4 cursor-pointer select-none group" onClick={() => addSection()}>
             <div className="text-2xl font-bold text-blue-600 group-hover:text-blue-800 leading-none">+</div>
             <div className="text-xs text-gray-500 group-hover:text-blue-700">Add Section</div>
           </div>
         </div>
-
-        {/* Parts Module - Now extracted as a separate component */}
-        <PartsModule />
+        
+        {/* Parts Module for chord progressions */}
+        <div className="mt-4 mb-20 mx-4 w-full">
+          <PartsModule />
+        </div>
       </div>
       
       {/* Floating UI elements */}
