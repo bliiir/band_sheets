@@ -9,6 +9,7 @@ import { useUIState } from "../contexts/UIStateContext";
 import { getAllSheets, deleteSheet } from "../services/SheetStorageService";
 import { exportSingleSheet } from "../services/ExportService";
 import { useSetlist } from "../contexts/SetlistContext";
+import { useSheetActions } from "../contexts/SheetActionsContext";
 import ConfirmModal from "../components/ConfirmModal";
 import SetlistModal from "../components/SetlistModal";
 
@@ -20,6 +21,7 @@ const SheetsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const { isAuthenticated, showAuthModal, authChangeCounter } = useAuth();
   const { handleContextMenu: uiHandleContextMenu } = useUIState();
+  const { setSheetActions } = useSheetActions();
   const [isLoading, setIsLoading] = useState(true);
   const [mySheets, setMySheets] = useState([]);
   const [bandSheets, setBandSheets] = useState([]);
@@ -381,8 +383,19 @@ const SheetsPage = () => {
       showAuthModal();
       return;
     }
-    // Navigation will be handled by the Link component
+    navigate('/sheet/new');
   };
+  
+  // Register the sheet actions with the context
+  useEffect(() => {
+    if (setSheetActions) {
+      setSheetActions({
+        handleCreateSheet: () => {
+          handleCreateSheet();
+        }
+      });
+    }
+  }, [setSheetActions, navigate]);
 
   // Helper function to traverse the sheet object and find the BPM
   const getBpm = (sheet) => {
@@ -606,21 +619,12 @@ const SheetsPage = () => {
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Sheets</h1>
-        <Link to="/sheet/new">
-          <Button onClick={handleCreateSheet}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Create Sheet
-          </Button>
-        </Link>
-      </div>
-      
-      <div className="mb-6">
-        <div className="relative">
+        <div className="relative w-full max-w-sm ml-auto flex items-center">
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             type="text"
             placeholder="Search sheets..."
-            className="w-full pl-10"
+            className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -643,12 +647,15 @@ const SheetsPage = () => {
             {filterSheets(mySheets).length === 0 ? (
               <div className="text-center py-8 border border-dashed border-border rounded-md bg-background">
                 <p className="text-muted-foreground">You don't have any sheets yet</p>
-                <Link to="/sheet/new" className="mt-2 inline-block">
-                  <Button variant="outline" size="sm" className="mt-2">
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Create Sheet
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={handleCreateSheet}
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Create Sheet
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

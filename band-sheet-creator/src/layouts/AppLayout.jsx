@@ -18,6 +18,7 @@ import SidebarButton from "../components/SidebarButton";
 import AuthModal from "../components/Auth/AuthModal";
 import { useAuth } from "../contexts/AuthContext";
 import { useSetlistActions } from "../contexts/SetlistActionsContext";
+import { useSheetActions } from "../contexts/SheetActionsContext";
 
 /**
  * Main application layout with header and sidebar
@@ -39,8 +40,10 @@ const AppLayout = ({ children }) => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
   const [isSetlists, setIsSetlists] = useState(false);
+  const [isSheets, setIsSheets] = useState(false);
   const navigate = useNavigate();
   const { setlistActions } = useSetlistActions();
+  const { handleCreateSheet } = useSheetActions();
   
   // Set active tab based on current route and check if we're in the editor
   useEffect(() => {
@@ -54,6 +57,11 @@ const AppLayout = ({ children }) => {
     const inSetlists = location.pathname === "/setlists";
     console.log('Current path:', location.pathname, 'isSetlists:', inSetlists);
     setIsSetlists(inSetlists);
+    
+    // Check if we're in the sheets view
+    const inSheets = location.pathname === "/sheets";
+    console.log('Current path:', location.pathname, 'isSheets:', inSheets);
+    setIsSheets(inSheets);
     
     // Set active tab
     if (location.pathname.includes("/sheets") || location.pathname.includes("/sheet/")) {
@@ -140,6 +148,26 @@ const AppLayout = ({ children }) => {
               </div>
             )}
             
+            {/* Sheets-specific actions */}
+            {isSheets && (
+              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => {
+                    console.log('Create sheet button clicked');
+                    if (handleCreateSheet) {
+                      handleCreateSheet();
+                    } else {
+                      console.error('handleCreateSheet not available');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Create Sheet"
+                >
+                  <FilePlusIcon className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+            
             {/* Setlist-specific actions */}
             {isSetlists && (
               <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
@@ -149,7 +177,7 @@ const AppLayout = ({ children }) => {
                     if (setlistActions && setlistActions.handleCreateSetlist) {
                       setlistActions.handleCreateSetlist();
                     } else {
-                      navigate('/setlist/new');
+                      console.error('handleCreateSetlist not available');
                     }
                   }}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"

@@ -7,6 +7,7 @@ import { SetlistProvider } from './SetlistContext';
 import { NavigationProvider } from './NavigationContext';
 import { EditorActionsProvider } from './EditorActionsContext';
 import { SetlistActionsProvider } from './SetlistActionsContext';
+import { SheetActionsProvider } from './SheetActionsContext';
 
 /**
  * AppProviders component that wraps the application with all context providers
@@ -25,7 +26,9 @@ const AppProviders = ({ children }) => {
               <EditingProvider>
                 <EditorActionsProvider>
                   <SetlistActionsProvider>
-                    {children}
+                    <SheetActionsProvider>
+                      {children}
+                    </SheetActionsProvider>
                   </SetlistActionsProvider>
                 </EditorActionsProvider>
               </EditingProvider>
