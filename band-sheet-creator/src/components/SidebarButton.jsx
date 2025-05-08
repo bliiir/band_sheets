@@ -12,7 +12,7 @@ const SidebarButton = ({ icon: Icon, active, label, to, onClick, variant = "vert
     variant === "vertical" && "justify-center w-10 h-10 rounded-md",
     variant === "horizontal" && "px-3 py-2 gap-2 rounded",
     active
-      ? "bg-primary/10 text-primary"
+      ? "text-primary" // Removed bg-primary/10 to eliminate the grey background
       : "text-muted-foreground hover:bg-muted hover:text-foreground"
   );
 
@@ -29,7 +29,7 @@ const SidebarButton = ({ icon: Icon, active, label, to, onClick, variant = "vert
   const horizontalContent = (
     <>
       <Icon className="h-4 w-4" />
-      <span className="text-sm font-medium">{label}</span>
+      <span className="hidden sm:inline text-sm font-medium">{label}</span>
     </>
   );
   

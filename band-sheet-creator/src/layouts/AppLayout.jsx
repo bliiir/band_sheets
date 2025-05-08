@@ -63,11 +63,15 @@ const AppLayout = ({ children }) => {
     console.log('Current path:', location.pathname, 'isSheets:', inSheets);
     setIsSheets(inSheets);
     
-    // Set active tab
-    if (location.pathname.includes("/sheets") || location.pathname.includes("/sheet/")) {
+    // Set active tab - but more specific now to differentiate sheet editor from sheets list
+    if (location.pathname === "/sheets") {
+      // Only the sheets listing page, not the editor
       setActiveTab("sheets");
     } else if (location.pathname.includes("/setlists") || location.pathname.includes("/setlist/")) {
       setActiveTab("setlists");
+    } else if (location.pathname.includes("/sheet/")) {
+      // In editor - don't highlight any main tab
+      setActiveTab("none");
     }
   }, [location.pathname]);
 
@@ -82,24 +86,125 @@ const AppLayout = ({ children }) => {
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Header - fixed at the top */}
-      <header className="sticky top-0 z-50 h-14 border-b border-border bg-card flex items-center justify-between px-4 w-full bg-background">
-        <div className="flex items-center">
-          <Link to="/" className="text-primary text-xl font-bold">Band Sheets</Link>
-        </div>
+      <div className="sticky top-0 z-50 flex flex-col border-b border-border bg-card w-full bg-background">
+        {/* Main header row */}
+        <header className="h-14 flex items-center justify-between px-4 w-full">
+          <div className="flex items-center">
+            <Link to="/" className="text-primary text-xl font-bold">Band Sheets</Link>
+          </div>
 
-        <div className="flex items-center space-x-2">
-          {/* Main Navigation - moved to right side */}
-          <nav className="hidden md:flex space-x-1 mr-2">
-            {/* Page-specific actions */}
+          <div className="flex items-center space-x-2">
+            {/* Main Navigation - visible on both mobile and desktop */}
+            <nav className="flex space-x-1 mr-2">
+              {/* Navigation tabs - always visible */}
+              <SidebarButton
+                icon={FileTextIcon}
+                active={activeTab === "sheets"}
+                label="Sheets"
+                to="/sheets"
+                onClick={() => setActiveTab("sheets")}
+                variant="horizontal"
+              />
+
+              <SidebarButton
+                icon={FolderIcon}
+                active={activeTab === "setlists"}
+                label="Setlists"
+                to="/setlists"
+                onClick={() => setActiveTab("setlists")}
+                variant="horizontal"
+              />
+            </nav>
+            
+            {/* Account Menu */}
+            <div className="relative">
+              {isAuthenticated ? (
+                <>
+                  <button
+                    onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span className="hidden sm:inline">Account</span>
+                  </button>
+                  
+                  {/* Account Dropdown Menu */}
+                  {accountMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-md py-1 z-50">
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setActiveTab("profile");
+                          console.log('Navigate to profile page');
+                        }}
+                      >
+                        <UserIcon className="w-4 h-4 mr-2" />
+                        Profile
+                      </button>
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          setActiveTab("settings");
+                          console.log('Navigate to settings page');
+                        }}
+                      >
+                        <SettingsIcon className="w-4 h-4 mr-2" />
+                        Settings
+                      </button>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                        onClick={() => {
+                          setAccountMenuOpen(false);
+                          handleLogoutClick();
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                          <polyline points="16 17 21 12 16 7"></polyline>
+                          <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Logout ({currentUser?.username})
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Click outside to close menu */}
+                  {accountMenuOpen && (
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setAccountMenuOpen(false)}
+                    ></div>
+                  )}
+                </>
+              ) : (
+                <button
+                  onClick={handleLoginClick}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Second row for page-specific actions - only shown when actions are available */}
+        {(isEditor || isSheets || isSetlists) && (
+          <div className="flex items-center justify-start px-4 py-2 border-t border-border bg-background/50 overflow-x-auto">
             {/* Editor-specific actions */}
             {isEditor && (
-              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={() => eventBus.emit('editor:new')}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
                   title="New Sheet"
                 >
                   <FilePlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New</span>
                 </button>
                 
                 <button
@@ -108,6 +213,7 @@ const AppLayout = ({ children }) => {
                   title="Save Sheet"
                 >
                   <SaveIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Save</span>
                 </button>
                 
                 <button
@@ -116,6 +222,7 @@ const AppLayout = ({ children }) => {
                   title="Import Sheet"
                 >
                   <ImportIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Import</span>
                 </button>
                 
                 <button
@@ -124,6 +231,7 @@ const AppLayout = ({ children }) => {
                   title="Export Sheet"
                 >
                   <UploadIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Export</span>
                 </button>
                 
                 <button
@@ -144,13 +252,14 @@ const AppLayout = ({ children }) => {
                   title="PDF"
                 >
                   <PrinterIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">PDF</span>
                 </button>
               </div>
             )}
             
             {/* Sheets-specific actions */}
             {isSheets && (
-              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={() => {
                     console.log('Create sheet button clicked');
@@ -164,13 +273,14 @@ const AppLayout = ({ children }) => {
                   title="Create Sheet"
                 >
                   <FilePlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New Sheet</span>
                 </button>
               </div>
             )}
             
             {/* Setlist-specific actions */}
             {isSetlists && (
-              <div className="flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+              <div className="flex items-center space-x-1">
                 <button
                   onClick={() => {
                     console.log('Create setlist button clicked');
@@ -184,104 +294,13 @@ const AppLayout = ({ children }) => {
                   title="Create Setlist"
                 >
                   <FolderPlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New Setlist</span>
                 </button>
               </div>
             )}
-            
-            {/* Main navigation tabs */}
-            <SidebarButton
-              icon={FileTextIcon}
-              active={activeTab === "sheets"}
-              label="Sheets"
-              to="/sheets"
-              onClick={() => setActiveTab("sheets")}
-              variant="horizontal"
-            />
-
-            <SidebarButton
-              icon={FolderIcon}
-              active={activeTab === "setlists"}
-              label="Setlists"
-              to="/setlists"
-              onClick={() => setActiveTab("setlists")}
-              variant="horizontal"
-            />
-          </nav>
-          
-          {/* Account Menu */}
-          <div className="relative">
-            {isAuthenticated ? (
-              <>
-                <button
-                  onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2"
-                >
-                  <UserIcon className="w-4 h-4" />
-                  Account
-                </button>
-                
-                {/* Account Dropdown Menu */}
-                {accountMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-40 bg-white shadow-lg rounded-md py-1 z-50">
-                    <button
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        setActiveTab("profile");
-                        console.log('Navigate to profile page');
-                      }}
-                    >
-                      <UserIcon className="w-4 h-4 mr-2" />
-                      Profile
-                    </button>
-                    <button
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        setActiveTab("settings");
-                        console.log('Navigate to settings page');
-                      }}
-                    >
-                      <SettingsIcon className="w-4 h-4 mr-2" />
-                      Settings
-                    </button>
-                    <div className="border-t border-gray-200 my-1"></div>
-                    <button
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        handleLogoutClick();
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16 17 21 12 16 7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                      </svg>
-                      Logout ({currentUser?.username})
-                    </button>
-                  </div>
-                )}
-                
-                {/* Click outside to close menu */}
-                {accountMenuOpen && (
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setAccountMenuOpen(false)}
-                  ></div>
-                )}
-              </>
-            ) : (
-              <button
-                onClick={handleLoginClick}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Login
-              </button>
-            )}
           </div>
-        </div>
-      </header>
+        )}
+      </div>
 
       {/* Main content area with content */}
       <div className="flex flex-1 overflow-hidden">
