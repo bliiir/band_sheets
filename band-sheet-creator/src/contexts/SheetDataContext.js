@@ -282,6 +282,13 @@ export function SheetDataProvider({ children }) {
         throw error;
       }
       
+      // Validate required fields
+      if (!songData.title || songData.title.trim() === '') {
+        const error = new Error('Title is required');
+        endApiCall(error);
+        throw error;
+      }
+      
       // Prepare sheet data
       const sheetData = { 
         ...songData, 

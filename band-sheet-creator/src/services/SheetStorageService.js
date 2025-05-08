@@ -187,28 +187,42 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
   }
   
   try {
+    // Debug check for title field
+    console.log('Sheet before save:', updatedSheet);
+    console.log('Title field value:', updatedSheet.title);
+    
     // Ensure section background colors are properly saved
     const sheetWithColors = {
       ...updatedSheet,
       sections: updatedSheet.sections.map(section => ({
         ...section,
         backgroundColor: section.backgroundColor || null
-      }))
+      })),
+      // Ensure title is explicitly set
+      title: updatedSheet.title || ''
     };
+    
+    console.log('Sheet after preparation:', sheetWithColors);
+    console.log('Title field after preparation:', sheetWithColors.title);
 
     if (isNewSave || !sheetData.id) {
       // Create new sheet
+      console.log('Creating new sheet with data:', JSON.stringify(sheetWithColors, null, 2));
       const data = await fetchWithAuth(`${API_URL}/sheets`, {
         method: 'POST',
         body: JSON.stringify(sheetWithColors)
       });
+      console.log('Response from API:', data);
       return data.data;
     } else {
       // Update existing sheet
+      console.log('Updating sheet with ID:', sheetWithColors.id);
+      console.log('Update data:', JSON.stringify(sheetWithColors, null, 2));
       const data = await fetchWithAuth(`${API_URL}/sheets/${sheetWithColors.id}`, {
         method: 'PUT',
         body: JSON.stringify(sheetWithColors)
       });
+      console.log('Response from update API:', data);
       return data.data;
     }
   } catch (error) {
