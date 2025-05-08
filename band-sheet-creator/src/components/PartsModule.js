@@ -47,8 +47,8 @@ const PartsModule = () => {
         </div>
       </div>
       
-      {/* Parts table header */}
-      <div className="flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
+      {/* Parts table header - only visible on md+ screens */}
+      <div className="hidden md:flex border-b border-gray-300 font-bold bg-white text-sm text-gray-800">
         <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center">Part</div>
         <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">Bars</div>
         <div className="flex-1 px-2 py-2 flex items-center">Original Chords</div>
@@ -58,31 +58,37 @@ const PartsModule = () => {
       
       {/* Parts list */}
       {partsModule?.map((partItem, index) => (
-        <div key={partItem.id} className="flex min-h-[40px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-          {/* Part */}
-          <div className="w-[80px] min-w-[80px] px-4 py-2 flex items-center font-semibold">
-            <EditableField
-              value={partItem.part}
-              type="text"
-              indices={{ sectionIndex: index, partIndex: null, field: 'part', editType: 'partsModule' }}
-              inputClassName="px-2 py-1 text-sm"
-              onClickView={() => beginPartModuleEdit(index, 'part')}
-            />
-          </div>
-          {/* Bars */}
-          <div className="w-[80px] min-w-[80px] px-2 py-2 flex items-center">
-            <EditableField
-              value={partItem.bars}
-              type="number"
-              indices={{ sectionIndex: index, partIndex: null, field: 'bars', editType: 'partsModule' }}
-              inputClassName="px-2 py-1 text-sm"
-              inputProps={{ min: "1" }}
-              placeholder="#"
-              onClickView={() => beginPartModuleEdit(index, 'bars')}
-            />
+        <div key={partItem.id} className="flex flex-col md:flex-row min-h-[40px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+          {/* Part and Bars - displayed in a row on both mobile and desktop */}
+          <div className="flex flex-row mb-2 md:mb-0">
+            {/* Part */}
+            <div className="md:w-[80px] md:min-w-[80px] px-4 py-2 flex flex-col md:flex-row md:items-center">
+              <div className="font-semibold md:hidden mb-1">Part:</div>
+              <EditableField
+                value={partItem.part}
+                type="text"
+                indices={{ sectionIndex: index, partIndex: null, field: 'part', editType: 'partsModule' }}
+                inputClassName="px-2 py-1 text-sm"
+                onClickView={() => beginPartModuleEdit(index, 'part')}
+              />
+            </div>
+            {/* Bars */}
+            <div className="md:w-[80px] md:min-w-[80px] px-4 md:px-2 py-2 flex flex-col md:flex-row md:items-center">
+              <div className="font-semibold md:hidden mb-1">Bars:</div>
+              <EditableField
+                value={partItem.bars}
+                type="number"
+                indices={{ sectionIndex: index, partIndex: null, field: 'bars', editType: 'partsModule' }}
+                inputClassName="px-2 py-1 text-sm"
+                inputProps={{ min: "1" }}
+                placeholder="#"
+                onClickView={() => beginPartModuleEdit(index, 'bars')}
+              />
+            </div>
           </div>
           {/* Chords */}
-          <div className="flex-1 px-2 py-2">
+          <div className="md:flex-1 px-4 md:px-2 py-2">
+            <div className="font-semibold md:hidden mb-1">Original Chords:</div>
             <EditableCell
               type="textarea"
               contentType="chords"
@@ -98,7 +104,8 @@ const PartsModule = () => {
             />
           </div>
           {/* Transposed Chords */}
-          <div className="flex-1 px-2 py-2">
+          <div className="md:flex-1 px-4 md:px-2 py-2">
+            <div className="font-semibold md:hidden mb-1">Transposed Chords:</div>
             <div className="font-['Inconsolata'] whitespace-pre-wrap">
               {partItem.chords ? 
                 getTransposedChordsForPart(partItem.chords) : 
@@ -107,8 +114,8 @@ const PartsModule = () => {
             </div>
           </div>
           
-          {/* Actions */}
-          <div className="w-[40px] min-w-[40px] px-2 py-2 pr-6 flex justify-center items-center">
+          {/* Actions - will be hidden on mobile as it's not essential */}
+          <div className="hidden md:flex md:w-[40px] md:min-w-[40px] md:px-2 md:py-2 md:pr-6 justify-center items-center">
             <button 
               className="w-6 h-6 flex items-center justify-center text-red-500 hover:bg-red-100 rounded"
               onClick={() => {
@@ -121,6 +128,9 @@ const PartsModule = () => {
               ×
             </button>
           </div>
+          
+          {/* Mobile separator */}
+          <div className="md:hidden h-[1px] bg-gray-200 my-2 mx-4"></div>
         </div>
       ))}
     </div>
