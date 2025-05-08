@@ -6,6 +6,7 @@
  */
 
 import { fetchWithAuth, API_URL } from './ApiService';
+import eventBus from '../utils/EventBus';
 
 // Using the API_URL imported from ApiService.js for consistency
 
@@ -13,12 +14,29 @@ import { fetchWithAuth, API_URL } from './ApiService';
 const TEMPORARY_DRAFT_KEY = 'band_sheets_temporary_draft';
 
 /**
+ * Get the authentication token
+ * @returns {string|null} The authentication token or null if not authenticated
+ */
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+/**
  * Check if user is authenticated
+ * This is designed to be consistent with the AuthContext's isAuthenticated check
  * @returns {boolean} Whether the user is authenticated
  */
 const isAuthenticated = () => {
-  const token = localStorage.getItem('token');
-  return !!token;
+  const token = getAuthToken();
+  
+  if (token) {
+    // Log authentication details for debugging
+    console.log('SheetStorageService: Token exists in localStorage (first 10 chars):', token.substring(0, 10) + '...');
+    return true;
+  }
+  
+  console.log('SheetStorageService: No token found in localStorage');
+  return false;
 };
 
 /**
@@ -170,10 +188,19 @@ export const clearTemporaryDraft = () => {
  * @returns {Object} The saved sheet with its ID
  */
 export const saveSheet = async (sheetData, isNewSave = false) => {
+  // Check authentication status
   if (!isAuthenticated()) {
     console.error('Authentication required to save sheets');
+    
+    // Show auth modal instead of just throwing an error
+    eventBus.emit('show-auth-modal', true);
+    
     throw new Error('Authentication required to save sheets');
   }
+
+  // Get token directly for debugging
+  const token = getAuthToken();
+  console.log('Using token for save operation (first 10 chars):', token.substring(0, 10) + '...');
 
   // Update modification date
   const updatedSheet = {
@@ -205,23 +232,78 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
     console.log('Sheet after preparation:', sheetWithColors);
     console.log('Title field after preparation:', sheetWithColors.title);
 
+    // Ensure we have the token before making the API call
+    const token = getAuthToken();
+    if (!token) {
+      console.error('Authentication required to save sheets - token not found');
+      
+      // Show auth modal
+      eventBus.emit('show-auth-modal', true);
+      
+      throw new Error('Authentication required to save sheets - token not found');
+    }
+
+    // Make API call with explicit headers - ensure we're using the correct API URL
+    // Log the complete URL we're about to call for debugging
+    console.log('API URL being used:', API_URL);
+    
     if (isNewSave || !sheetData.id) {
-      // Create new sheet
+      // Create new sheet with explicit token in header
       console.log('Creating new sheet with data:', JSON.stringify(sheetWithColors, null, 2));
-      const data = await fetchWithAuth(`${API_URL}/sheets`, {
+      const fullUrl = `${API_URL}/sheets`;
+      console.log('Full API URL for creating sheet:', fullUrl);
+      
+      const response = await fetch(fullUrl, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          // Add explicit CORS headers
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
         body: JSON.stringify(sheetWithColors)
       });
+      
+      // Check response status
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API error (${response.status}):`, errorText);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
       console.log('Response from API:', data);
       return data.data;
     } else {
-      // Update existing sheet
+      // Update existing sheet with explicit token in header
       console.log('Updating sheet with ID:', sheetWithColors.id);
       console.log('Update data:', JSON.stringify(sheetWithColors, null, 2));
-      const data = await fetchWithAuth(`${API_URL}/sheets/${sheetWithColors.id}`, {
+      
+      // Construct the full URL - this was a previous issue
+      const fullUrl = `${API_URL}/sheets/${sheetWithColors.id}`;
+      console.log('Full API URL for updating sheet:', fullUrl);
+      
+      const response = await fetch(fullUrl, {
         method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          // Add explicit CORS headers
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
         body: JSON.stringify(sheetWithColors)
       });
+      
+      // Check response status
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API error (${response.status}):`, errorText);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
       console.log('Response from update API:', data);
       return data.data;
     }

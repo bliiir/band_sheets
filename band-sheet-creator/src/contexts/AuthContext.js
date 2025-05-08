@@ -194,7 +194,39 @@ export function AuthProviderWithoutNav({ children, navigate }) {
     eventBus.emit('show-auth-modal', false);
   }, []);
 
-  // Context value
+  // Check if the user's authentication token is actually valid
+  const checkAuthToken = useCallback(() => {
+    const token = localStorage.getItem('token');
+    console.log('Auth check - Token exists:', !!token);
+    
+    // If we have a token but no user object, something is out of sync
+    if (token && !currentUser) {
+      console.log('Token exists but no current user - attempting to refresh user data');
+      getCurrentUser()
+        .then(user => {
+          if (user) {
+            console.log('Successfully retrieved user data from token');
+            setCurrentUser(user);
+          } else {
+            console.log('Invalid token - removing from storage');
+            localStorage.removeItem('token');
+          }
+        })
+        .catch(err => {
+          console.error('Error refreshing user from token:', err);
+          localStorage.removeItem('token');
+        });
+    }
+    
+    return !!token;
+  }, [currentUser]);
+  
+  // Function to get authentication token safely
+  const getAuthToken = useCallback(() => {
+    return localStorage.getItem('token');
+  }, []);
+
+  // Value object for the context
   const value = {
     currentUser,
     loading,
@@ -202,12 +234,16 @@ export function AuthProviderWithoutNav({ children, navigate }) {
     register,
     login,
     logout,
-    isAuthenticated: !!currentUser,
+    // Use both currentUser and token presence to determine authentication
+    isAuthenticated: !!currentUser || checkAuthToken(),
     authChangeCounter,
     onAuthChange,
     showAuthModal,
     hideAuthModal,
-    isAuthModalOpen
+    isAuthModalOpen,
+    // Expose token functions
+    checkAuthToken,
+    getAuthToken
   };
 
   return (

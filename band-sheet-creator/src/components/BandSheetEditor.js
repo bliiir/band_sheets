@@ -68,6 +68,18 @@ export default function BandSheetEditor({
     
     const saveUnsub = eventBus.on('editor:save', () => {
       console.log('Save event received');
+      // Debug the current state of songData directly from context
+      console.log('Title in UI before save (from context):', songData.title);
+      console.log('Full song data at save time:', songData);
+      
+      // Debug authentication state
+      console.log('Authentication state:', isAuthenticated);
+      console.log('Token in localStorage:', localStorage.getItem('token'));
+      
+      // Get the title from the DOM as well to compare
+      const titleInputValue = document.querySelector('input[aria-label="Song Title"]')?.value;
+      console.log('Title in DOM element:', titleInputValue);
+      
       handleSave();
     });
     
@@ -115,8 +127,8 @@ export default function BandSheetEditor({
     initialColor: '#ffffff'
   });
   
-  // Get authentication state
-  const { isAuthenticated } = useAuth();
+  // Get authentication state and functions
+  const { isAuthenticated, checkAuthToken, getAuthToken, showAuthModal } = useAuth();
   
   // State to track if we've loaded a draft
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -781,11 +793,23 @@ export default function BandSheetEditor({
   // Handle save button click
   const handleSave = async () => {
     try {
-      if (!isAuthenticated) {
+      // Force a token check to ensure authentication state is current
+      const token = getAuthToken();
+      const isAuthValid = checkAuthToken();
+      
+      console.log('Save button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      
+      // Check authentication - require login
+      if (!token) {
+        console.log('No authentication token found, showing auth modal');
+        // Show a clear error message
         showNotification('Please log in to save your sheet', 'error');
+        // Show the authentication modal
+        showAuthModal();
         throw new Error('Authentication required');
       }
       
+      // Save the sheet using the API
       const savedSheet = await saveCurrentSheet();
       showNotification(`Sheet saved successfully`);
       
@@ -798,19 +822,36 @@ export default function BandSheetEditor({
       return savedSheet;
     } catch (error) {
       console.error('BandSheetEditor: Error saving sheet:', error);
-      showNotification(`Error saving sheet: ${error.message}`, 'error');
-      throw error;
+      
+      // If it's an authentication error, show the auth modal
+      if (error.message.includes('Authentication')) {
+        showAuthModal();
+      } else {
+        showNotification(`Error saving sheet: ${error.message}`, 'error');
+      }
     }
   };
 
   // Handle save as button click
   const handleSaveAs = async () => {
     try {
-      if (!isAuthenticated) {
+      // Force a token check to ensure authentication state is current
+      const token = getAuthToken();
+      const isAuthValid = checkAuthToken();
+      
+      console.log('Save As button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      
+      // Check authentication - require login
+      if (!token) {
+        console.log('No authentication token found, showing auth modal');
+        // Show a clear error message
         showNotification('Please log in to save your sheet', 'error');
+        // Show the authentication modal
+        showAuthModal();
         throw new Error('Authentication required');
       }
       
+      // Save the sheet as new using the API
       const savedSheet = await saveCurrentSheet(true);
       showNotification(`Sheet saved as new sheet with ID: ${savedSheet.id}`);
       
@@ -823,8 +864,13 @@ export default function BandSheetEditor({
       return savedSheet;
     } catch (error) {
       console.error('BandSheetEditor: Error saving sheet as new:', error);
-      showNotification(`Error saving sheet: ${error.message}`, 'error');
-      throw error;
+      
+      // If it's an authentication error, show the auth modal
+      if (error.message.includes('Authentication')) {
+        showAuthModal();
+      } else {
+        showNotification(`Error saving sheet: ${error.message}`, 'error');
+      }
     }
   };
 

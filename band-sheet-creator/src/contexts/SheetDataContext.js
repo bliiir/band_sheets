@@ -20,8 +20,8 @@ export function SheetDataProvider({ children }) {
   // Access UI state for loading indicators
   const { beginApiCall, endApiCall } = useUIState();
   
-  // Access authentication state
-  const { isAuthenticated } = useAuth();
+  // Access authentication state - get the current authenticated status
+  const { isAuthenticated, currentUser } = useAuth();
 
   // Sheet data state
   const [sections, setSections] = useState([]);
@@ -275,12 +275,24 @@ export function SheetDataProvider({ children }) {
   const saveCurrentSheet = useCallback(async (saveAsNew = false) => {
     beginApiCall();
     try {
+      // Get the latest title value directly from the DOM to ensure it's current
+      const titleInput = document.querySelector('input[aria-label="Song Title"]');
+      const currentTitle = titleInput ? titleInput.value : songData.title;
+      
+      // Ensure we have the latest title value by updating songData first
+      if (titleInput && currentTitle !== songData.title) {
+        console.log('Updating title from DOM before save:', currentTitle);
+        setSongData(prev => ({ ...prev, title: currentTitle }));
+      }
+      
+      // Use the current title for validation
+      const titleToUse = currentTitle || songData.title;
+      
       // Debugging
       console.log('Song data before save:', songData);
-      console.log('Title value:', songData.title);
-      console.log('Title type:', typeof songData.title);
-      console.log('Title truthiness:', !!songData.title);
-      console.log('Title after trim:', songData.title ? songData.title.trim() : null);
+      console.log('Title value from state:', songData.title);
+      console.log('Title value from DOM:', currentTitle);
+      console.log('Title value to use:', titleToUse);
       
       // Check authentication before saving
       if (!isAuthenticated) {
@@ -290,25 +302,30 @@ export function SheetDataProvider({ children }) {
       }
       
       // Validate required fields
-      if (!songData.title || songData.title.trim() === '') {
+      if (!titleToUse || titleToUse.trim() === '') {
         console.error('Title validation failed:', { 
-          title: songData.title,
-          isEmpty: !songData.title, 
-          isEmptyAfterTrim: songData.title ? songData.title.trim() === '' : true 
+          title: titleToUse,
+          isEmpty: !titleToUse, 
+          isEmptyAfterTrim: titleToUse ? titleToUse.trim() === '' : true 
         });
-        const error = new Error('Title is required');
+        const error = new Error('Title required');
         endApiCall(error);
         throw error;
       }
       
-      // Prepare sheet data
+      // Prepare sheet data with explicitly set title to ensure it's included
       const sheetData = { 
-        ...songData, 
+        ...songData,
+        title: titleToUse, // Explicitly use the captured title
         sections, 
         partsModule, 
         transposeValue, 
         id: saveAsNew ? null : currentSheetId
       };
+      
+      // Double-check that title is present before sending to API
+      console.log('Final sheet data for save:', sheetData);
+      console.log('Final title value being sent to API:', sheetData.title);
       
       // Use service to save
       const savedSheet = await saveSheet(sheetData, saveAsNew);
