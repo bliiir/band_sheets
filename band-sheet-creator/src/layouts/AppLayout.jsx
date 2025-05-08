@@ -94,6 +94,106 @@ const AppLayout = ({ children }) => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Page-specific actions for desktop - hidden on mobile */}
+            {isEditor && (
+              <div className="hidden md:flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => eventBus.emit('editor:new')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="New Sheet"
+                >
+                  <FilePlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New</span>
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:save')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Save Sheet"
+                >
+                  <SaveIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Save</span>
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:import')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Import Sheet"
+                >
+                  <ImportIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Import</span>
+                </button>
+                
+                <button
+                  onClick={() => eventBus.emit('editor:export')}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Export Sheet"
+                >
+                  <UploadIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Export</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    console.log('PDF button clicked');
+                    const match = location.pathname.match(/\/sheet\/([a-zA-Z0-9_-]+)/);
+                    if (match && match[1]) {
+                      const sheetId = match[1];
+                      const printUrl = `/sheet/${sheetId}?print=true&color=true&chords=true`;
+                      window.open(printUrl, '_blank');
+                    } else {
+                      console.error('Could not determine sheet ID from URL');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="PDF"
+                >
+                  <PrinterIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">PDF</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Sheets-specific actions for desktop */}
+            {isSheets && (
+              <div className="hidden md:flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => {
+                    if (handleCreateSheet) {
+                      handleCreateSheet();
+                    } else {
+                      console.error('handleCreateSheet not available');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Create Sheet"
+                >
+                  <FilePlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New Sheet</span>
+                </button>
+              </div>
+            )}
+            
+            {/* Setlist-specific actions for desktop */}
+            {isSetlists && (
+              <div className="hidden md:flex items-center space-x-1 mr-3 border-r border-gray-300 pr-3">
+                <button
+                  onClick={() => {
+                    if (setlistActions && setlistActions.handleCreateSetlist) {
+                      setlistActions.handleCreateSetlist();
+                    } else {
+                      console.error('handleCreateSetlist not available');
+                    }
+                  }}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Create Setlist"
+                >
+                  <FolderPlusIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">New Setlist</span>
+                </button>
+              </div>
+            )}
+            
             {/* Main Navigation - visible on both mobile and desktop */}
             <nav className="flex space-x-1 mr-2">
               {/* Navigation tabs - always visible */}
@@ -192,10 +292,10 @@ const AppLayout = ({ children }) => {
           </div>
         </header>
 
-        {/* Second row for page-specific actions - only shown when actions are available */}
+        {/* Second row for page-specific actions - only shown on mobile */}
         {(isEditor || isSheets || isSetlists) && (
-          <div className="flex items-center justify-start px-4 py-2 border-t border-border bg-background/50 overflow-x-auto">
-            {/* Editor-specific actions */}
+          <div className="md:hidden flex items-center justify-start px-4 py-2 border-t border-border bg-background/50 overflow-x-auto">
+            {/* Editor-specific actions - mobile only */}
             {isEditor && (
               <div className="flex items-center space-x-1">
                 <button
@@ -204,7 +304,6 @@ const AppLayout = ({ children }) => {
                   title="New Sheet"
                 >
                   <FilePlusIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">New</span>
                 </button>
                 
                 <button
@@ -213,7 +312,6 @@ const AppLayout = ({ children }) => {
                   title="Save Sheet"
                 >
                   <SaveIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">Save</span>
                 </button>
                 
                 <button
@@ -222,7 +320,6 @@ const AppLayout = ({ children }) => {
                   title="Import Sheet"
                 >
                   <ImportIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">Import</span>
                 </button>
                 
                 <button
@@ -231,7 +328,6 @@ const AppLayout = ({ children }) => {
                   title="Export Sheet"
                 >
                   <UploadIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">Export</span>
                 </button>
                 
                 <button
@@ -252,12 +348,11 @@ const AppLayout = ({ children }) => {
                   title="PDF"
                 >
                   <PrinterIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">PDF</span>
                 </button>
               </div>
             )}
             
-            {/* Sheets-specific actions */}
+            {/* Sheets-specific actions - mobile only */}
             {isSheets && (
               <div className="flex items-center space-x-1">
                 <button
@@ -273,12 +368,11 @@ const AppLayout = ({ children }) => {
                   title="Create Sheet"
                 >
                   <FilePlusIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">New Sheet</span>
                 </button>
               </div>
             )}
             
-            {/* Setlist-specific actions */}
+            {/* Setlist-specific actions - mobile only */}
             {isSetlists && (
               <div className="flex items-center space-x-1">
                 <button
@@ -294,7 +388,6 @@ const AppLayout = ({ children }) => {
                   title="Create Setlist"
                 >
                   <FolderPlusIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">New Setlist</span>
                 </button>
               </div>
             )}
