@@ -67,8 +67,19 @@ const makeRequest = async (url, options = {}) => {
       }
     }
     
+    // Add proper debugging to identify the real issue
+    if (url.includes('/sheets') && options.body) {
+      try {
+        const bodyData = JSON.parse(options.body);
+        console.log('Sheet data being sent to API:', bodyData);
+        console.log('Title field:', bodyData.title);
+        console.log('Title type:', typeof bodyData.title);
+      } catch (e) {
+        console.error('Error parsing body data:', e);
+      }
+    }
+    
     // Make the request with all needed options set
-
     const response = await fetch(url, {
       ...options,
       headers,

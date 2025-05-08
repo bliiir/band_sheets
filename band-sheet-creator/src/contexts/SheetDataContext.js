@@ -275,6 +275,13 @@ export function SheetDataProvider({ children }) {
   const saveCurrentSheet = useCallback(async (saveAsNew = false) => {
     beginApiCall();
     try {
+      // Debugging
+      console.log('Song data before save:', songData);
+      console.log('Title value:', songData.title);
+      console.log('Title type:', typeof songData.title);
+      console.log('Title truthiness:', !!songData.title);
+      console.log('Title after trim:', songData.title ? songData.title.trim() : null);
+      
       // Check authentication before saving
       if (!isAuthenticated) {
         const error = new Error('Authentication required to save sheets');
@@ -284,6 +291,11 @@ export function SheetDataProvider({ children }) {
       
       // Validate required fields
       if (!songData.title || songData.title.trim() === '') {
+        console.error('Title validation failed:', { 
+          title: songData.title,
+          isEmpty: !songData.title, 
+          isEmptyAfterTrim: songData.title ? songData.title.trim() === '' : true 
+        });
         const error = new Error('Title is required');
         endApiCall(error);
         throw error;
