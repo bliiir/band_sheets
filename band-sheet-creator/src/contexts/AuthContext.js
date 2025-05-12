@@ -5,6 +5,7 @@ import { getCurrentUser, loginUser, logoutUser, registerUser } from '../services
 import { getAllSheets } from '../services/SheetStorageService';
 import eventBus from '../utils/EventBus';
 import logger from '../services/LoggingService';
+import { getAuthToken, setAuthToken, removeAuthToken, isAuthenticated as checkAuth } from '../utils/AuthUtils';
 
 /**
  * Context for managing authentication state
@@ -38,14 +39,15 @@ export function AuthProviderWithoutNav({ children, navigate }) {
   useEffect(() => {
     const checkLoggedIn = async () => {
       try {
-        // Check for token
-        const token = localStorage.getItem('token');
+        // Check for token using our centralized AuthUtils
+        const token = getAuthToken();
         if (token) {
           const user = await getCurrentUser();
           if (user) {
             setCurrentUser(user);
           } else {
-            localStorage.removeItem('token');
+            // Token is invalid, remove it
+            removeAuthToken();
           }
         }
       } catch (err) {
@@ -156,8 +158,8 @@ export function AuthProviderWithoutNav({ children, navigate }) {
         // Continue with local logout despite server error
       }
       
-      // Make sure token is removed from localStorage
-      localStorage.removeItem('token');
+      // Make sure token is removed using our centralized AuthUtils
+      removeAuthToken();
       
       // Trigger auth change event
       setAuthChangeCounter(prev => prev + 1);
@@ -197,34 +199,21 @@ export function AuthProviderWithoutNav({ children, navigate }) {
 
   // Check if the user's authentication token is actually valid
   const checkAuthToken = useCallback(() => {
-    const token = localStorage.getItem('token');
-    logger.debug('AuthContext', 'Auth check - Token exists:', !!token);
+    const isAuth = checkAuth();
+    logger.debug('AuthContext', 'Auth check - User is authenticated:', isAuth);
     
     // If we have a token but no user object, something is out of sync
-    if (token && !currentUser) {
-      console.log('Token exists but no current user - attempting to refresh user data');
-      getCurrentUser()
-        .then(user => {
-          if (user) {
-            console.log('Successfully retrieved user data from token');
-            setCurrentUser(user);
-          } else {
-            console.log('Invalid token - removing from storage');
-            localStorage.removeItem('token');
-          }
-        })
-        .catch(err => {
-          console.error('Error refreshing user from token:', err);
-          localStorage.removeItem('token');
-        });
+    if (isAuth && !currentUser) {
+      logger.debug('AuthContext', 'Auth state mismatch - token exists but no user');
+      return false;
     }
     
-    return !!token;
+    return isAuth;
   }, [currentUser]);
   
-  // Function to get authentication token safely
-  const getAuthToken = useCallback(() => {
-    return localStorage.getItem('token');
+  // Get token using our centralized AuthUtils
+  const getToken = useCallback(() => {
+    return getAuthToken();
   }, []);
 
   // Value object for the context
@@ -244,7 +233,7 @@ export function AuthProviderWithoutNav({ children, navigate }) {
     isAuthModalOpen,
     // Expose token functions
     checkAuthToken,
-    getAuthToken
+    getToken
   };
 
   return (

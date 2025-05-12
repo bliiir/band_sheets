@@ -6,6 +6,8 @@ import { ENERGY_LINE_CONFIG } from './StyleService';
 import { getTransposedChords } from './ChordService';
 import { getAllSheets, getSheetById } from './SheetStorageService';
 import { fetchWithAuth, API_URL } from './ApiService';
+import { isAuthenticated as checkAuth, getAuthToken } from '../utils/AuthUtils';
+import logger from './LoggingService';
 
 /**
  * Calculate energy line width for PDF export
@@ -66,6 +68,12 @@ export const generatePrintContent = (songData, sections, transposeValue = 0, par
           @media print {
             .page-break {
               page-break-before: always;
+            }
+            button {
+              display: none;
+            }
+            .no-print {
+              display: none;
             }
           }
           body {
@@ -171,12 +179,6 @@ export const generatePrintContent = (songData, sections, transposeValue = 0, par
             body {
               padding: 0;
               margin: 0;
-            }
-            button {
-              display: none;
-            }
-            .no-print {
-              display: none;
             }
           }
         </style>
@@ -317,7 +319,7 @@ export const getPrintContentBySheetId = async (sheetId, options = {}) => {
       sheet
     };
   } catch (error) {
-    console.error('Error generating print content:', error);
+    logger.error('ExportService', 'Error generating print content:', error);
     throw error;
   }
 };
@@ -358,7 +360,7 @@ export const exportSingleSheet = async (sheetId) => {
     
     return { success: true, message: `Sheet "${sheet.title}" exported successfully` };
   } catch (error) {
-    console.error('Error exporting sheet:', error);
+    logger.error('ExportService', 'Error exporting sheet:', error);
     return { success: false, error: error.message };
   }
 };
@@ -378,8 +380,8 @@ export const exportSheets = async () => {
     
     // Fetch the complete data for each sheet
     const completeSheets = [];
-    const token = localStorage.getItem('token');
-    const isAuthenticated = !!token;
+    const token = getAuthToken();
+    const isAuthenticated = checkAuth();
     
     // For each sheet in the list, get its complete data
     for (const sheetInfo of sheetList) {
@@ -392,7 +394,7 @@ export const exportSheets = async () => {
             const response = await fetchWithAuth(`${API_URL}/sheets/${sheetInfo.id}`);
             completeSheet = response.data;
           } catch (error) {
-            console.error(`Error fetching complete data for sheet ${sheetInfo.id}:`, error);
+            logger.error('ExportService', `Error fetching complete data for sheet ${sheetInfo.id}:`, error);
             // Try localStorage as fallback
             const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
             if (localData) {
@@ -411,7 +413,7 @@ export const exportSheets = async () => {
           completeSheets.push(completeSheet);
         }
       } catch (error) {
-        console.error(`Error processing sheet ${sheetInfo.id}:`, error);
+        logger.error('ExportService', `Error processing sheet ${sheetInfo.id}:`, error);
       }
     }
     
@@ -449,7 +451,7 @@ export const exportSheets = async () => {
       message: `${completeSheets.length} sheets exported successfully`
     };
   } catch (error) {
-    console.error('Export failed:', error);
+    logger.error('ExportService', 'Export failed:', error);
     throw error;
   }
 };
@@ -654,7 +656,7 @@ export const exportMultipleSheetsToPDF = async (sheets, setlistInfo, options = {
         combinedContent += '<div class="sheet-separator"></div><div class="no-print">Next sheet: ' + (sheets[i+1].title || 'Untitled') + '</div>';
       }
     } catch (error) {
-      console.error(`Error processing sheet ${sheet.id || i}:`, error);
+      logger.error('ExportService', `Error processing sheet ${sheet.id || i}:`, error);
       // Continue with other sheets even if one fails
     }
   }
@@ -784,7 +786,7 @@ export const exportSheetToPDF = async (sheetId, options = {}) => {
     
     return { success: true };
   } catch (error) {
-    console.error('Error exporting sheet to PDF:', error);
+    logger.error('ExportService', 'Error exporting sheet to PDF:', error);
     return { success: false, error: error.message };
   }
 };
@@ -819,7 +821,7 @@ export const exportSetlistToPDF = async (setlistId, options = {}) => {
           fullSheets.push(sheet);
         }
       } catch (error) {
-        console.error(`Error loading sheet ${sheetInfo.id}:`, error);
+        logger.error('ExportService', `Error loading sheet ${sheetInfo.id}:`, error);
         // Continue with other sheets
       }
     }
@@ -839,7 +841,7 @@ export const exportSetlistToPDF = async (setlistId, options = {}) => {
     
     return { success: true, message: `${fullSheets.length} sheets exported successfully` };
   } catch (error) {
-    console.error('Error exporting setlist to PDF:', error);
+    logger.error('ExportService', 'Error exporting setlist to PDF:', error);
     return { success: false, error: error.message };
   }
 };

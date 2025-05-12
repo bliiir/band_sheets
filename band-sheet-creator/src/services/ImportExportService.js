@@ -6,6 +6,8 @@
 import { fetchWithAuth } from './ApiService';
 import { getAllSheets, getSheetById } from './SheetStorageService';
 import { v4 as uuidv4 } from 'uuid';
+import { isAuthenticated as checkAuth, getAuthToken } from '../utils/AuthUtils';
+import logger from './LoggingService';
 
 // Import the API_URL from ApiService to ensure consistency
 import { API_URL } from './ApiService';
@@ -46,7 +48,7 @@ export const exportSingleSheet = async (sheetId) => {
     
     return { success: true, message: `Sheet "${sheet.title}" exported successfully` };
   } catch (error) {
-    console.error('Error exporting sheet:', error);
+    logger.error('ImportExportService', 'Error exporting sheet:', error);
     return { success: false, error: error.message };
   }
 };
@@ -66,8 +68,8 @@ export const exportSheets = async () => {
     
     // Fetch the complete data for each sheet
     const completeSheets = [];
-    const token = localStorage.getItem('token');
-    const isAuthenticated = !!token;
+    const token = getAuthToken();
+    const isAuthenticated = checkAuth();
     
     // For each sheet in the list, get its complete data
     for (const sheetInfo of sheetList) {
@@ -80,7 +82,7 @@ export const exportSheets = async () => {
             const response = await fetchWithAuth(`${API_URL}/sheets/${sheetInfo.id}`);
             completeSheet = response.data;
           } catch (error) {
-            console.error(`Error fetching complete data for sheet ${sheetInfo.id}:`, error);
+            logger.error('ImportExportService', `Error fetching complete data for sheet ${sheetInfo.id}:`, error);
             // Try localStorage as fallback
             const localData = localStorage.getItem(`sheet_${sheetInfo.id}`);
             if (localData) {
@@ -99,7 +101,7 @@ export const exportSheets = async () => {
           completeSheets.push(completeSheet);
         }
       } catch (error) {
-        console.error(`Error processing sheet ${sheetInfo.id}:`, error);
+        logger.error('ImportExportService', `Error processing sheet ${sheetInfo.id}:`, error);
       }
     }
     
@@ -137,7 +139,7 @@ export const exportSheets = async () => {
       message: `${completeSheets.length} sheets exported successfully`
     };
   } catch (error) {
-    console.error('Export failed:', error);
+    logger.error('ImportExportService', 'Export failed:', error);
     throw error;
   }
 };
@@ -234,7 +236,7 @@ const importToStorage = async (sheets, options = {}) => {
           storageKey = `sheet_${newId}`;
         } else {
           // Skip this sheet
-          console.log('Skipping duplicate sheet:', sheet.title);
+          logger.debug('ImportExportService', 'Skipping duplicate sheet:', sheet.title);
           results.skipped++;
           continue;
         }
@@ -243,7 +245,7 @@ const importToStorage = async (sheets, options = {}) => {
       if (isAuthenticated && API_URL) {
         try {
           // Save to MongoDB via API
-          console.log('Saving sheet to MongoDB:', sheetToSave.title);
+          logger.debug('ImportExportService', 'Saving sheet to MongoDB:', sheetToSave.title);
           
           // If this is a new sheet (generated ID), remove the _id field
           if (options.generateNewIds) {
@@ -270,19 +272,19 @@ const importToStorage = async (sheets, options = {}) => {
           localStorage.setItem(storageKey, JSON.stringify(sheetToSave));
           results.imported++;
         } catch (apiError) {
-          console.error('Error saving to API, falling back to localStorage:', apiError);
+          logger.error('ImportExportService', 'Error saving to API, falling back to localStorage:', apiError);
           // Fall back to localStorage
           localStorage.setItem(storageKey, JSON.stringify(sheetToSave));
           results.imported++;
         }
       } else {
         // Save to localStorage only
-        console.log('Saving sheet to localStorage:', sheetToSave.title);
+        logger.debug('ImportExportService', 'Saving sheet to localStorage:', sheetToSave.title);
         localStorage.setItem(storageKey, JSON.stringify(sheetToSave));
         results.imported++;
       }
     } catch (err) {
-      console.error('Error importing sheet:', err);
+      logger.error('ImportExportService', 'Error importing sheet:', err);
       results.errors.push({
         sheetId: sheet.id || 'unknown',
         title: sheet.title || 'unknown',
@@ -355,8 +357,8 @@ export const importLocalStorageFile = async (file, options = {}) => {
         
         // Save directly to MongoDB via API
         try {
-          console.log('Saving sheet to MongoDB:', sheetToSave.title);
-          console.log('Sheet data:', JSON.stringify(sheetToSave, null, 2));
+          logger.debug('ImportExportService', 'Saving sheet to MongoDB:', sheetToSave.title);
+          logger.debug('ImportExportService', 'Sheet data:', JSON.stringify(sheetToSave, null, 2));
           
           // Save to localStorage first as a backup
           const storageKey = `sheet_${sheetToSave.id}`;
@@ -376,7 +378,7 @@ export const importLocalStorageFile = async (file, options = {}) => {
             // Check if the response is ok
             if (!response.ok) {
               const errorText = await response.text();
-              console.error('API response not OK:', response.status, errorText);
+              logger.error('ImportExportService', 'API response not OK:', response.status, errorText);
               throw new Error(`API save failed with status: ${response.status} - ${errorText}`);
             }
             
@@ -384,7 +386,7 @@ export const importLocalStorageFile = async (file, options = {}) => {
             let responseData;
             try {
               responseData = await response.json();
-              console.log('API response:', responseData);
+              logger.debug('ImportExportService', 'API response:', responseData);
             } catch (jsonError) {
               console.warn('Could not parse response as JSON:', jsonError);
               // Continue anyway since we already saved to localStorage
@@ -400,7 +402,7 @@ export const importLocalStorageFile = async (file, options = {}) => {
               }
             });
           } catch (apiError) {
-            console.error('API save error:', apiError);
+            logger.error('ImportExportService', 'API save error:', apiError);
             // Since we already saved to localStorage, consider it a partial success
             resolve({
               success: true,
@@ -413,7 +415,7 @@ export const importLocalStorageFile = async (file, options = {}) => {
             });
           }
         } catch (apiError) {
-          console.error('Error saving to MongoDB:', apiError);
+          logger.error('ImportExportService', 'Error saving to MongoDB:', apiError);
           throw apiError;
         }
       } catch (error) {
@@ -452,7 +454,7 @@ export const importSheets = async (file, options = {}) => {
       try {
         // Parse JSON data
         const jsonData = JSON.parse(event.target.result);
-        console.log('Detected file structure:', Object.keys(jsonData));
+        logger.debug('ImportExportService', 'Detected file structure:', Object.keys(jsonData));
         
         // Determine the file type based on its structure
         let fileType;
@@ -463,13 +465,13 @@ export const importSheets = async (file, options = {}) => {
         if (jsonData.id && jsonData.title && jsonData.sections) {
           fileType = 'single_sheet';
           sheetsToImport = [jsonData];
-          console.log('Detected single sheet format');
+          logger.debug('ImportExportService', 'Detected single sheet format');
         }
         // Case 2: Multi-sheet export format with sheets array
         else if (jsonData.sheets && Array.isArray(jsonData.sheets) && jsonData.sheets.length > 0) {
           fileType = 'multi_sheet';
           sheetsToImport = jsonData.sheets;
-          console.log('Detected multi-sheet format with', sheetsToImport.length, 'sheets');
+          logger.debug('ImportExportService', 'Detected multi-sheet format with', sheetsToImport.length, 'sheets');
         }
         // Case 3: Unknown format
         else {
@@ -489,7 +491,7 @@ export const importSheets = async (file, options = {}) => {
             !options.generateNewIds && 
             !options.skipDuplicates && 
             !options.overwriteDuplicates) {
-          console.log('Found duplicates:', duplicateCheck.duplicates.length);
+          logger.debug('ImportExportService', 'Found duplicates:', duplicateCheck.duplicates.length);
           resolve({
             success: true,
             needsUserInput: true,
@@ -500,7 +502,7 @@ export const importSheets = async (file, options = {}) => {
         }
         
         // Apply the selected duplicate handling option
-        console.log('Handling duplicates with options:', options);
+        logger.debug('ImportExportService', 'Handling duplicates with options:', options);
         
         // Process based on file type and authentication status
         if (isAuthenticated) {
@@ -531,7 +533,7 @@ export const importSheets = async (file, options = {}) => {
                     results.skipped++;
                   }
                 } catch (sheetError) {
-                  console.error('Error importing individual sheet:', sheetError);
+                  logger.error('ImportExportService', 'Error importing individual sheet:', sheetError);
                   results.errors.push({
                     sheetId: sheet.id || 'unknown',
                     title: sheet.title || 'unknown',
@@ -554,8 +556,8 @@ export const importSheets = async (file, options = {}) => {
             try {
               // The correct endpoint is /api/import-export/import
               const importUrl = `${API_URL}/import-export/import`;
-              console.log('Sending import request to API:', importUrl);
-              console.log('With options:', options);
+              logger.debug('ImportExportService', 'Sending import request to API:', importUrl);
+              logger.debug('ImportExportService', 'With options:', options);
               
               const response = await fetch(importUrl, {
                 method: 'POST',
@@ -574,18 +576,18 @@ export const importSheets = async (file, options = {}) => {
               });
               
               // Log the raw response for debugging
-              console.log('API response status:', response.status, response.statusText);
+              logger.debug('ImportExportService', 'API response status:', response.status, response.statusText);
               
               // Check if response is ok
               if (!response.ok) {
                 const errorText = await response.text();
-                console.error('API error response:', errorText);
+                logger.error('ImportExportService', 'API error response:', errorText);
                 throw new Error(`API import failed with status: ${response.status} - ${response.statusText}`);
               }
               
               // Parse response data
               responseData = await response.json();
-              console.log('API response data:', responseData);
+              logger.debug('ImportExportService', 'API response data:', responseData);
               
               // If the API doesn't return imported/skipped counts, set default values
               if (!responseData.results) {
@@ -605,11 +607,11 @@ export const importSheets = async (file, options = {}) => {
                 fileType
               });
             } catch (fetchError) {
-              console.error('Fetch error during import:', fetchError);
+              logger.error('ImportExportService', 'Fetch error during import:', fetchError);
               throw new Error(`API import failed: ${fetchError.message}`);
             }
           } catch (error) {
-            console.error('API import error:', error);
+            logger.error('ImportExportService', 'API import error:', error);
             
             // Check if we have a specific API endpoint issue
             if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {

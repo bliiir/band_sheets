@@ -3,6 +3,9 @@
  * Provides a central place for managing authentication and API requests
  */
 
+import { getAuthToken } from '../utils/AuthUtils';
+import logger from './LoggingService';
+
 // API base URL - Use a simpler approach with a direct URL
 // Dynamically determine the API URL based on the current environment
 let API_URL;
@@ -17,7 +20,7 @@ if (window.location.hostname !== 'localhost') {
   API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5050/api';
 }
 
-console.log('API URL configured as:', API_URL);
+logger.info('ApiService', 'API URL configured as:', API_URL);
 
 // Export the API_URL so it can be imported by other services
 export { API_URL };
@@ -43,8 +46,8 @@ const makeRequest = async (url, options = {}) => {
       ...options.headers
     };
     
-    // Get token if available
-    const token = localStorage.getItem('token');
+    // Get token if available using our centralized AuthUtils
+    const token = getAuthToken();
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     } else if (!isAuthEndpoint) {

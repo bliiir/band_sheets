@@ -6,15 +6,9 @@
 
 import { fetchWithAuth, API_URL } from './ApiService';
 import logger from './LoggingService';
+import { isAuthenticated, requestAuthentication } from '../utils/AuthUtils';
 
-/**
- * Check if user is authenticated
- * @returns {boolean} Whether the user is authenticated
- */
-const isAuthenticated = () => {
-  const token = localStorage.getItem('token');
-  return !!token;
-};
+// Using isAuthenticated from AuthUtils
 
 /**
  * Load a setlist by its ID

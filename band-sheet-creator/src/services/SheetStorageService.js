@@ -8,37 +8,12 @@
 import { fetchWithAuth, API_URL } from './ApiService';
 import eventBus from '../utils/EventBus';
 import logger from './LoggingService';
+import { isAuthenticated, getAuthToken, handleUnauthenticated } from '../utils/AuthUtils';
 
 // Using the API_URL imported from ApiService.js for consistency
 
 // Key for storing temporary draft in localStorage
 const TEMPORARY_DRAFT_KEY = 'band_sheets_temporary_draft';
-
-/**
- * Get the authentication token
- * @returns {string|null} The authentication token or null if not authenticated
- */
-const getAuthToken = () => {
-  return localStorage.getItem('token');
-};
-
-/**
- * Check if user is authenticated
- * This is designed to be consistent with the AuthContext's isAuthenticated check
- * @returns {boolean} Whether the user is authenticated
- */
-const isAuthenticated = () => {
-  const token = getAuthToken();
-  
-  if (token) {
-    // Log authentication details for debugging
-    logger.debug('SheetStorageService', 'Token exists in localStorage');
-    return true;
-  }
-  
-  logger.debug('SheetStorageService', 'No token found in localStorage');
-  return false;
-};
 
 /**
  * Load a sheet by its ID
@@ -54,7 +29,7 @@ export const getSheetById = async (id) => {
   if (isAuthenticated()) {
     try {
       logger.debug('SheetStorageService', `Getting sheet ${formattedId} from MongoDB with authentication`);
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
       
       // Make the API request with full URL
       const response = await fetch(`${API_URL}/sheets/${formattedId}`, {
@@ -181,12 +156,7 @@ export const clearTemporaryDraft = () => {
 export const saveSheet = async (sheetData, isNewSave = false) => {
   // Check authentication status
   if (!isAuthenticated()) {
-    logger.warn('SheetStorageService', 'Authentication required to save sheets');
-    
-    // Show auth modal instead of just throwing an error
-    eventBus.emit('show-auth-modal', true);
-    
-    throw new Error('Authentication required to save sheets');
+    handleUnauthenticated('Authentication required to save sheets');
   }
 
   // Get token directly for debugging
@@ -226,12 +196,7 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
     // Ensure we have the token before making the API call
     const token = getAuthToken();
     if (!token) {
-      logger.error('SheetStorageService', 'Authentication required to save sheets - token not found');
-      
-      // Show auth modal
-      eventBus.emit('show-auth-modal', true);
-      
-      throw new Error('Authentication required to save sheets - token not found');
+      handleUnauthenticated('Authentication required to save sheets - token not found');
     }
 
     // Make API call with explicit headers - ensure we're using the correct API URL
@@ -319,7 +284,7 @@ export const deleteSheet = async (id) => {
   }
   
   // Get token for direct use
-  const token = localStorage.getItem('token');
+  const token = getAuthToken();
   logger.debug('SheetStorageService', 'Auth token exists:', !!token);
   if (token) {
     logger.debug('SheetStorageService', 'Auth token exists');
@@ -377,7 +342,7 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
       logger.debug('SheetStorageService', 'Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
       
       // Get the token for debugging
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
       logger.debug('SheetStorageService', 'Using authentication token:', token ? 'Token exists' : 'No token found');
       
       // Make the API request with full URL
