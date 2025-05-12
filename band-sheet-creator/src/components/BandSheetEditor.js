@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import eventBus from "../utils/EventBus";
 import { useSelector, useDispatch } from 'react-redux';
+import logger from '../services/LoggingService';
 import ColorPicker from './ColorPicker';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
@@ -62,34 +63,34 @@ export default function BandSheetEditor({
   useEffect(() => {
     // Listen for editor events from the AppLayout
     const newSheetUnsub = eventBus.on('editor:new', () => {
-      console.log('New sheet event received');
+      logger.debug('BandSheetEditor', 'New sheet event received');
       handleNewSheet();
     });
     
     const saveUnsub = eventBus.on('editor:save', () => {
-      console.log('Save event received');
+      logger.debug('BandSheetEditor', 'Save event received');
       // Debug the current state of songData directly from context
-      console.log('Title in UI before save (from context):', songData.title);
-      console.log('Full song data at save time:', songData);
+      logger.debug('BandSheetEditor', 'Title in UI before save (from context):', songData.title);
+      logger.debug('BandSheetEditor', 'Full song data at save time:', songData);
       
       // Debug authentication state
-      console.log('Authentication state:', isAuthenticated);
-      console.log('Token in localStorage:', localStorage.getItem('token'));
+      logger.debug('BandSheetEditor', 'Authentication state:', isAuthenticated);
+      logger.debug('BandSheetEditor', 'Token in localStorage exists:', !!localStorage.getItem('token'));
       
       // Get the title from the DOM as well to compare
       const titleInputValue = document.querySelector('input[aria-label="Song Title"]')?.value;
-      console.log('Title in DOM element:', titleInputValue);
+      logger.debug('BandSheetEditor', 'Title in DOM element:', titleInputValue);
       
       handleSave();
     });
     
     const importUnsub = eventBus.on('editor:import', () => {
-      console.log('Import event received');
+      logger.debug('BandSheetEditor', 'Import event received');
       setImportModalOpen(true);
     });
     
     const exportUnsub = eventBus.on('editor:export', () => {
-      console.log('Export event received');
+      logger.debug('BandSheetEditor', 'Export event received');
       setExportModalOpen(true);
     });
     
@@ -203,13 +204,13 @@ export default function BandSheetEditor({
   useEffect(() => {
     // Skip if navigation is already in progress
     if (navigationInProgress) {
-      console.log('BandSheetEditor: Navigation already in progress, skipping...');
+      logger.debug('BandSheetEditor', 'Navigation already in progress, skipping...');
       return;
     }
     
     const loadSheetFromRedux = async () => {
       // Debug current state for troubleshooting
-      console.log(`BandSheetEditor debug - Current state: {
+      logger.debug('BandSheetEditor', `Debug - Current state: {
         reduxCurrentSheetId: ${reduxCurrentSheetId},
         loadedSheetIdRef.current: ${loadedSheetIdRef.current},
         navSource: ${navSource}
@@ -222,23 +223,23 @@ export default function BandSheetEditor({
         const forceReload = navSource === 'setlist' || reduxCurrentSheetId !== loadedSheetIdRef.current;
         
         if (forceReload) {
-          console.log(`BandSheetEditor: Loading sheet ${reduxCurrentSheetId} (source: ${navSource}, force: ${forceReload})`);
+          logger.info('BandSheetEditor', `Loading sheet ${reduxCurrentSheetId} (source: ${navSource}, force: ${forceReload})`);
           
           try {
             // When navigating from setlist, first reset our state reference
             // This ensures we always process the navigation properly
             if (navSource === 'setlist') {
-              console.log('BandSheetEditor: Detected setlist navigation, resetting sheet references');
+              logger.debug('BandSheetEditor', 'Detected setlist navigation, resetting sheet references');
               loadedSheetIdRef.current = null;
             }
             
             // Use the SheetDataContext to load actual sheet data
-            console.log(`BandSheetEditor: Calling loadSheet with ID: ${reduxCurrentSheetId}`);
+            logger.debug('BandSheetEditor', `Calling loadSheet with ID: ${reduxCurrentSheetId}`);
             await loadSheet(reduxCurrentSheetId);
             
             // Update our reference to the freshly loaded sheet ID
             loadedSheetIdRef.current = reduxCurrentSheetId;
-            console.log(`BandSheetEditor: Updated reference to: ${loadedSheetIdRef.current}`);
+            logger.debug('BandSheetEditor', `Updated reference to: ${loadedSheetIdRef.current}`);
             
             // Show success notification to user
             showNotification('Sheet loaded successfully');
@@ -246,11 +247,11 @@ export default function BandSheetEditor({
             // Clear temporary draft (if any) since we loaded a real sheet
             clearTemporaryDraft();
           } catch (error) {
-            console.error(`Error loading sheet ${reduxCurrentSheetId}:`, error);
+            logger.error('BandSheetEditor', `Error loading sheet ${reduxCurrentSheetId}:`, error);
             showNotification(`Error loading sheet: ${error.message}`, 'error');
           }
         } else {
-          console.log(`BandSheetEditor: Sheet ${reduxCurrentSheetId} already loaded, skipping reload`);
+          logger.debug('BandSheetEditor', `Sheet ${reduxCurrentSheetId} already loaded, skipping reload`);
         }
       }
     };
@@ -265,7 +266,7 @@ export default function BandSheetEditor({
   useEffect(() => {
     const loadInitialSheet = async () => {
       if (initialSheetId && initialSheetId !== loadedSheetIdRef.current) {
-        console.log(`BandSheetEditor: Initial load from URL param: ${initialSheetId}`);
+        logger.debug('BandSheetEditor', `Initial load from URL param: ${initialSheetId}`);
         
         // Update Redux navigation state
         dispatch(setNavigationSource('url'));
@@ -315,7 +316,7 @@ export default function BandSheetEditor({
             showNotification('Unsaved draft loaded', 'info');
             setDraftLoaded(true);
           } catch (error) {
-            console.error('Error loading draft:', error);
+            logger.error('BandSheetEditor', 'Error loading draft:', error);
             showNotification('Error loading draft', 'error');
           }
         }
@@ -333,7 +334,7 @@ export default function BandSheetEditor({
   // When the user creates a new sheet or loads a sheet directly in SheetDataContext
   useEffect(() => {
     if (currentSheetId && currentSheetId !== reduxCurrentSheetId && navSource !== 'url') {
-      console.log(`BandSheetEditor: Syncing SheetDataContext sheet ID to Redux: ${currentSheetId}`);
+      logger.debug('BandSheetEditor', `Syncing SheetDataContext sheet ID to Redux: ${currentSheetId}`);
       
       // Mark this as an internal navigation
       dispatch(setNavigationSource('internal'));
@@ -350,7 +351,7 @@ export default function BandSheetEditor({
   const handleInternalSheetChange = useCallback((sheetId) => {
     if (!sheetId) return;
     
-    console.log(`BandSheetEditor: Internal sheet change to ${sheetId}`);
+    logger.debug('BandSheetEditor', `Internal sheet change to ${sheetId}`);
     
     // Set navigation source
     dispatch(setNavigationSource('internal'));
@@ -367,17 +368,17 @@ export default function BandSheetEditor({
   useEffect(() => {
     // This function handles browser back/forward button clicks
     const handlePopState = (event) => {
-      console.log('BandSheetEditor: PopState event fired', event);
+      logger.debug('BandSheetEditor', 'PopState event fired', event);
       
       // Skip if navigation is already in progress
       if (navigationInProgress) {
-        console.log('Navigation in progress, skipping popstate handler');
+        logger.debug('BandSheetEditor', 'Navigation in progress, skipping popstate handler');
         return;
       }
       
       // Get the current URL path after the popstate event
       const currentPath = window.location.pathname;
-      console.log(`BandSheetEditor: Current path after popstate: ${currentPath}`);
+      logger.debug('BandSheetEditor', `Current path after popstate: ${currentPath}`);
       
       // Extract sheet ID if we're on a sheet page
       const match = currentPath.match(/\/sheet\/([^/]+)/);
@@ -389,12 +390,12 @@ export default function BandSheetEditor({
       
       // State from history (if available)
       const historyState = event.state || {};
-      console.log('BandSheetEditor: History state:', historyState);
+      logger.debug('BandSheetEditor', 'History state:', historyState);
       
       // Handle different navigation scenarios
       if (sheetId) {
         // We're navigating to a sheet
-        console.log(`BandSheetEditor: Popstate navigating to sheet: ${sheetId}`);
+        logger.debug('BandSheetEditor', `Popstate navigating to sheet: ${sheetId}`);
         
         if (sheetId !== loadedSheetIdRef.current) {
           // Need to load a different sheet
@@ -409,7 +410,7 @@ export default function BandSheetEditor({
       } else if (setlistId) {
         // We're navigating to a setlist - no action needed,
         // the router will handle rendering the setlist component
-        console.log(`BandSheetEditor: Popstate navigating to setlist: ${setlistId}`);
+        logger.debug('BandSheetEditor', `Popstate navigating to setlist: ${setlistId}`);
       }
     };
     
@@ -430,11 +431,11 @@ export default function BandSheetEditor({
   // Helper function to refresh the saved sheets list
   const refreshSavedSheets = useCallback(async () => {
     try {
-      console.log('Refreshing saved sheets list...');
+      logger.debug('BandSheetEditor', 'Refreshing saved sheets list...');
       const allSheets = await getAllSheets();
       setSavedSheets(allSheets);
     } catch (error) {
-      console.error('Error refreshing sheets:', error);
+      logger.error('BandSheetEditor', 'Error refreshing sheets:', error);
     }
   }, [setSavedSheets]);
   
@@ -494,7 +495,7 @@ export default function BandSheetEditor({
           sections
         };
         saveTemporaryDraft(currentSheet);
-        console.log('Temporary draft auto-saved');
+        logger.debug('BandSheetEditor', 'Temporary draft auto-saved');
       }, 30000); // Auto-save draft every 30 seconds
       
       return () => clearTimeout(draftTimer);
@@ -559,7 +560,7 @@ export default function BandSheetEditor({
           try {
             // Get the section index from contextMenu directly at execution time
             const index = Number(contextMenu.si);
-            console.log('Deleting section at index:', index);
+            logger.debug('BandSheetEditor', `Deleting section at index: ${index}`);
             
             // Hide the context menu
             hideContextMenu();
@@ -570,7 +571,7 @@ export default function BandSheetEditor({
             // Show notification
             showNotification('Section deleted successfully');
           } catch (error) {
-            console.error('Delete section error:', error);
+            logger.error('BandSheetEditor', 'Delete section error:', error);
             showNotification(`Error deleting section: ${error.message}`, 'error');
           }
         },
@@ -611,7 +612,7 @@ export default function BandSheetEditor({
             // Get the indices from contextMenu directly at execution time
             const sectionIndex = Number(contextMenu.si);
             const partIndex = Number(contextMenu.pi);
-            console.log('Deleting part at section:', sectionIndex, 'part:', partIndex);
+            logger.debug('BandSheetEditor', `Deleting part at section: ${sectionIndex}, part: ${partIndex}`);
             
             // Hide the context menu
             hideContextMenu();
@@ -622,7 +623,7 @@ export default function BandSheetEditor({
             // Show notification
             showNotification('Part deleted successfully');
           } catch (error) {
-            console.error('Delete part error:', error);
+            logger.error('BandSheetEditor', 'Delete part error:', error);
             showNotification(`Error deleting part: ${error.message}`, 'error');
           }
         },
@@ -640,7 +641,7 @@ export default function BandSheetEditor({
       deleteSection(sectionIndex);
       showNotification('Section deleted successfully');
     } catch (error) {
-      console.error('Error deleting section:', error);
+      logger.error('BandSheetEditor', 'Error deleting section:', error);
       showNotification(`Failed to delete section: ${error.message}`, 'error');
     }
   };
@@ -651,7 +652,7 @@ export default function BandSheetEditor({
       deletePart(sectionIndex, partIndex);
       showNotification('Part deleted successfully');
     } catch (error) {
-      console.error('Error deleting part:', error);
+      logger.error('BandSheetEditor', 'Error deleting part:', error);
       showNotification(`Failed to delete part: ${error.message}`, 'error');
     }
   };
@@ -765,7 +766,7 @@ export default function BandSheetEditor({
             navigate('/');
             showNotification('New sheet created');
           } catch (error) {
-            console.error('Error saving before new sheet:', error);
+            logger.error('BandSheetEditor', 'Error saving before new sheet:', error);
             showNotification('Error saving sheet: ' + error.message, 'error');
           } finally {
             setNewSheetConfirm({ isOpen: false, onConfirm: () => {}, onCancel: () => {} });
@@ -797,11 +798,11 @@ export default function BandSheetEditor({
       const token = getAuthToken();
       const isAuthValid = checkAuthToken();
       
-      console.log('Save button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      logger.debug('BandSheetEditor', 'Save button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
       
       // Check authentication - require login
       if (!token) {
-        console.log('No authentication token found, showing auth modal');
+        logger.info('BandSheetEditor', 'No authentication token found, showing auth modal');
         // Show a clear error message
         showNotification('Please log in to save your sheet', 'error');
         // Show the authentication modal
@@ -821,7 +822,7 @@ export default function BandSheetEditor({
       
       return savedSheet;
     } catch (error) {
-      console.error('BandSheetEditor: Error saving sheet:', error);
+      logger.error('BandSheetEditor', 'Error saving sheet:', error);
       
       // If it's an authentication error, show the auth modal
       if (error.message.includes('Authentication')) {
@@ -839,11 +840,11 @@ export default function BandSheetEditor({
       const token = getAuthToken();
       const isAuthValid = checkAuthToken();
       
-      console.log('Save As button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      logger.debug('BandSheetEditor', 'Save As button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
       
       // Check authentication - require login
       if (!token) {
-        console.log('No authentication token found, showing auth modal');
+        logger.info('BandSheetEditor', 'No authentication token found, showing auth modal');
         // Show a clear error message
         showNotification('Please log in to save your sheet', 'error');
         // Show the authentication modal
@@ -863,7 +864,7 @@ export default function BandSheetEditor({
       
       return savedSheet;
     } catch (error) {
-      console.error('BandSheetEditor: Error saving sheet as new:', error);
+      logger.error('BandSheetEditor', 'Error saving sheet as new:', error);
       
       // If it's an authentication error, show the auth modal
       if (error.message.includes('Authentication')) {
@@ -876,14 +877,14 @@ export default function BandSheetEditor({
 
   // Export handler that uses the context function
   const handleExport = () => {
-    console.log('Export handler called');
+    logger.debug('BandSheetEditor', 'Export handler called');
     exportSheet();
   };
   
   // Register the PDF event handler now that exportSheet is available
   useEffect(() => {
     const pdfUnsub = eventBus.on('editor:pdf', () => {
-      console.log('PDF event received');
+      logger.debug('BandSheetEditor', 'PDF event received');
       handleExport();
     });
     
@@ -1209,21 +1210,21 @@ export default function BandSheetEditor({
             updateSectionBackgroundColor(colorPicker.sectionIndex, color);
             
             // Log the update for debugging
-            console.log('Color changed for section:', colorPicker.sectionIndex, 'to:', color);
+            logger.debug('BandSheetEditor', `Color changed for section: ${colorPicker.sectionIndex} to: ${color}`);
             
             // Force an immediate save to ensure the color is persisted
             setTimeout(() => {
-              console.log('Auto-saving after color change');
+              logger.debug('BandSheetEditor', 'Auto-saving after color change');
               saveCurrentSheet();
             }, 500);
           }}
           onClose={() => {
-            console.log('Color picker closed, saving final color');
+            logger.debug('BandSheetEditor', 'Color picker closed, saving final color');
             setColorPicker(prev => ({ ...prev, isOpen: false }));
             
             // Also save when closing the color picker
             setTimeout(() => {
-              console.log('Final save after color picker closed');
+              logger.debug('BandSheetEditor', 'Final save after color picker closed');
               saveCurrentSheet();
             }, 500);
           }}

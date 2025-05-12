@@ -5,6 +5,7 @@
  */
 
 import { fetchWithAuth, API_URL } from './ApiService';
+import logger from './LoggingService';
 
 /**
  * Check if user is authenticated
@@ -23,27 +24,27 @@ const isAuthenticated = () => {
 export const getSetlistById = async (id) => {
   // Ensure the ID is properly formatted
   const formattedId = id.toString();
-  console.log(`Getting setlist ${formattedId} from storage`);
+  logger.debug('SetlistStorageService', `Getting setlist ${formattedId} from storage`);
   
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log(`Getting setlist ${formattedId} from MongoDB with authentication`);
+      logger.debug('SetlistStorageService', `Getting setlist ${formattedId} from MongoDB with authentication`);
       
       // Use fetchWithAuth for consistent authentication handling
       const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
         method: 'GET'
       });
       
-      console.log('Get setlist response:', data);
+      logger.debug('SetlistStorageService', 'Get setlist response:', data);
       return data.data || null;
     } catch (error) {
-      console.error('Error fetching setlist from API:', error);
-      console.error('Error details:', error.message);
+      logger.error('SetlistStorageService', 'Error fetching setlist from API:', error);
+      logger.error('SetlistStorageService', 'Error details:', error.message);
       return null;
     }
   } else {
-    console.log('User not authenticated, no setlists available');
+    logger.info('SetlistStorageService', 'User not authenticated, no setlists available');
     return null;
   }
 };
@@ -57,21 +58,21 @@ export const getAllSetlists = async (sortByNewest = true) => {
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log('Getting setlists from MongoDB using URL:', `${API_URL}/setlists`);
+      logger.debug('SetlistStorageService', 'Getting setlists from MongoDB using URL:', `${API_URL}/setlists`);
       
-      // Use fetchWithAuth for consistent authentication handling
-      const debugUrl = `${API_URL}/setlists?debug=true&client=web`;
-      console.log('Debug URL for setlists:', debugUrl);
+      // Use standard API URL without debug parameters
+      const apiUrl = `${API_URL}/setlists`;
+      logger.debug('SetlistStorageService', 'API URL for setlists:', apiUrl);
       
-      const data = await fetchWithAuth(debugUrl, {
+      const data = await fetchWithAuth(apiUrl, {
         method: 'GET'
       });
       
-      console.log('Setlists API response:', data);
+      logger.debug('SetlistStorageService', 'Setlists API response:', data);
       
       // The backend returns setlists in a 'setlists' field, not 'data'
       const setlistsArray = data.setlists || data.data || [];
-      console.log('Extracted setlists array:', setlistsArray);
+      logger.debug('SetlistStorageService', 'Extracted setlists array:', setlistsArray);
       
       if (Array.isArray(setlistsArray)) {
         // Sort setlists if requested
@@ -83,12 +84,12 @@ export const getAllSetlists = async (sortByNewest = true) => {
             })
           : setlistsArray;
         
-        console.log(`Returning ${setlists.length} setlists from MongoDB`);
+        logger.info('SetlistStorageService', `Returning ${setlists.length} setlists from MongoDB`);
         
         // Log the first setlist for debugging if available
         if (setlists.length > 0) {
           const firstSetlist = setlists[0];
-          console.log('First setlist sample:', {
+          logger.debug('SetlistStorageService', 'First setlist sample:', {
             id: firstSetlist._id || firstSetlist.id,
             name: firstSetlist.name,
             sheetCount: (firstSetlist.sheets && firstSetlist.sheets.length) || 0
@@ -97,7 +98,7 @@ export const getAllSetlists = async (sortByNewest = true) => {
         
         return setlists;
       } else {
-        console.error('API returned invalid data format:', data);
+        logger.error('SetlistStorageService', 'API returned invalid data format:', data);
         return [];
       }
     } catch (error) {
@@ -106,7 +107,7 @@ export const getAllSetlists = async (sortByNewest = true) => {
     }
   } else {
     // Not authenticated, return empty array
-    console.log('User not authenticated, no setlists available');
+    logger.info('SetlistStorageService', 'User not authenticated, no setlists available');
     return [];
   }
 };

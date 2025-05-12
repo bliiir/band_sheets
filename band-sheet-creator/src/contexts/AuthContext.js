@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, loginUser, logoutUser, registerUser } from '../services/ApiService';
 import { getAllSheets } from '../services/SheetStorageService';
 import eventBus from '../utils/EventBus';
+import logger from '../services/LoggingService';
 
 /**
  * Context for managing authentication state
@@ -48,7 +49,7 @@ export function AuthProviderWithoutNav({ children, navigate }) {
           }
         }
       } catch (err) {
-        console.error('Auth check error:', err);
+        logger.error('AuthContext', 'Auth check error:', err);
       } finally {
         setLoading(false);
       }
@@ -94,12 +95,12 @@ export function AuthProviderWithoutNav({ children, navigate }) {
       if (sheets && sheets.length > 0) {
         const sheet = sheets[0];
         if (sheet && sheet.id) {
-          console.log(`Loading first sheet: ${sheet.id}`);
+          logger.info('AuthContext', `Loading first sheet: ${sheet.id}`);
           navigate(`/sheet/${sheet.id}`);
         }
       }
     } catch (error) {
-      console.error('Error loading first sheet:', error);
+      logger.error('AuthContext', 'Error loading first sheet:', error);
     }
   };
 
@@ -125,14 +126,14 @@ export function AuthProviderWithoutNav({ children, navigate }) {
       
       // Emit auth change event
       eventBus.emit('auth-change', { isAuthenticated: true, user });
-      console.log('Emitted auth-change event: logged in');
+      logger.info('AuthContext', 'Emitted auth-change event: logged in');
       
       // Load the first sheet after successful login
       setTimeout(() => loadFirstSheet(), 500);
       
       return true;
     } catch (err) {
-      console.error('Login error:', err);
+      logger.error('AuthContext', 'Login error:', err);
       setError(err.message);
       return false;
     }
@@ -163,9 +164,9 @@ export function AuthProviderWithoutNav({ children, navigate }) {
       
       // Emit auth change event
       eventBus.emit('auth-change', { isAuthenticated: false, user: null });
-      console.log('Emitted auth-change event: logged out');
+      logger.info('AuthContext', 'Emitted auth-change event: logged out');
     } catch (err) {
-      console.error('Logout error:', err);
+      logger.error('AuthContext', 'Logout error:', err);
       setError(err.message);
     }
   };
@@ -197,7 +198,7 @@ export function AuthProviderWithoutNav({ children, navigate }) {
   // Check if the user's authentication token is actually valid
   const checkAuthToken = useCallback(() => {
     const token = localStorage.getItem('token');
-    console.log('Auth check - Token exists:', !!token);
+    logger.debug('AuthContext', 'Auth check - Token exists:', !!token);
     
     // If we have a token but no user object, something is out of sync
     if (token && !currentUser) {

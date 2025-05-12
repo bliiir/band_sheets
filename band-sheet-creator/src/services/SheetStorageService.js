@@ -7,6 +7,7 @@
 
 import { fetchWithAuth, API_URL } from './ApiService';
 import eventBus from '../utils/EventBus';
+import logger from './LoggingService';
 
 // Using the API_URL imported from ApiService.js for consistency
 
@@ -31,11 +32,11 @@ const isAuthenticated = () => {
   
   if (token) {
     // Log authentication details for debugging
-    console.log('SheetStorageService: Token exists in localStorage (first 10 chars):', token.substring(0, 10) + '...');
+    logger.debug('SheetStorageService', 'Token exists in localStorage');
     return true;
   }
   
-  console.log('SheetStorageService: No token found in localStorage');
+  logger.debug('SheetStorageService', 'No token found in localStorage');
   return false;
 };
 
@@ -47,12 +48,12 @@ const isAuthenticated = () => {
 export const getSheetById = async (id) => {
   // Ensure the ID is properly formatted
   const formattedId = id.toString();
-  console.log(`Getting sheet ${formattedId} from storage`);
+  logger.debug('SheetStorageService', `Getting sheet ${formattedId} from storage`);
   
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log(`Getting sheet ${formattedId} from MongoDB with authentication`);
+      logger.debug('SheetStorageService', `Getting sheet ${formattedId} from MongoDB with authentication`);
       const token = localStorage.getItem('token');
       
       // Make the API request with full URL
@@ -65,17 +66,17 @@ export const getSheetById = async (id) => {
       });
       
       // Log the response status
-      console.log('API response status:', response.status, response.statusText);
+      logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log(`Successfully loaded sheet ${formattedId} from MongoDB`);
+      logger.info('SheetStorageService', `Successfully loaded sheet ${formattedId} from MongoDB`);
       return data.data;
     } catch (error) {
-      console.error(`Error fetching sheet ${formattedId} from MongoDB:`, error);
+      logger.error('SheetStorageService', `Error fetching sheet ${formattedId} from MongoDB:`, error);
       // Fall through to try public access
     }
   } else {
@@ -88,15 +89,15 @@ export const getSheetById = async (id) => {
     // For other sheets, try to access via API without authentication
     // This will work for public sheets
     try {
-      console.log(`Getting public sheet ${formattedId} from MongoDB without authentication`);
-      console.log('API URL:', `${API_URL}/sheets/${formattedId}`);
+      logger.debug('SheetStorageService', `Getting public sheet ${formattedId} from MongoDB without authentication`);
+      logger.debug('SheetStorageService', 'API URL:', `${API_URL}/sheets/${formattedId}`);
       
-      // Add a special query parameter to help debug the issue
-      const debugUrl = `${API_URL}/sheets/${formattedId}?debug=true&client=incognito`;
-      console.log('Debug URL:', debugUrl);
+      // Use the standard API URL without debug parameters
+      const apiUrl = `${API_URL}/sheets/${formattedId}`;
+      logger.debug('SheetStorageService', 'API URL:', apiUrl);
       
       // Make the API request with full URL but without token
-      const response = await fetch(debugUrl, {
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -104,22 +105,12 @@ export const getSheetById = async (id) => {
       });
       
       // Log the response status and details
-      console.log('API response status for public access:', response.status, response.statusText);
-      console.log('API response headers:', [...response.headers.entries()]);
+      logger.debug('SheetStorageService', 'API response status for public access:', response.status, response.statusText);
+      logger.debug('SheetStorageService', 'API response headers count:', response.headers.size);
       
-      // Clone the response to log its content without consuming it
-      const responseClone = response.clone();
-      const responseText = await responseClone.text();
-      try {
-        const data = JSON.parse(responseText);
-        console.log('API response data:', data);
-        
-        // Check for specific error conditions
-        if (data.success === false) {
-          console.error('API error details:', data.error);
-        }
-      } catch (e) {
-        console.log('API response text (not JSON):', responseText);
+      // Don't clone the response or log its full content to reduce overhead
+      if (!response.ok) {
+        logger.warn('SheetStorageService', `API response not OK: ${response.status} ${response.statusText}`);
       }
       
       if (!response.ok) {
@@ -127,10 +118,10 @@ export const getSheetById = async (id) => {
       }
       
       const data = await response.json();
-      console.log(`Successfully loaded public sheet ${formattedId} from MongoDB`);
+      logger.info('SheetStorageService', `Successfully loaded public sheet ${formattedId} from MongoDB`);
       return data.data;
     } catch (error) {
-      console.error(`Error fetching public sheet ${id} from API:`, error);
+      logger.error('SheetStorageService', `Error fetching public sheet ${id} from API:`, error);
       return null;
     }
   }
@@ -148,9 +139,9 @@ export const saveTemporaryDraft = (sheetData) => {
       draftSavedAt: new Date().toISOString()
     };
     localStorage.setItem(TEMPORARY_DRAFT_KEY, JSON.stringify(draftWithTimestamp));
-    console.log('Temporary draft saved');
+    logger.info('SheetStorageService', 'Temporary draft saved');
   } catch (error) {
-    console.error('Error saving temporary draft:', error);
+    logger.error('SheetStorageService', 'Error saving temporary draft:', error);
   }
 };
 
@@ -163,12 +154,12 @@ export const loadTemporaryDraft = () => {
     const draftData = localStorage.getItem(TEMPORARY_DRAFT_KEY);
     if (draftData) {
       const draft = JSON.parse(draftData);
-      console.log('Temporary draft loaded');
+      logger.info('SheetStorageService', 'Temporary draft loaded');
       return draft;
     }
     return null;
   } catch (error) {
-    console.error('Error loading temporary draft:', error);
+    logger.error('SheetStorageService', 'Error loading temporary draft:', error);
     return null;
   }
 };
@@ -178,7 +169,7 @@ export const loadTemporaryDraft = () => {
  */
 export const clearTemporaryDraft = () => {
   localStorage.removeItem(TEMPORARY_DRAFT_KEY);
-  console.log('Temporary draft cleared');
+  logger.info('SheetStorageService', 'Temporary draft cleared');
 };
 
 /**
@@ -190,7 +181,7 @@ export const clearTemporaryDraft = () => {
 export const saveSheet = async (sheetData, isNewSave = false) => {
   // Check authentication status
   if (!isAuthenticated()) {
-    console.error('Authentication required to save sheets');
+    logger.warn('SheetStorageService', 'Authentication required to save sheets');
     
     // Show auth modal instead of just throwing an error
     eventBus.emit('show-auth-modal', true);
@@ -215,8 +206,8 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
   
   try {
     // Debug check for title field
-    console.log('Sheet before save:', updatedSheet);
-    console.log('Title field value:', updatedSheet.title);
+    logger.debug('SheetStorageService', 'Sheet before save:', updatedSheet);
+    logger.debug('SheetStorageService', 'Title field value:', updatedSheet.title);
     
     // Ensure section background colors are properly saved
     const sheetWithColors = {
@@ -229,13 +220,13 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       title: updatedSheet.title || ''
     };
     
-    console.log('Sheet after preparation:', sheetWithColors);
-    console.log('Title field after preparation:', sheetWithColors.title);
+    logger.debug('SheetStorageService', 'Sheet after preparation:', sheetWithColors);
+    logger.debug('SheetStorageService', 'Title field after preparation:', sheetWithColors.title);
 
     // Ensure we have the token before making the API call
     const token = getAuthToken();
     if (!token) {
-      console.error('Authentication required to save sheets - token not found');
+      logger.error('SheetStorageService', 'Authentication required to save sheets - token not found');
       
       // Show auth modal
       eventBus.emit('show-auth-modal', true);
@@ -245,13 +236,13 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
 
     // Make API call with explicit headers - ensure we're using the correct API URL
     // Log the complete URL we're about to call for debugging
-    console.log('API URL being used:', API_URL);
+    logger.debug('SheetStorageService', 'API URL being used:', API_URL);
     
     if (isNewSave || !sheetData.id) {
       // Create new sheet with explicit token in header
-      console.log('Creating new sheet with data:', JSON.stringify(sheetWithColors, null, 2));
+      logger.debug('SheetStorageService', 'Creating new sheet');
       const fullUrl = `${API_URL}/sheets`;
-      console.log('Full API URL for creating sheet:', fullUrl);
+      logger.debug('SheetStorageService', 'Full API URL for creating sheet:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'POST',
@@ -268,21 +259,21 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       // Check response status
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API error (${response.status}):`, errorText);
+        logger.error('SheetStorageService', `API error (${response.status}):`, errorText);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('Response from API:', data);
+      logger.debug('SheetStorageService', 'Response from API:', data);
       return data.data;
     } else {
       // Update existing sheet with explicit token in header
-      console.log('Updating sheet with ID:', sheetWithColors.id);
-      console.log('Update data:', JSON.stringify(sheetWithColors, null, 2));
+      logger.debug('SheetStorageService', 'Updating sheet with ID:', sheetWithColors.id);
+      logger.debug('SheetStorageService', 'Updating sheet data');
       
       // Construct the full URL - this was a previous issue
       const fullUrl = `${API_URL}/sheets/${sheetWithColors.id}`;
-      console.log('Full API URL for updating sheet:', fullUrl);
+      logger.debug('SheetStorageService', 'Full API URL for updating sheet:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'PUT',
@@ -299,16 +290,16 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       // Check response status
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API error (${response.status}):`, errorText);
+        logger.error('SheetStorageService', `API error (${response.status}):`, errorText);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('Response from update API:', data);
+      logger.debug('SheetStorageService', 'Response from update API:', data);
       return data.data;
     }
   } catch (error) {
-    console.error('Error saving sheet to API:', error);
+    logger.error('SheetStorageService', 'Error saving sheet to API:', error);
     throw error;
   }
 };
@@ -319,28 +310,28 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
  * @returns {boolean} Whether the deletion was successful
  */
 export const deleteSheet = async (id) => {
-  console.log(`Attempting to delete sheet with ID: ${id}`);
+  logger.debug('SheetStorageService', `Attempting to delete sheet with ID: ${id}`);
   
   // Check authentication
   if (!isAuthenticated()) {
-    console.error('Authentication required to delete sheets');
+    logger.error('SheetStorageService', 'Authentication required to delete sheets');
     return false;
   }
   
   // Get token for direct use
   const token = localStorage.getItem('token');
-  console.log('Auth token exists:', !!token);
+  logger.debug('SheetStorageService', 'Auth token exists:', !!token);
   if (token) {
-    console.log('Auth token (first 10 chars):', token.substring(0, 10) + '...');
+    logger.debug('SheetStorageService', 'Auth token exists');
   } else {
-    console.error('No auth token found when trying to delete sheet');
+    logger.error('SheetStorageService', 'No auth token found when trying to delete sheet');
     return false;
   }
   
   try {
     // Make a direct fetch call instead of using fetchWithAuth wrapper
     const deleteUrl = `${API_URL}/sheets/${id}`;
-    console.log(`Making direct DELETE request to: ${deleteUrl}`);
+    logger.debug('SheetStorageService', `Making direct DELETE request to: ${deleteUrl}`);
     
     const response = await fetch(deleteUrl, {
       method: 'DELETE',
@@ -352,23 +343,23 @@ export const deleteSheet = async (id) => {
       credentials: 'include'
     });
     
-    console.log('Delete response status:', response.status);
+    logger.debug('SheetStorageService', 'Delete response status:', response.status);
     
     // Log response details
     const responseText = await response.text();
-    console.log('Response body:', responseText || '(empty response)');
+    logger.debug('SheetStorageService', 'Response body:', responseText || '(empty response)');
     
     // Success is based on status code
     if (response.status >= 200 && response.status < 300) {
-      console.log(`Successfully deleted sheet ${id}`);
+      logger.info('SheetStorageService', `Successfully deleted sheet ${id}`);
       return true;
     } else {
-      console.error(`Server returned error status ${response.status} when deleting sheet ${id}`);
+      logger.error('SheetStorageService', `Server returned error status ${response.status} when deleting sheet ${id}`);
       return false;
     }
   } catch (error) {
-    console.error(`Error deleting sheet ${id} from API:`, error);
-    console.error('Error details:', error.message);
+    logger.error('SheetStorageService', `Error deleting sheet ${id} from API:`, error);
+    logger.error('SheetStorageService', 'Error details:', error.message);
     return false;
   }
 };
@@ -383,11 +374,11 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log('Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
+      logger.debug('SheetStorageService', 'Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
       
       // Get the token for debugging
       const token = localStorage.getItem('token');
-      console.log('Using authentication token:', token ? 'Token exists' : 'No token found');
+      logger.debug('SheetStorageService', 'Using authentication token:', token ? 'Token exists' : 'No token found');
       
       // Make the API request with full URL
       const response = await fetch(`${API_URL}/sheets`, {
@@ -399,14 +390,14 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
       });
       
       // Log the response status
-      console.log('API response status:', response.status, response.statusText);
+      logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('API response data:', data);
+      logger.debug('SheetStorageService', 'API response data:', data);
       
       const sheets = data.data || [];
       

@@ -5,6 +5,7 @@ import { getTransposedChords } from '../services/ChordService';
 import ExportOptionsModal from '../components/ExportOptionsModal';
 import { useUIState } from './UIStateContext';
 import { useAuth } from './AuthContext';
+import logger from '../services/LoggingService';
 
 // Create the SheetDataContext
 const SheetDataContext = createContext(null);
@@ -201,17 +202,17 @@ export function SheetDataProvider({ children }) {
    */
   const loadSheet = useCallback(async (id) => {
     beginApiCall();
-    console.log('SheetDataContext: Loading sheet with ID:', id);
+    logger.debug('SheetDataContext', `Loading sheet with ID: ${id}`);
     try {
       // Ensure the ID is properly formatted
       const formattedId = id.toString();
-      console.log('SheetDataContext: Using formatted ID:', formattedId);
+      logger.debug('SheetDataContext', `Using formatted ID: ${formattedId}`);
       
       const sheet = await getSheetById(formattedId);
-      console.log('SheetDataContext: Sheet loaded:', sheet ? 'Success' : 'Not found');
+      logger.debug('SheetDataContext', `Sheet loaded: ${sheet ? 'Success' : 'Not found'}`);
       
       if (!sheet) {
-        console.error('SheetDataContext: Sheet not found for ID:', formattedId);
+        logger.error('SheetDataContext', `Sheet not found for ID: ${formattedId}`);
         endApiCall(new Error('Sheet not found'));
         return false;
       }
@@ -261,7 +262,7 @@ export function SheetDataProvider({ children }) {
     endApiCall();
     return true;
     } catch (error) {
-      console.error('Error loading sheet:', error);
+      logger.error('SheetDataContext', 'Error loading sheet:', error);
       endApiCall(error);
       return false;
     }
@@ -281,7 +282,7 @@ export function SheetDataProvider({ children }) {
       
       // Ensure we have the latest title value by updating songData first
       if (titleInput && currentTitle !== songData.title) {
-        console.log('Updating title from DOM before save:', currentTitle);
+        logger.debug('SheetDataContext', `Updating title from DOM before save: ${currentTitle}`);
         setSongData(prev => ({ ...prev, title: currentTitle }));
       }
       
@@ -289,10 +290,10 @@ export function SheetDataProvider({ children }) {
       const titleToUse = currentTitle || songData.title;
       
       // Debugging
-      console.log('Song data before save:', songData);
-      console.log('Title value from state:', songData.title);
-      console.log('Title value from DOM:', currentTitle);
-      console.log('Title value to use:', titleToUse);
+      logger.debug('SheetDataContext', 'Song data before save:', songData);
+      logger.debug('SheetDataContext', `Title value from state: ${songData.title}`);
+      logger.debug('SheetDataContext', `Title value from DOM: ${currentTitle}`);
+      logger.debug('SheetDataContext', `Title value to use: ${titleToUse}`);
       
       // Check authentication before saving
       if (!isAuthenticated) {
@@ -303,7 +304,7 @@ export function SheetDataProvider({ children }) {
       
       // Validate required fields
       if (!titleToUse || titleToUse.trim() === '') {
-        console.error('Title validation failed:', { 
+        logger.error('SheetDataContext', 'Title validation failed:', { 
           title: titleToUse,
           isEmpty: !titleToUse, 
           isEmptyAfterTrim: titleToUse ? titleToUse.trim() === '' : true 
@@ -324,8 +325,8 @@ export function SheetDataProvider({ children }) {
       };
       
       // Double-check that title is present before sending to API
-      console.log('Final sheet data for save:', sheetData);
-      console.log('Final title value being sent to API:', sheetData.title);
+      logger.debug('SheetDataContext', 'Final sheet data for save:', sheetData);
+      logger.debug('SheetDataContext', 'Final title value being sent to API:', sheetData.title);
       
       // Use service to save
       const savedSheet = await saveSheet(sheetData, saveAsNew);
@@ -334,7 +335,7 @@ export function SheetDataProvider({ children }) {
       endApiCall();
       return savedSheet;
     } catch (error) {
-      console.error('Error saving sheet:', error);
+      logger.error('SheetDataContext', 'Error saving sheet:', error);
       endApiCall(error);
       throw error;
     }
