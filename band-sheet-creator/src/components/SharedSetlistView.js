@@ -22,9 +22,23 @@ import { ReactComponent as PrintIcon } from '../assets/print.svg';
 import AuthModal from './Auth/AuthModal';
 import eventBus from '../utils/EventBus';
 
-const SharedSetlistView = () => {
-  const { id } = useParams();
-  const setlistId = id; // For backward compatibility with existing code
+const SharedSetlistView = ({ id: propId, setlistData }) => {
+  const { id: paramsId } = useParams();
+  
+  // Debug logs for ID sources and pre-loaded data
+  logger.debug('SharedSetlistView', 'Prop ID received:', propId);
+  logger.debug('SharedSetlistView', 'URL params ID:', paramsId);
+  logger.debug('SharedSetlistView', 'Pre-loaded setlist data:', setlistData);
+  
+  // Use prop ID if provided, otherwise fall back to URL params
+  const setlistId = propId || paramsId; // Prioritize the prop for better component reuse
+  
+  // Log the final setlist ID used
+  logger.debug('SharedSetlistView', 'Final setlistId to be used:', setlistId);
+  console.log('SharedSetlistView - Using setlistId:', setlistId);
+  
+  // Check what's actually in the URL to help with debugging
+  console.log('Current path:', window.location.pathname);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { isAuthenticated, loginSuccess } = useAuth();
@@ -56,23 +70,53 @@ const SharedSetlistView = () => {
   const [notification, setNotification] = useState(null);
   const [editedDescription, setEditedDescription] = useState('');
   
-  // Effect to load the setlist
+  // Effect to load the setlist (or use pre-loaded data if available)
   useEffect(() => {
+    // If we already have the setlist data passed as a prop, use that
+    if (setlistData) {
+      console.log('SharedSetlistView - Using pre-loaded setlist data:', setlistData);
+      logger.info('SharedSetlistView', 'Using pre-loaded setlist data');
+      
+      setSetlist(setlistData);
+      setEditedTitle(setlistData.name);
+      setEditedDescription(setlistData.description || '');
+      setLoading(false);
+      return; // Skip API call if we already have the data
+    }
+    
+    // Otherwise proceed with loading from API
     if (setlistId) {
       const loadSetlist = async () => {
         try {
           setLoading(true);
+          setError(null);
+          
+          // Log our attempt
+          logger.debug('SharedSetlistView', `Loading setlist with ID: ${setlistId}`);
+          console.log('SharedSetlistView - API call using ID:', setlistId);
+          
+          // Get the setlist data using our ID
           const data = await getSetlistById(setlistId);
+          
+          // Log the response for debugging
+          logger.debug('SharedSetlistView', 'API Response:', data);
+          console.log('SharedSetlistView - API Response data:', data);
+          
           if (data) {
+            logger.info('SharedSetlistView', `Setlist loaded successfully: ${data.name || 'Unnamed setlist'}`);
             setSetlist(data);
             setEditedTitle(data.name);
             setEditedDescription(data.description || '');
           } else {
-            setError('Setlist not found');
+            const errorMsg = `Setlist not found with ID: ${setlistId}`;
+            logger.error('SharedSetlistView', errorMsg);
+            console.error(errorMsg);
+            setError(`${errorMsg}. This may be due to an incorrect ID format or the setlist doesn't exist.`);
           }
         } catch (err) {
+          logger.error('SharedSetlistView', 'Error loading shared setlist:', err);
           console.error('Error loading shared setlist:', err);
-          setError(err.message || 'Failed to load setlist');
+          setError(`Failed to load setlist: ${err.message || 'Unknown error'}`);
         } finally {
           setLoading(false);
         }

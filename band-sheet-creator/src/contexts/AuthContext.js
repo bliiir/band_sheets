@@ -130,8 +130,8 @@ export function AuthProviderWithoutNav({ children, navigate }) {
       eventBus.emit('auth-change', { isAuthenticated: true, user });
       logger.info('AuthContext', 'Emitted auth-change event: logged in');
       
-      // Load the first sheet after successful login
-      setTimeout(() => loadFirstSheet(), 500);
+      // Navigate to the front page after successful login
+      setTimeout(() => navigate('/'), 500);
       
       return true;
     } catch (err) {

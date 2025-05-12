@@ -9,24 +9,32 @@ const mongoose = require('mongoose');
  */
 exports.getSetlists = async (req, res) => {
   try {
+    // Debug authentication state
+    console.log('GET /setlists - Authentication status:', {
+      isAuthenticated: !!req.user,
+      userId: req.user ? req.user.id : 'not authenticated',
+      headers: {
+        authorization: req.headers.authorization ? 'present' : 'missing',
+        cookie: req.headers.cookie ? 'present' : 'missing'
+      }
+    });
+    
     let query = {};
     
     if (req.user) {
-      // If authenticated, show only owned and shared setlists (not all public ones)
+      console.log('User is authenticated, searching for owned, shared, and public setlists');
+      // If authenticated, show owned, shared, and public setlists
       query = {
         $or: [
           { owner: req.user.id },
-          { 'sharedWith.user': req.user.id }
-          // Removed isPublic: true to prevent seeing others' public setlists
+          { 'sharedWith.user': req.user.id },
+          { isPublic: true } // Include public setlists
         ]
       };
     } else {
-      // If not authenticated, return empty array instead of public setlists
-      return res.status(200).json({
-        success: true,
-        count: 0,
-        setlists: []
-      });
+      // If not authenticated, show only public setlists
+      console.log('User is NOT authenticated, showing only public setlists');
+      query = { isPublic: true };
     }
     
     const setlists = await Setlist.find(query)

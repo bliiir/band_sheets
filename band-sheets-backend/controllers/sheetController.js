@@ -2,17 +2,34 @@ const Sheet = require('../models/sheet');
 const User = require('../models/user');
 const mongoose = require('mongoose');
 
-// Get all sheets for the current user
+// Get all sheets for the current user or public sheets for unauthenticated users
 exports.getSheets = async (req, res) => {
   try {
-    // Find sheets owned by the user or shared with them
-    const sheets = await Sheet.find({
-      $or: [
-        { owner: req.user.id },
-        { 'sharedWith.user': req.user.id },
-        { isPublic: true }
-      ]
-    }).select('id title artist dateModified');
+    console.log('Getting sheets, authenticated user:', !!req.user);
+    
+    let query;
+    
+    // Handle both authenticated and unauthenticated users
+    if (req.user) {
+      // For authenticated users - get their own sheets, shared sheets, and public sheets
+      query = {
+        $or: [
+          { owner: req.user.id },
+          { 'sharedWith.user': req.user.id },
+          { isPublic: true }
+        ]
+      };
+      console.log('Authenticated user, fetching owned, shared, and public sheets');
+    } else {
+      // For unauthenticated users - only get public sheets
+      query = { isPublic: true };
+      console.log('Unauthenticated user, fetching only public sheets');
+    }
+    
+    // Execute the query
+    const sheets = await Sheet.find(query).select('id title artist dateModified');
+    
+    console.log(`Found ${sheets.length} sheets matching query`);
     
     res.status(200).json({
       success: true,
@@ -20,6 +37,7 @@ exports.getSheets = async (req, res) => {
       data: sheets
     });
   } catch (error) {
+    console.error('Error in getSheets controller:', error);
     res.status(400).json({
       success: false,
       error: error.message
@@ -27,7 +45,7 @@ exports.getSheets = async (req, res) => {
   }
 };
 
-// Get single sheet
+// Get single sheet - handles both authenticated and unauthenticated access
 exports.getSheet = async (req, res) => {
   try {
     const requestedId = req.params.id;
@@ -40,6 +58,7 @@ exports.getSheet = async (req, res) => {
     console.log('Query params:', req.query);
     console.log('User info:', req.user ? { id: req.user.id, email: req.user.email } : 'Not authenticated');
     
+    // First find the sheet regardless of access rights
     const sheet = await Sheet.findOne({ id: requestedId });
     
     if (!sheet) {

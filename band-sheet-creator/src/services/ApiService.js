@@ -37,6 +37,9 @@ export { API_URL };
  */
 const makeRequest = async (url, options = {}) => {
   try {
+    // Log outgoing requests to diagnose API issues
+    console.log(`API REQUEST: ${options.method || 'GET'} ${url}`);
+    
     // Special handling for auth endpoints
     const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
     
@@ -49,38 +52,51 @@ const makeRequest = async (url, options = {}) => {
     // Get token if available using our centralized AuthUtils
     const token = getAuthToken();
     if (token) {
+      // User is authenticated, add token to all requests
       headers.Authorization = `Bearer ${token}`;
+      console.log('Using authentication token for request');
     } else if (!isAuthEndpoint) {
-      // Always require authentication for endpoints that need it
-      const authRequiredEndpoints = ['/favorite', '/sheets/add', '/sheets/remove', '/reorder', '/setlists'];
+      // User is not authenticated
       
-      // Check if this is an operation that absolutely requires authentication
-      const requiresAuth = authRequiredEndpoints.some(endpoint => url.includes(endpoint));
+      // Define which endpoints absolutely require authentication
+      const authRequiredEndpoints = [
+        '/favorite', 
+        '/sheets/add', 
+        '/sheets/remove', 
+        '/sheets/update',
+        '/sheets/delete',
+        '/reorder', 
+        '/setlists/new',
+        '/setlists/create'
+      ];
+      
+      // Any write operation on setlists requires authentication
+      const isSetlistWriteOperation = url.includes('/setlists') && 
+                                     options.method && 
+                                     ['POST', 'PUT', 'DELETE'].includes(options.method.toUpperCase());
+      
+      // Check if this operation absolutely requires authentication
+      const requiresAuth = authRequiredEndpoints.some(endpoint => url.includes(endpoint)) || isSetlistWriteOperation;
       
       if (requiresAuth) {
         console.error('Authentication required for endpoint:', url);
         throw new Error('Authentication required for this operation');
       }
       
-      // For non-auth endpoints without a token, use localStorage for read operations
-      else if ((url.includes('/sheets') || url.includes('/setlists')) && 
-               (!options.method || options.method.toUpperCase() === 'GET')) {
-        console.log('Unauthenticated read operation, using localStorage if available');
-        throw new Error('Not authenticated - using localStorage instead');
+      // Setlist GET requests should be allowed without auth (will return public setlists)
+      if (url.includes('/setlists') && (!options.method || options.method.toUpperCase() === 'GET')) {
+        console.log('Proceeding with unauthenticated setlist request to get public setlists');
+        // Allow request to proceed without authentication token
+      } else {
+        // For all other endpoints without auth, we'll let the request proceed
+        // But the backend will determine what data to return based on authentication status
+        console.log('Proceeding without authentication token');
       }
     }
     
-    // Add proper debugging to identify the real issue
-    if (url.includes('/sheets') && options.body) {
-      try {
-        const bodyData = JSON.parse(options.body);
-        console.log('Sheet data being sent to API:', bodyData);
-        console.log('Title field:', bodyData.title);
-        console.log('Title type:', typeof bodyData.title);
-      } catch (e) {
-        console.error('Error parsing body data:', e);
-      }
-    }
+    // Add debugging for request details
+    console.log('Making API request to:', url);
+    console.log('With options:', { ...options, headers: '[redacted for privacy]' });
     
     // Make the request with all needed options set
     const response = await fetch(url, {
@@ -90,13 +106,24 @@ const makeRequest = async (url, options = {}) => {
       credentials: 'include'
     }).catch(err => {
       console.error('Network error during fetch:', err);
-      throw new Error('Network error - please check your connection');
+      throw new Error(`Network error: ${err.message}`);
     });
+
     
     // Check if the response can be parsed as JSON
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
+      
+      // Debug log the API response for all setlist-related requests
+      if (url.includes('/setlists')) {
+        console.log(`API RESPONSE for ${url}:`, data);
+        console.log('Response status:', response.status); 
+        console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+        console.log('Response data type:', typeof data);
+        console.log('Response is array?', Array.isArray(data));
+        console.log('Response keys:', Object.keys(data));
+      }
       
       if (!response.ok) {
         throw new Error(data.error || 'API error: ' + response.status);

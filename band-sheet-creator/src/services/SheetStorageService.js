@@ -336,52 +336,55 @@ export const deleteSheet = async (id) => {
  * @returns {Array} Array of sheet objects
  */
 export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) => {
-  // Check if user is authenticated
-  if (isAuthenticated()) {
-    try {
-      logger.debug('SheetStorageService', 'Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
-      
-      // Get the token for debugging
-      const token = getAuthToken();
-      logger.debug('SheetStorageService', 'Using authentication token:', token ? 'Token exists' : 'No token found');
-      
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/sheets`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // Log the response status
-      logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      logger.debug('SheetStorageService', 'API response data:', data);
-      
-      const sheets = data.data || [];
-      
-      // Sort if needed
-      if (sortByNewest && sheets.length > 0) {
-        sheets.sort((a, b) => {
-          return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
-        });
-      }
-      
-      return sheets;
-    } catch (error) {
-      console.error('Error fetching sheets from API:', error);
-      return []; // Return empty array on error, no fallback
+  // Always use API regardless of authentication status
+  try {
+    logger.debug('SheetStorageService', 'Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
+    
+    // Get the token if available (will be null for unauthenticated users)
+    const token = getAuthToken();
+    logger.debug('SheetStorageService', 'Using authentication token:', token ? 'Token exists' : 'No token found');
+    
+    // Prepare headers - include auth token only if it exists
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-  } else {
-    // Not authenticated, return empty array
-    console.log('User not authenticated, no sheets available');
-    return [];
+    
+    // Make the API request with full URL
+    const response = await fetch(`${API_URL}/sheets`, {
+      method: 'GET',
+      headers,
+      credentials: 'include' // Include cookies for alternative authentication
+    });
+    
+    // Log the response status
+    logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    logger.debug('SheetStorageService', 'API response data:', data);
+    
+    const sheets = data.data || [];
+    logger.info('SheetStorageService', `Loaded ${sheets.length} sheets from the API`);
+    
+    // Sort if needed
+    if (sortByNewest && sheets.length > 0) {
+      sheets.sort((a, b) => {
+        return new Date(b.dateModified || b.createdAt) - new Date(a.dateModified || a.createdAt);
+      });
+    }
+    
+    return sheets;
+  } catch (error) {
+    console.error('Error fetching sheets from API:', error);
+    logger.error('SheetStorageService', 'Failed to fetch sheets from API:', error.message);
+    return []; // Return empty array on error
   }
 };
 
