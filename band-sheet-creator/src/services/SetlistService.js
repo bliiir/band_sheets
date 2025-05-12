@@ -6,6 +6,8 @@
  * - Only authenticated users can create, update, or delete setlists
  */
 import { fetchWithAuth, API_URL } from './ApiService';
+import logger from './LoggingService';
+import { getAuthToken, isAuthenticated } from '../utils/AuthUtils';
 
 /**
  * Get all setlists from the API
@@ -13,14 +15,14 @@ import { fetchWithAuth, API_URL } from './ApiService';
  */
 export const getAllSetlists = async () => {
   try {
-    // Check if user is authenticated
-    const token = localStorage.getItem('token');
+    // Check if user is authenticated using our centralized AuthUtils
+    const token = getAuthToken();
     let data;
     
-    if (token) {
+    if (isAuthenticated()) {
       // If authenticated, use fetchWithAuth to get user-specific setlists
       data = await fetchWithAuth(`${API_URL}/setlists`);
-      console.log('Fetched authenticated setlists from API:', data);
+      logger.debug('SetlistService', 'Fetched authenticated setlists from API:', data);
     } else {
       // If not authenticated, use regular fetch to get only public setlists
       const response = await fetch(`${API_URL}/setlists`);
@@ -30,7 +32,7 @@ export const getAllSetlists = async () => {
       }
       
       data = await response.json();
-      console.log('Fetched public setlists from API:', data);
+      logger.debug('SetlistService', 'Fetched public setlists from API:', data);
     }
     
     if (data.setlists && Array.isArray(data.setlists)) {
@@ -38,11 +40,11 @@ export const getAllSetlists = async () => {
     } else if (data.count >= 0 && Array.isArray(data.setlists)) {
       return data.setlists;
     } else {
-      console.warn('API returned unexpected data format:', data);
+      logger.warn('SetlistService', 'API returned unexpected data format:', data);
       return [];
     }
   } catch (error) {
-    console.error('Error fetching setlists from API:', error);
+    logger.error('SetlistService', 'Error fetching setlists from API:', error);
     return [];
   }
 };
@@ -65,7 +67,7 @@ export const getSetlistById = async (setlistId) => {
     const data = await response.json();
     return data.setlist || null;
   } catch (error) {
-    console.error(`Error fetching setlist ${setlistId}:`, error);
+    logger.error('SetlistService', `Error fetching setlist ${setlistId}:`, error);
     return null;
   }
 };
@@ -101,10 +103,10 @@ export const createSetlist = async (setlistData) => {
       body: JSON.stringify(newSetlist)
     });
     
-    console.log('Setlist created successfully:', data);
+    logger.debug('SetlistService', 'Setlist created successfully:', data);
     return data.setlist || newSetlist;
   } catch (error) {
-    console.error('Error creating setlist:', error);
+    logger.error('SetlistService', 'Error creating setlist:', error);
     throw error;
   }
 };
@@ -146,10 +148,10 @@ export const updateSetlist = async (setlistId, setlistData) => {
       body: JSON.stringify(updatedSetlist)
     });
     
-    console.log('Setlist updated successfully:', data);
+    logger.debug('SetlistService', 'Setlist updated successfully:', data);
     return data.setlist || updatedSetlist;
   } catch (error) {
-    console.error('Error updating setlist:', error);
+    logger.error('SetlistService', 'Error updating setlist:', error);
     throw error;
   }
 };
@@ -175,10 +177,10 @@ export const deleteSetlist = async (setlistId) => {
       method: 'DELETE'
     });
     
-    console.log('Setlist deleted successfully');
+    logger.debug('SetlistService', 'Setlist deleted successfully');
     return true;
   } catch (error) {
-    console.error('Error deleting setlist:', error);
+    logger.error('SetlistService', 'Error deleting setlist:', error);
     throw error;
   }
 };
@@ -208,16 +210,16 @@ export const addSheetToSetlist = async (setlistId, sheet) => {
     }
     
     // Use direct API endpoint for adding a sheet to a setlist
-    console.log(`Adding sheet ${sheet.id} to setlist ${setlistId}`);
+    logger.debug('SetlistService', `Adding sheet ${sheet.id} to setlist ${setlistId}`);
     const data = await fetchWithAuth(`${API_URL}/setlists/${setlistId}/sheets`, {
       method: 'POST',
       body: JSON.stringify({ sheetId: sheet.id })
     });
     
-    console.log('Sheet added to setlist successfully:', data);
+    logger.debug('SetlistService', 'Sheet added to setlist successfully:', data);
     return data.setlist;
   } catch (error) {
-    console.error('Error adding sheet to setlist:', error);
+    logger.error('SetlistService', 'Error adding sheet to setlist:', error);
     throw error;
   }
 };
@@ -252,10 +254,10 @@ export const removeSheetFromSetlist = async (setlistId, sheetId) => {
       method: 'DELETE'
     });
     
-    console.log('Sheet removed from setlist successfully:', data);
+    logger.debug('SetlistService', 'Sheet removed from setlist successfully:', data);
     return data.setlist;
   } catch (error) {
-    console.error('Error removing sheet from setlist:', error);
+    logger.error('SetlistService', 'Error removing sheet from setlist:', error);
     throw error;
   }
 };
@@ -290,10 +292,10 @@ export const reorderSetlistSheets = async (setlistId, oldIndex, newIndex) => {
     }
 
     const data = await response.json();
-    console.log('Sheets reordered successfully:', data);
+    logger.debug('SetlistService', 'Sheets reordered successfully:', data);
     return data.setlist;
   } catch (error) {
-    console.error('Error reordering sheets in setlist:', error);
+    logger.error('SetlistService', 'Error reordering sheets in setlist:', error);
     throw error;
   }
 };
@@ -305,30 +307,30 @@ export const reorderSetlistSheets = async (setlistId, oldIndex, newIndex) => {
  * @throws {Error} If user is not authenticated
  */
 export const favoriteSetlist = async (setlistId) => {
-  console.log(`Starting favoriteSetlist operation for setlistId: ${setlistId}`);
-  console.log('API_URL:', API_URL);
+  logger.debug('SetlistService', `Starting favoriteSetlist operation for setlistId: ${setlistId}`);
+  logger.debug('SetlistService', 'API_URL:', API_URL);
   
-  // Get the authentication token
-  const token = localStorage.getItem('token');
-  console.log('Token exists:', !!token);
+  // Get the authentication token using our centralized AuthUtils
+  const token = getAuthToken();
+  logger.debug('SetlistService', 'Token exists:', !!token);
   if (token) {
     // Log first few characters of token for debugging (avoid showing the full token)
-    console.log('Token preview:', token.substring(0, 15) + '...');
+    logger.debug('SetlistService', 'Token starts with:', token.substring(0, 5) + '...');
   }
   
   if (!token) {
-    console.error('No authentication token available');
+    logger.error('SetlistService', 'No authentication token available');
     throw new Error('You must be logged in to add a setlist to your collection');
   }
   
   // Construct the API endpoint
   const endpoint = `${API_URL}/setlists/${setlistId}/favorite`;
-  console.log(`Making API request to: ${endpoint}`);
-  console.log('Request method: POST');
+  logger.debug('SetlistService', `Making API request to: ${endpoint}`);
+  logger.debug('SetlistService', 'Request method: POST');
   
   try {
     // Make a direct fetch request to the API with proper authentication
-    console.log('Making fetch request with the following config:');
+    logger.debug('SetlistService', 'Making fetch request with the following config');
     const config = {
       method: 'POST',
       headers: {
@@ -340,7 +342,7 @@ export const favoriteSetlist = async (setlistId) => {
       credentials: 'include',
       mode: 'cors'
     };
-    console.log('Request config:', JSON.stringify(config, null, 2));
+    logger.debug('SetlistService', 'Request config:', JSON.stringify(config, null, 2));
     
     const response = await fetch(endpoint, config);
 
@@ -355,9 +357,9 @@ export const favoriteSetlist = async (setlistId) => {
     if (responseText) {
       try {
         data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
+        logger.debug('SetlistService', 'Parsed response data:', data);
       } catch (jsonError) {
-        console.error('Response is not valid JSON:', jsonError);
+        logger.error('SetlistService', 'Response is not valid JSON:', jsonError);
       }
     }
     
@@ -376,7 +378,7 @@ export const favoriteSetlist = async (setlistId) => {
       return { success: true, message: 'Setlist added successfully' };
     }
   } catch (error) {
-    console.error('Error adding setlist to favorites:', error);
+    logger.error('SetlistService', 'Error adding setlist to favorites:', error);
     throw error;
   }
 };

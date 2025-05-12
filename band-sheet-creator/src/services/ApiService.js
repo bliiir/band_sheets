@@ -3,7 +3,7 @@
  * Provides a central place for managing authentication and API requests
  */
 
-import { getAuthToken } from '../utils/AuthUtils';
+import { getAuthToken, setAuthToken, removeAuthToken } from '../utils/AuthUtils';
 import logger from './LoggingService';
 
 // API base URL - Use a simpler approach with a direct URL
@@ -145,15 +145,15 @@ export const registerUser = async (userData) => {
     
     const data = await response.json();
     
-    // Save token to localStorage
+    // Save token using our centralized AuthUtils
     if (data.token) {
-      localStorage.setItem('token', data.token);
+      setAuthToken(data.token);
     }
     
     // Return the user object - backend returns it in data.user
     return data.user;
   } catch (error) {
-    console.error('Registration error:', error);
+    logger.error('ApiService', 'Registration error:', error);
     throw error;
   }
 };
@@ -170,7 +170,7 @@ export const loginUser = async (credentials) => {
 
     
     // First clear any existing token to prevent auth issues
-    localStorage.removeItem('token');
+    removeAuthToken();
     
     // Direct implementation without using the helper for login
     const response = await fetch(`${API_URL}/auth/login`, {
@@ -207,9 +207,9 @@ export const loginUser = async (credentials) => {
     // Return the user object - backend returns it in data.user
     return data.user;
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('ApiService', 'Login error:', error);
     // Clear token on login error
-    localStorage.removeItem('token');
+    removeAuthToken();
     throw error;
   }
 };
@@ -235,11 +235,11 @@ export const logoutUser = async () => {
       credentials: 'include'
     });
     
-    localStorage.removeItem('token');
+    removeAuthToken();
     return true;
   } catch (error) {
-    console.error('Logout error:', error);
-    localStorage.removeItem('token'); // Remove token even if API call fails
+    logger.error('ApiService', 'Logout error:', error);
+    removeAuthToken(); // Remove token even if API call fails
     return false;
   }
 };
@@ -251,7 +251,7 @@ export const logoutUser = async () => {
  */
 export const getCurrentUser = async () => {
   try {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) return null;
     
     // Direct implementation without using the helper
@@ -270,8 +270,8 @@ export const getCurrentUser = async () => {
     const data = await response.json();
     return data.data;
   } catch (error) {
-    console.error('Get current user error:', error);
-    localStorage.removeItem('token');
+    logger.error('ApiService', 'Get current user error:', error);
+    removeAuthToken();
     return null;
   }
 };

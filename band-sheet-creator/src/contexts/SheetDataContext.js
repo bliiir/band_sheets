@@ -5,6 +5,7 @@ import { getTransposedChords } from '../services/ChordService';
 import ExportOptionsModal from '../components/ExportOptionsModal';
 import { useUIState } from './UIStateContext';
 import { useAuth } from './AuthContext';
+import { handleUnauthenticated } from '../utils/AuthUtils';
 import logger from '../services/LoggingService';
 
 // Create the SheetDataContext
@@ -295,11 +296,12 @@ export function SheetDataProvider({ children }) {
       logger.debug('SheetDataContext', `Title value from DOM: ${currentTitle}`);
       logger.debug('SheetDataContext', `Title value to use: ${titleToUse}`);
       
-      // Check authentication before saving
+      // Check authentication before saving using our centralized authentication handler
       if (!isAuthenticated) {
-        const error = new Error('Authentication required to save sheets');
-        endApiCall(error);
-        throw error;
+        logger.warn('SheetDataContext', 'Authentication required to save sheets');
+        endApiCall();
+        // This will show the auth modal and throw a standardized error
+        handleUnauthenticated('Authentication required to save sheets');
       }
       
       // Validate required fields

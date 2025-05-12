@@ -9,6 +9,8 @@ import { useUIState } from "../contexts/UIStateContext";
 import { useSetlistActions } from "../contexts/SetlistActionsContext";
 import { getAllSetlists, deleteSetlist, updateSetlist } from "../services/SetlistStorageService";
 import ConfirmModal from "../components/ConfirmModal";
+import { getAuthToken, isAuthenticated } from "../utils/AuthUtils";
+import logger from "../services/LoggingService";
 
 /**
  * Page displaying all available setlists categorized by ownership
@@ -109,23 +111,23 @@ const SetlistsPage = () => {
     const fetchSetlists = async () => {
       setIsLoading(true);
       try {
-        // Get current authentication status
-        const token = localStorage.getItem('token');
-        console.log('Current auth state before fetching setlists:', {
-          isAuthenticated: !!token,
+        // Get current authentication status using centralized AuthUtils
+        const token = getAuthToken();
+        logger.debug('SetlistsPage', 'Current auth state before fetching setlists:', {
+          isAuthenticated: isAuthenticated(),
           tokenExists: !!token,
           tokenFirstChars: token ? token.substring(0, 10) + '...' : 'N/A'
         });
         
         // Get all setlists from the API
-        console.log('Attempting to fetch setlists from MongoDB...');
+        logger.debug('SetlistsPage', 'Attempting to fetch setlists from MongoDB...');
         const setlists = await getAllSetlists();
-        console.log('Fetched setlists from API:', setlists);
-        console.log('Number of setlists retrieved:', setlists ? setlists.length : 0);
-        console.log('Setlist data type:', typeof setlists);
+        logger.debug('SetlistsPage', 'Fetched setlists from API:', setlists);
+        logger.debug('SetlistsPage', 'Number of setlists retrieved:', setlists ? setlists.length : 0);
+        logger.debug('SetlistsPage', 'Setlist data type:', typeof setlists);
         
         if (setlists && setlists.length > 0) {
-          console.log('First setlist preview:', {
+          logger.debug('SetlistsPage', 'First setlist preview:', {
             id: setlists[0].id,
             name: setlists[0].name,
             sheetCount: setlists[0].sheets ? setlists[0].sheets.length : 0
@@ -133,7 +135,7 @@ const SetlistsPage = () => {
         }
         
         // Now that we've fixed the API response format, we should get real setlists
-        console.log('Using setlists from MongoDB');
+        logger.debug('SetlistsPage', 'Using setlists from MongoDB');
         setMySetlists(setlists || []);
         setBandSetlists([]);
         setOtherSetlists([]);
@@ -217,7 +219,7 @@ const SetlistsPage = () => {
     const newName = editingValue.trim();
     if (newName && newName !== setlist.name) {
       try {
-        console.log(`Saving setlist rename to MongoDB: ${setlist.name} → ${newName}`);
+        logger.debug('SetlistsPage', `Saving setlist rename to MongoDB: ${setlist.name} → ${newName}`);
         
         // Create updated setlist object with new name
         const updatedSetlist = { ...setlist, name: newName };
@@ -230,9 +232,9 @@ const SetlistsPage = () => {
           prevSetlists.map(s => s.id === setlist.id ? { ...s, name: newName } : s)
         );
         
-        console.log('Setlist rename saved successfully');
+        logger.debug('SetlistsPage', 'Setlist rename saved successfully');
       } catch (error) {
-        console.error('Error updating setlist name:', error);
+        logger.error('SetlistsPage', 'Error updating setlist name:', error);
         alert('Failed to update setlist name. Please try again.');
       }
     }
@@ -289,7 +291,7 @@ const SetlistsPage = () => {
   };
 
   const handleCreateSetlist = () => {
-    console.log('handleCreateSetlist called');
+    logger.debug('SetlistsPage', 'handleCreateSetlist called');
     if (!isAuthenticated) {
       showAuthModal();
       return;

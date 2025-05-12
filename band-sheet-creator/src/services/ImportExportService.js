@@ -195,7 +195,7 @@ const importToStorage = async (sheets, options = {}) => {
     ...options
   };
   
-  console.log('importToStorage with options:', importOptions);
+  logger.debug('ImportExportService', 'importToStorage with options:', importOptions);
   
   const results = {
     total: sheets.length,
@@ -293,7 +293,7 @@ const importToStorage = async (sheets, options = {}) => {
     }
   }
   
-  console.log('Import results:', results);
+  logger.debug('ImportExportService', 'Import results:', results);
   return results;
 };
 
@@ -315,7 +315,7 @@ export const importLocalStorageFile = async (file, options = {}) => {
     ...options
   };
   
-  console.log('Import local storage file options:', importOptions);
+  logger.debug('ImportExportService', 'Import local storage file options:', importOptions);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -446,7 +446,7 @@ export const importSheets = async (file, options = {}) => {
     ...options
   };
   
-  console.log('Import options:', importOptions);
+  logger.debug('ImportExportService', 'Import options:', importOptions);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     

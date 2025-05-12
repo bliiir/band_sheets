@@ -8,6 +8,9 @@ import { fetchWithAuth, API_URL } from './ApiService';
 import logger from './LoggingService';
 import { isAuthenticated, requestAuthentication } from '../utils/AuthUtils';
 
+// Key for storing pending favorite setlist ID
+const PENDING_FAVORITE_SETLIST_KEY = 'pendingFavoriteSetlistId';
+
 // Using isAuthenticated from AuthUtils
 
 /**
@@ -96,7 +99,7 @@ export const getAllSetlists = async (sortByNewest = true) => {
         return [];
       }
     } catch (error) {
-      console.error('Error fetching setlists from API:', error);
+      logger.error('SetlistStorageService', 'Error fetching setlists from API:', error);
       return []; // Return empty array on error, no fallback
     }
   } else {
@@ -114,27 +117,27 @@ export const getAllSetlists = async (sortByNewest = true) => {
 export const deleteSetlist = async (id) => {
   // Ensure the ID is properly formatted
   const formattedId = id.toString();
-  console.log(`Deleting setlist ${formattedId} from storage`);
+  logger.debug('SetlistStorageService', `Deleting setlist ${formattedId} from storage`);
   
   // Check if user is authenticated
   if (isAuthenticated()) {
     try {
-      console.log(`Deleting setlist ${formattedId} from MongoDB with authentication`);
+      logger.debug('SetlistStorageService', `Deleting setlist ${formattedId} from MongoDB with authentication`);
       
       // Use fetchWithAuth for consistent authentication handling
       const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
         method: 'DELETE'
       });
       
-      console.log('Delete setlist response:', data);
+      logger.debug('SetlistStorageService', 'Delete setlist response:', data);
       return true;
     } catch (error) {
-      console.error('Error deleting setlist from API:', error);
-      console.error('Error details:', error.message);
+      logger.error('SetlistStorageService', 'Error deleting setlist from API:', error);
+      logger.error('SetlistStorageService', 'Error details:', error.message);
       return false;
     }
   } else {
-    console.log('User not authenticated, cannot delete setlist');
+    logger.info('SetlistStorageService', 'User not authenticated, cannot delete setlist');
     return false;
   }
 };
@@ -147,9 +150,9 @@ export const deleteSetlist = async (id) => {
 export const createSetlist = async (setlistData) => {
   if (isAuthenticated()) {
     try {
-      console.log('Creating new setlist in MongoDB with authentication');
-      console.log('Setlist data:', setlistData);
-      console.log(`API URL: ${API_URL}/setlists`);
+      logger.debug('SetlistStorageService', 'Creating new setlist in MongoDB with authentication');
+      logger.debug('SetlistStorageService', 'Setlist data:', setlistData);
+      logger.debug('SetlistStorageService', `API URL: ${API_URL}/setlists`);
       
       // Make sure we're sending the correct fields that the backend expects
       // Note: The backend requires an 'id' field in the schema
@@ -162,7 +165,7 @@ export const createSetlist = async (setlistData) => {
         dateModified: setlistData.dateModified
       };
       
-      console.log('Formatted request data:', requestData);
+      logger.debug('SetlistStorageService', 'Formatted request data:', requestData);
       
       // Use fetchWithAuth instead of direct fetch call to ensure consistent auth handling
       const response = await fetchWithAuth(`${API_URL}/setlists`, {
@@ -170,7 +173,7 @@ export const createSetlist = async (setlistData) => {
         body: JSON.stringify(requestData)
       });
       
-      console.log('Create setlist response:', response);
+      logger.debug('SetlistStorageService', 'Create setlist response:', response);
       
       // Backend returns { success: true, setlist: {...} } format
       if (response && response.success && response.setlist) {
@@ -178,16 +181,16 @@ export const createSetlist = async (setlistData) => {
       } else if (response && response.data) {
         return response.data;
       } else {
-        console.error('Unexpected response format:', response);
+        logger.error('SetlistStorageService', 'Unexpected response format:', response);
         return null;
       }
     } catch (error) {
-      console.error('Error creating setlist in API:', error);
-      console.error('Error details:', error.message);
+      logger.error('SetlistStorageService', 'Error creating setlist in API:', error);
+      logger.error('SetlistStorageService', 'Error details:', error.message);
       return null;
     }
   } else {
-    console.log('User not authenticated, cannot create setlist');
+    logger.info('SetlistStorageService', 'User not authenticated, cannot create setlist');
     return null;
   }
 };
@@ -203,9 +206,9 @@ export const updateSetlist = async (id, setlistData) => {
   
   if (isAuthenticated()) {
     try {
-      console.log(`Updating setlist ${formattedId} in MongoDB with authentication`);
-      console.log('Update payload:', setlistData);
-      console.log(`API URL: ${API_URL}/setlists/${formattedId}`);
+      logger.debug('SetlistStorageService', `Updating setlist ${formattedId} in MongoDB with authentication`);
+      logger.debug('SetlistStorageService', 'Update payload:', setlistData);
+      logger.debug('SetlistStorageService', `API URL: ${API_URL}/setlists/${formattedId}`);
       
       // Use fetchWithAuth for consistent authentication handling
       const data = await fetchWithAuth(`${API_URL}/setlists/${formattedId}`, {
@@ -213,7 +216,7 @@ export const updateSetlist = async (id, setlistData) => {
         body: JSON.stringify(setlistData)
       });
       
-      console.log('Update setlist response:', data);
+      logger.debug('SetlistStorageService', 'Update setlist response:', data);
       
       // Better handling of different API response formats
       if (data.data) {
@@ -223,15 +226,59 @@ export const updateSetlist = async (id, setlistData) => {
       } else if (data._id || data.id) {
         return data; // Direct object return
       } else {
-        console.log('Unexpected API response format, returning true to indicate success');
+        logger.debug('SetlistStorageService', 'Unexpected API response format, returning true to indicate success');
         return true; // Return true to indicate success even if we don't have the expected format
       }
     } catch (error) {
-      console.error('Error updating setlist in API:', error);
+      logger.error('SetlistStorageService', 'Error updating setlist in API:', error);
       return null;
     }
   } else {
-    console.log('User not authenticated, cannot update setlist');
+    logger.info('SetlistStorageService', 'User not authenticated, cannot update setlist');
     return null;
+  }
+};
+
+/**
+ * Save a pending favorite setlist ID for authentication
+ * @param {string} setlistId - The ID of the setlist to save as pending favorite
+ */
+export const savePendingFavoriteSetlistId = (setlistId) => {
+  try {
+    if (!setlistId) {
+      logger.warn('SetlistStorageService', 'Attempting to save empty setlist ID as pending favorite');
+      return;
+    }
+    
+    localStorage.setItem(PENDING_FAVORITE_SETLIST_KEY, setlistId);
+    logger.debug('SetlistStorageService', `Saved setlist ${setlistId} as pending favorite`);
+  } catch (error) {
+    logger.error('SetlistStorageService', 'Error saving pending favorite setlist ID:', error);
+  }
+};
+
+/**
+ * Get the pending favorite setlist ID
+ * @returns {string|null} The pending favorite setlist ID or null if not found
+ */
+export const getPendingFavoriteSetlistId = () => {
+  try {
+    const pendingId = localStorage.getItem(PENDING_FAVORITE_SETLIST_KEY);
+    return pendingId;
+  } catch (error) {
+    logger.error('SetlistStorageService', 'Error getting pending favorite setlist ID:', error);
+    return null;
+  }
+};
+
+/**
+ * Clear the pending favorite setlist ID
+ */
+export const clearPendingFavoriteSetlistId = () => {
+  try {
+    localStorage.removeItem(PENDING_FAVORITE_SETLIST_KEY);
+    logger.debug('SetlistStorageService', 'Cleared pending favorite setlist ID');
+  } catch (error) {
+    logger.error('SetlistStorageService', 'Error clearing pending favorite setlist ID:', error);
   }
 };

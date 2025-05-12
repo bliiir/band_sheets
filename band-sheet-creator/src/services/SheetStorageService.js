@@ -439,9 +439,45 @@ export const shareSheet = async (id, username, permission = 'read') => {
 };
 
 /**
- * Initialize a new default sheet
- * @returns {Object} A new default sheet structure
+ * Duplicate a sheet
+ * @param {Object} sheet - The sheet to duplicate
+ * @returns {Promise<Object>} The duplicated sheet
  */
+export const duplicateSheet = async (sheet) => {
+  logger.debug('SheetStorageService', `Duplicating sheet ${sheet.id}`); 
+  
+  // Create a deep copy of the sheet
+  const duplicatedSheet = JSON.parse(JSON.stringify(sheet));
+  
+  // Generate a new ID and update the title
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000000);
+  const newId = `${timestamp}_${random}`;
+  
+  duplicatedSheet.id = newId;
+  duplicatedSheet.title = `${sheet.title || 'Untitled'} (copy)`;
+  
+  // Save the duplicated sheet
+  return await saveSheet(duplicatedSheet, true);
+};
+
+/**
+ * Update an existing sheet (e.g., rename)
+ * @param {Object} sheetData - Updated sheet data
+ * @returns {Promise<Object>} The updated sheet
+ */
+export const updateSheet = async (sheetData) => {
+  if (!sheetData || !sheetData.id) {
+    logger.error('SheetStorageService', 'Cannot update sheet: missing sheet data or ID');
+    throw new Error('Cannot update sheet: missing sheet data or ID');
+  }
+  
+  logger.debug('SheetStorageService', `Updating sheet ${sheetData.id}`);
+  
+  // Use the regular saveSheet function but ensure it's not treated as a new save
+  return await saveSheet(sheetData, false);
+};
+
 export const createNewSheet = () => {
   const newId = Date.now();
   

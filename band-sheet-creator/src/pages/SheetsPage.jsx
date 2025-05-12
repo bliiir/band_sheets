@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useUIState } from "../contexts/UIStateContext";
 import { getAllSheets, deleteSheet } from "../services/SheetStorageService";
 import { exportSingleSheet } from "../services/ExportService";
+import logger from "../services/LoggingService";
 import { useSetlist } from "../contexts/SetlistContext";
 import { useSheetActions } from "../contexts/SheetActionsContext";
 import ConfirmModal from "../components/ConfirmModal";
@@ -56,36 +57,36 @@ const SheetsPage = () => {
       try {
         // Get all sheets from the API
         const sheets = await getAllSheets();
-        console.log('Fetched sheets from API:', sheets);
+        logger.debug('SheetsPage', 'Fetched sheets from API:', sheets);
         
         // Detailed logging to find the exact location of BPM in the sheet structure
         if (sheets.length > 0) {
-          console.log('COMPLETE SHEET DATA:', JSON.stringify(sheets[0]));
+          logger.debug('SheetsPage', 'COMPLETE SHEET DATA:', JSON.stringify(sheets[0]));
           
           // Top-level properties
-          console.log('TOP LEVEL KEYS:', Object.keys(sheets[0]));
+          logger.debug('SheetsPage', 'TOP LEVEL KEYS:', Object.keys(sheets[0]));
           
           // Check common locations for BPM
-          console.log('Direct sheet.bpm:', sheets[0].bpm);
+          logger.debug('SheetsPage', 'Direct sheet.bpm:', sheets[0].bpm);
           
           // Log each top-level property to find where BPM might be hiding
           Object.keys(sheets[0]).forEach(key => {
             const value = sheets[0][key];
-            console.log(`PROPERTY: ${key}`, typeof value, value);
+            logger.debug('SheetsPage', `PROPERTY: ${key}`, typeof value, value);
           });
           
           // Special properties check
-          if (sheets[0]._doc) console.log('_doc exists, BPM:', sheets[0]._doc.bpm);
-          if (sheets[0].song) console.log('song exists, BPM:', sheets[0].song.bpm);
-          if (sheets[0].info) console.log('info exists, BPM:', sheets[0].info.bpm);
+          if (sheets[0]._doc) logger.debug('SheetsPage', '_doc exists, BPM:', sheets[0]._doc.bpm);
+          if (sheets[0].song) logger.debug('SheetsPage', 'song exists, BPM:', sheets[0].song.bpm);
+          if (sheets[0].info) logger.debug('SheetsPage', 'info exists, BPM:', sheets[0].info.bpm);
           if (sheets[0].sections && sheets[0].sections.length > 0) {
-            console.log('sections[0] exists, checking for BPM:', sheets[0].sections[0].bpm);
+            logger.debug('SheetsPage', 'sections[0] exists, checking for BPM:', sheets[0].sections[0].bpm);
           }
           
           // Check if the data is nested inside a property named 'data'
           if (sheets[0].data) {
-            console.log('data property exists, BPM:', sheets[0].data.bpm);
-            console.log('data keys:', Object.keys(sheets[0].data));
+            logger.debug('SheetsPage', 'data property exists, BPM:', sheets[0].data.bpm);
+            logger.debug('SheetsPage', 'data keys:', Object.keys(sheets[0].data));
           }
         }
         
@@ -112,7 +113,7 @@ const SheetsPage = () => {
           return sheet;
         });
         
-        console.log('Processed sheets:', processedSheets.slice(0, 2)); // Log first 2 sheets
+        logger.debug('SheetsPage', 'Processed sheets:', processedSheets.slice(0, 2)); // Log first 2 sheets
         
         // All sheets are now owned by the user, so put them all in mySheets
         setMySheets(processedSheets);
@@ -162,24 +163,24 @@ const SheetsPage = () => {
   };
 
   const handleSheetDelete = async (sheetId) => {
-    console.log('handleSheetDelete called with ID:', sheetId);
+    logger.debug('SheetsPage', 'handleSheetDelete called with ID:', sheetId);
     
     try {
       // Call the actual service function from SheetStorageService
-      console.log('Calling deleteSheet service function...');
+      logger.debug('SheetsPage', 'Calling deleteSheet service function...');
       const success = await deleteSheet(sheetId);
-      console.log('deleteSheet result:', success);
+      logger.debug('SheetsPage', 'deleteSheet result:', success);
       
       if (success) {
-        console.log('Sheet deleted successfully, updating UI state...');
+        logger.debug('SheetsPage', 'Sheet deleted successfully, updating UI state...');
         // Update local state by removing the deleted sheet
         setMySheets(prevSheets => {
-          console.log('Current sheets count:', prevSheets.length);
+          logger.debug('SheetsPage', 'Current sheets count:', prevSheets.length);
           const filteredSheets = prevSheets.filter(sheet => {
-            console.log('Comparing sheet.id:', sheet.id, 'with sheetId:', sheetId);
+            logger.debug('SheetsPage', 'Comparing sheet.id:', sheet.id, 'with sheetId:', sheetId);
             return sheet.id !== sheetId;
           });
-          console.log('New sheets count:', filteredSheets.length);
+          logger.debug('SheetsPage', 'New sheets count:', filteredSheets.length);
           return filteredSheets;
         });
         alert(`Sheet deleted successfully`);
@@ -291,46 +292,46 @@ const SheetsPage = () => {
   
   // Function for opening the delete confirmation dialog
   const confirmDeleteSheet = (id) => {
-    console.log('confirmDeleteSheet called with sheet ID:', id);
+    logger.debug('SheetsPage', 'confirmDeleteSheet called with sheet ID:', id);
     try {
       // Find the sheet in the mySheets array
       const sheet = mySheets.find(s => s.id === id);
-      console.log('Found sheet:', sheet ? 'Yes' : 'No');
+      logger.debug('SheetsPage', 'Found sheet:', sheet ? 'Yes' : 'No');
       
       if (!sheet) {
-        console.error('Sheet not found in mySheets array');
-        console.log('Current mySheets:', mySheets);
+        logger.error('SheetsPage', 'Sheet not found in mySheets array');
+        logger.debug('SheetsPage', 'Current mySheets:', mySheets);
         return;
       }
       
       const title = sheet.title || 'Untitled';
-      console.log('Preparing confirmation dialog for sheet:', title);
+      logger.debug('SheetsPage', 'Preparing confirmation dialog for sheet:', title);
       
       // Show custom confirmation dialog
-      console.log('Setting confirm dialog state to open');
+      logger.debug('SheetsPage', 'Setting confirm dialog state to open');
       setConfirmDialog({
         isOpen: true,
         title: "Delete Sheet",
         message: `Are you sure you want to delete "${title}"?`,
         onConfirm: async () => {
-          console.log('Confirmation dialog confirmed for sheet ID:', id);
+          logger.debug('SheetsPage', 'Confirmation dialog confirmed for sheet ID:', id);
           try {
-            console.log('Calling handleSheetDelete with ID:', id);
+            logger.debug('SheetsPage', 'Calling handleSheetDelete with ID:', id);
             await handleSheetDelete(id);
-            console.log('handleSheetDelete completed successfully');
+            logger.debug('SheetsPage', 'handleSheetDelete completed successfully');
             // Close the dialog
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
           } catch (error) {
-            console.error('Error in confirmation dialog onConfirm function:', error);
+            logger.error('SheetsPage', 'Error in confirmation dialog onConfirm function:', error);
             alert('Failed to delete sheet. Please try again.');
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
           }
         },
         sheetId: id
       });
-      console.log('Confirm dialog state set, dialog should be visible');
+      logger.debug('SheetsPage', 'Confirm dialog state set, dialog should be visible');
     } catch (error) {
-      console.error('Error preparing delete confirmation:', error);
+      logger.error('SheetsPage', 'Error preparing delete confirmation:', error);
     }
   };
   
@@ -593,8 +594,8 @@ const SheetsPage = () => {
                     e.preventDefault();
                     setShowDropdown(false);
                     // Add logging to track the sheet ID before deletion
-                    console.log('Delete button clicked for sheet ID:', sheet.id);
-                    console.log('Sheet data:', sheet);
+                    logger.debug('SheetsPage', 'Delete button clicked for sheet ID:', sheet.id);
+                    logger.debug('SheetsPage', 'Sheet data:', sheet);
                     confirmDeleteSheet(sheet.id);
                   }}
                   onMouseDown={(e) => e.stopPropagation()}

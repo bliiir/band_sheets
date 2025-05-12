@@ -4,6 +4,8 @@ import { PlusIcon } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { createSetlist } from '../services/SetlistStorageService';
+import { getAuthToken } from '../utils/AuthUtils';
+import logger from '../services/LoggingService';
 
 /**
  * Page component for creating a new setlist.
@@ -18,26 +20,26 @@ const NewSetlistPage = () => {
     e.preventDefault();
     
     // Check auth status with debug info
-    console.log('Authentication status:', isAuthenticated ? 'Authenticated' : 'Not authenticated');
-    const token = localStorage.getItem('token');
-    console.log('Token exists:', !!token);
+    logger.debug('NewSetlistPage', 'Authentication status:', isAuthenticated ? 'Authenticated' : 'Not authenticated');
+    const token = getAuthToken();
+    logger.debug('NewSetlistPage', 'Token exists:', !!token);
     
     if (!isAuthenticated) {
-      console.log('User not authenticated, showing auth modal');
+      logger.debug('NewSetlistPage', 'User not authenticated, showing auth modal');
       showAuthModal();
       return;
     }
 
     if (!setlistName.trim()) {
-      console.log('Empty setlist name, aborting');
+      logger.debug('NewSetlistPage', 'Empty setlist name, aborting');
       return;
     }
 
     setIsSubmitting(true);
-    console.log('Setting isSubmitting to true');
+    logger.debug('NewSetlistPage', 'Setting isSubmitting to true');
     
     try {
-      console.log('Creating new setlist with name:', setlistName);
+      logger.debug('NewSetlistPage', 'Creating new setlist with name:', setlistName);
       
       // Create new setlist data
       const newSetlist = {
@@ -48,14 +50,14 @@ const NewSetlistPage = () => {
         dateModified: new Date().toISOString()
       };
       
-      console.log('Sending setlist data to API:', newSetlist);
+      logger.debug('NewSetlistPage', 'Sending setlist data to API:', newSetlist);
       
       // Call the service function to create the setlist
       const createdSetlist = await createSetlist(newSetlist);
-      console.log('API response for create setlist:', createdSetlist);
+      logger.debug('NewSetlistPage', 'API response for create setlist:', createdSetlist);
       
       if (createdSetlist) {
-        console.log('Setlist created successfully, ID:', createdSetlist._id || createdSetlist.id);
+        logger.debug('NewSetlistPage', 'Setlist created successfully, ID:', createdSetlist._id || createdSetlist.id);
         // Navigate to the setlists page
         navigate('/setlists');
       } else {

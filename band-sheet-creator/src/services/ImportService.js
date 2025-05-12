@@ -100,7 +100,7 @@ const getLocalStorageSheets = () => {
       }
     }
   }
-  console.log(`Found ${sheets.length} sheets in localStorage for duplicate checking`);
+  logger.debug('ImportService', `Found ${sheets.length} sheets in localStorage for duplicate checking`);
   return sheets;
 };
 
@@ -119,7 +119,7 @@ const importToStorage = async (sheets, options = {}) => {
     ...options
   };
   
-  console.log('importToStorage with options:', importOptions);
+  logger.debug('ImportService', 'importToStorage with options:', importOptions);
   
   const results = {
     total: sheets.length,
@@ -301,7 +301,7 @@ export const importSheets = async (file, options = {}) => {
     ...options
   };
 
-  console.log('Import options:', importOptions);
+  logger.debug('ImportService', 'Import options:', importOptions);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 

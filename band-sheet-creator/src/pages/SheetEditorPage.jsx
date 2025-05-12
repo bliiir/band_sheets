@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, forwardRef } from 'react';
 import { useParams } from 'react-router-dom';
 import BandSheetEditor from '../components/BandSheetEditor';
-import { useAuth } from '../contexts/AuthContext';
 import ImportModal from '../components/ImportModal';
 import ExportModal from '../components/ExportModal';
 import { useEditorActions } from '../contexts/EditorActionsContext';
@@ -16,7 +15,6 @@ import { useEditorActions } from '../contexts/EditorActionsContext';
  */
 const SheetEditorPage = () => {
   const { sheetId } = useParams();
-  const { isAuthenticated } = useAuth();
   
   // Reference to the BandSheetEditor component instance
   const editorRef = useRef(null);
@@ -66,7 +64,6 @@ const SheetEditorPage = () => {
         ref={editorRef}
         initialSheetId={sheetId}
         key={`sheet-${sheetId}`}
-        isAuthenticated={isAuthenticated}
         setImportModalOpen={setImportModalOpen}
         setExportModalOpen={setExportModalOpen}
         // Hide the built-in toolbar since we're using the header actions

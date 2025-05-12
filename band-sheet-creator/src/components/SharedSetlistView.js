@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { getSetlistById, favoriteSetlist } from '../services/SetlistService';
-import { updateSetlist } from '../services/SetlistStorageService';
+import { getSetlistById, updateSetlist, savePendingFavoriteSetlistId, getPendingFavoriteSetlistId, clearPendingFavoriteSetlistId } from '../services/SetlistStorageService';
+import { favoriteSetlist } from '../services/SetlistService';
 import { getSheetById } from '../services/SheetStorageService';
+import logger from '../services/LoggingService';
+import { getAuthToken } from '../utils/AuthUtils';
 import { exportSetlistToPDF, exportSheetToPDF } from '../services/ExportService';
 import { 
   setCurrentSheetId, 
@@ -85,25 +87,25 @@ const SharedSetlistView = () => {
   
   // Log authentication state changes to debug the login flow
   useEffect(() => {
-    console.log('AUTH STATE CHANGED: isAuthenticated =', isAuthenticated);
-    console.log('Current user token in localStorage:', localStorage.getItem('token') ? 'exists' : 'not found');
+    logger.debug('SharedSetlistView', 'AUTH STATE CHANGED: isAuthenticated =', isAuthenticated);
+    logger.debug('SharedSetlistView', 'Current user token exists:', !!getAuthToken());
   }, [isAuthenticated]);
   
   // Effect to check for pending favorite operations on mount and auth changes
   useEffect(() => {
-    console.log('FAVORITE CHECK: Authentication state =', isAuthenticated, 'Setlist ID =', setlistId);
+    logger.debug('SharedSetlistView', 'FAVORITE CHECK: Authentication state =', isAuthenticated, 'Setlist ID =', setlistId);
     
     // Only process auto-favorite if user is authenticated and we have a setlist
     if (isAuthenticated && setlist) {
-      // Check if we have a pending favorite setlist ID
-      const pendingFavoriteId = localStorage.getItem('pendingFavoriteSetlistId');
-      console.log('FAVORITE CHECK: Pending ID found:', pendingFavoriteId);
+      // Check if we have a pending favorite setlist ID using our service method
+      const pendingFavoriteId = getPendingFavoriteSetlistId();
+      logger.debug('SharedSetlistView', 'FAVORITE CHECK: Pending ID found:', pendingFavoriteId);
       
       if (pendingFavoriteId === setlistId) {
-        console.log('FAVORITE CHECK: Executing pending favorite operation');
+        logger.debug('SharedSetlistView', 'FAVORITE CHECK: Executing pending favorite operation');
         
-        // Clear the pending ID first
-        localStorage.removeItem('pendingFavoriteSetlistId');
+        // Clear the pending ID first using our service method
+        clearPendingFavoriteSetlistId();
         
         // Execute the favorite operation
         favoriteSetlist(setlistId)
@@ -111,7 +113,7 @@ const SharedSetlistView = () => {
             setFavoriteSuccess(true);
             setTimeout(() => setFavoriteSuccess(false), 3000);
           })
-          .catch(err => console.error('Error favoriting setlist:', err));
+          .catch(err => logger.error('SharedSetlistView', 'Error favoriting setlist:', err));
       }
     }
   }, [isAuthenticated, setlist, setlistId]);
@@ -356,13 +358,13 @@ const SharedSetlistView = () => {
     }
   };
   
-  // Save setlist ID to localStorage and open auth modal
+  // Save setlist ID using our centralized service and open auth modal
   const saveSetlistIdAndOpenAuth = () => {
     try {
-      localStorage.setItem('pendingFavoriteSetlistId', setlistId);
+      savePendingFavoriteSetlistId(setlistId);
       setAuthModalOpen(true);
     } catch (error) {
-      console.error('Error storing pending favorite setlist ID:', error);
+      logger.error('SharedSetlistView', 'Error storing pending favorite setlist ID:', error);
       setAuthModalOpen(true);
     }
   };

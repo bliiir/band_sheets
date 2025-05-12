@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperat
 import eventBus from "../utils/EventBus";
 import { useSelector, useDispatch } from 'react-redux';
 import logger from '../services/LoggingService';
+import { getAuthToken, handleUnauthenticated, isAuthenticated } from '../utils/AuthUtils';
 import ColorPicker from './ColorPicker';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import Toolbar from './Toolbar';
@@ -75,7 +76,7 @@ export default function BandSheetEditor({
       
       // Debug authentication state
       logger.debug('BandSheetEditor', 'Authentication state:', isAuthenticated);
-      logger.debug('BandSheetEditor', 'Token in localStorage exists:', !!localStorage.getItem('token'));
+      logger.debug('BandSheetEditor', 'Token exists:', !!getAuthToken());
       
       // Get the title from the DOM as well to compare
       const titleInputValue = document.querySelector('input[aria-label="Song Title"]')?.value;
@@ -128,8 +129,9 @@ export default function BandSheetEditor({
     initialColor: '#ffffff'
   });
   
-  // Get authentication state and functions
-  const { isAuthenticated, checkAuthToken, getAuthToken, showAuthModal } = useAuth();
+  // Access UI state from context
+  const { showAuthModal } = useAuth();
+  // Use our centralized authentication utilities instead of context-provided variables
   
   // State to track if we've loaded a draft
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -448,10 +450,10 @@ export default function BandSheetEditor({
   
   // Refresh sheets when authentication state changes
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated()) {
       refreshSavedSheets();
     }
-  }, [isAuthenticated, refreshSavedSheets]);
+  }, [refreshSavedSheets]);
   
   // Add keyboard shortcut for saving (Cmd+S / Ctrl+S)
   useEffect(() => {
@@ -460,7 +462,7 @@ export default function BandSheetEditor({
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault(); // Prevent browser's save dialog
 
-        if (isAuthenticated) {
+        if (isAuthenticated()) {
           saveCurrentSheet()
             .then(() => {
               showNotification('Sheet saved successfully');
@@ -483,12 +485,12 @@ export default function BandSheetEditor({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [saveCurrentSheet, showNotification, isAuthenticated]);
+  }, [saveCurrentSheet, showNotification]);
 
   // Auto-save draft for unauthenticated users
   useEffect(() => {
     // Only use draft functionality when not authenticated and there's content
-    if (!isAuthenticated && sections.length > 0) {
+    if (!isAuthenticated() && sections.length > 0) {
       const draftTimer = setTimeout(() => {
         const currentSheet = {
           songData,
@@ -500,7 +502,7 @@ export default function BandSheetEditor({
       
       return () => clearTimeout(draftTimer);
     }
-  }, [isAuthenticated, sections, songData]);
+  }, [sections, songData]);
 
   // Placeholder text for empty fields
   const placeholders = {
@@ -747,7 +749,8 @@ export default function BandSheetEditor({
         isOpen: true,
         onConfirm: async () => {
           try {
-            if (isAuthenticated) {
+            // Use centralized AuthUtils for authentication check
+            if (isAuthenticated()) {
               // Save current sheet first if authenticated
               await saveCurrentSheet();
               showNotification('Sheet saved before creating new sheet');
@@ -794,20 +797,19 @@ export default function BandSheetEditor({
   // Handle save button click
   const handleSave = async () => {
     try {
-      // Force a token check to ensure authentication state is current
-      const token = getAuthToken();
-      const isAuthValid = checkAuthToken();
+      // Use centralized AuthUtils for authentication status checks
+      const tokenExists = !!getAuthToken();
+      const authStatus = isAuthenticated();
       
-      logger.debug('BandSheetEditor', 'Save button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      logger.debug('BandSheetEditor', 'Save button clicked - Authentication:', { isAuthenticated: authStatus, tokenExists });
       
-      // Check authentication - require login
-      if (!token) {
-        logger.info('BandSheetEditor', 'No authentication token found, showing auth modal');
+      // Check authentication using our centralized approach
+      if (!authStatus) {
+        logger.info('BandSheetEditor', 'No authentication token found or token invalid');
         // Show a clear error message
         showNotification('Please log in to save your sheet', 'error');
-        // Show the authentication modal
-        showAuthModal();
-        throw new Error('Authentication required');
+        // Use our centralized handleUnauthenticated which will show the auth modal and throw a standardized error
+        handleUnauthenticated('Authentication required to save sheet');
       }
       
       // Save the sheet using the API
@@ -824,10 +826,9 @@ export default function BandSheetEditor({
     } catch (error) {
       logger.error('BandSheetEditor', 'Error saving sheet:', error);
       
-      // If it's an authentication error, show the auth modal
-      if (error.message.includes('Authentication')) {
-        showAuthModal();
-      } else {
+      // The AuthUtils.handleUnauthenticated already shows the auth modal for auth errors
+      // We only need to handle non-auth errors here
+      if (!error.message.includes('Authentication')) {
         showNotification(`Error saving sheet: ${error.message}`, 'error');
       }
     }
@@ -836,20 +837,19 @@ export default function BandSheetEditor({
   // Handle save as button click
   const handleSaveAs = async () => {
     try {
-      // Force a token check to ensure authentication state is current
-      const token = getAuthToken();
-      const isAuthValid = checkAuthToken();
+      // Use centralized AuthUtils for authentication status checks
+      const tokenExists = !!getAuthToken();
+      const authStatus = isAuthenticated();
       
-      logger.debug('BandSheetEditor', 'Save As button clicked - Authentication:', { isAuthenticated, tokenExists: !!token, isAuthValid });
+      logger.debug('BandSheetEditor', 'Save As button clicked - Authentication:', { isAuthenticated: authStatus, tokenExists });
       
-      // Check authentication - require login
-      if (!token) {
-        logger.info('BandSheetEditor', 'No authentication token found, showing auth modal');
+      // Check authentication using our centralized approach
+      if (!authStatus) {
+        logger.info('BandSheetEditor', 'No authentication token found or token invalid');
         // Show a clear error message
-        showNotification('Please log in to save your sheet', 'error');
-        // Show the authentication modal
-        showAuthModal();
-        throw new Error('Authentication required');
+        showNotification('Please log in to save your sheet as new', 'error');
+        // Use our centralized handleUnauthenticated which will show the auth modal and throw a standardized error
+        handleUnauthenticated('Authentication required to save sheet as new');
       }
       
       // Save the sheet as new using the API
@@ -866,11 +866,10 @@ export default function BandSheetEditor({
     } catch (error) {
       logger.error('BandSheetEditor', 'Error saving sheet as new:', error);
       
-      // If it's an authentication error, show the auth modal
-      if (error.message.includes('Authentication')) {
-        showAuthModal();
-      } else {
-        showNotification(`Error saving sheet: ${error.message}`, 'error');
+      // The AuthUtils.handleUnauthenticated already shows the auth modal for auth errors
+      // We only need to handle non-auth errors here
+      if (!error.message.includes('Authentication')) {
+        showNotification(`Error saving sheet as new: ${error.message}`, 'error');
       }
     }
   };

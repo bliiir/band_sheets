@@ -3,10 +3,11 @@ import ReactDOM from "react-dom";
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MenuIcon } from '../assets/menu.svg';
 import ConfirmModal from "./ConfirmModal";
-import { deleteSheet } from "../services/SheetStorageService";
+import { deleteSheet, updateSheet, duplicateSheet } from "../services/SheetStorageService";
 import { exportSingleSheet } from "../services/ExportService";
 import { useSetlist } from "../contexts/SetlistContext";
 import SetlistModal from "./SetlistModal";
+import logger from "../services/LoggingService";
 
 export default function SavedSheetsPanel({
   open,
@@ -59,12 +60,16 @@ export default function SavedSheetsPanel({
   }, [editingId]);
 
   // Commit rename
-  const commitRename = (sheet) => {
+  const commitRename = async (sheet) => {
     const newTitle = editingValue.trim();
     if (newTitle && newTitle !== sheet.title) {
-      const updated = { ...sheet, title: newTitle };
-      localStorage.setItem(`sheet_${sheet.id}`, JSON.stringify(updated));
-      if (onUpdate) onUpdate();
+      try {
+        const updated = { ...sheet, title: newTitle };
+        await updateSheet(updated);
+        if (onUpdate) onUpdate();
+      } catch (error) {
+        logger.error('SavedSheetsPanel', 'Error renaming sheet:', error);
+      }
     }
     setEditingId(null);
     setEditingValue("");
@@ -76,16 +81,14 @@ export default function SavedSheetsPanel({
     setEditingValue("");
   };
 
-  // Helper to duplicate a sheet in localStorage
-  const handleDuplicate = (sheet) => {
-    const newId = Date.now();
-    const duplicatedSheet = {
-      ...sheet, 
-      id: newId,
-      title: `${sheet.title || 'Untitled'} (copy)`
-    };
-    localStorage.setItem(`sheet_${newId}`, JSON.stringify(duplicatedSheet));
-    if (onUpdate) onUpdate();
+  // Helper to duplicate a sheet using SheetStorageService
+  const handleDuplicate = async (sheet) => {
+    try {
+      await duplicateSheet(sheet);
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      logger.error('SavedSheetsPanel', 'Error duplicating sheet:', error);
+    }
     setMenuOpenId(null);
   };
   

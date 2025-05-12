@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPendingFavoriteSetlistId } from '../../services/SetlistStorageService';
+import logger from '../../services/LoggingService';
 
 /**
  * Simplified Login and Registration component
@@ -21,9 +23,9 @@ const LoginRegister = ({ onClose }) => {
     setLoading(true);
     setLocalError('');
     
-    // Check if there's a pending favorite before login
-    const pendingSetlistIdBefore = localStorage.getItem('pendingFavoriteSetlistId');
-    console.log('LOGIN ATTEMPT: Pending favorite setlist before login:', pendingSetlistIdBefore);
+    // Check if there's a pending favorite before login using our service method
+    const pendingSetlistIdBefore = getPendingFavoriteSetlistId();
+    logger.debug('LoginRegister', 'LOGIN ATTEMPT: Pending favorite setlist before login:', pendingSetlistIdBefore);
     
     try {
       let success;
@@ -37,15 +39,15 @@ const LoginRegister = ({ onClose }) => {
       }
       
       if (success) {
-        console.log('LOGIN SUCCESS: Authentication successful');
+        logger.debug('LoginRegister', 'LOGIN SUCCESS: Authentication successful');
         
-        // Check if there's a pending favorite after login
-        const pendingSetlistId = localStorage.getItem('pendingFavoriteSetlistId');
-        console.log('LOGIN SUCCESS: Pending favorite setlist after login:', pendingSetlistId);
+        // Check if there's a pending favorite after login using our service method
+        const pendingSetlistId = getPendingFavoriteSetlistId();
+        logger.debug('LoginRegister', 'LOGIN SUCCESS: Pending favorite setlist after login:', pendingSetlistId);
         
         // Close the modal
         if (onClose) {
-          console.log('LOGIN SUCCESS: Closing auth modal');
+          logger.debug('LoginRegister', 'LOGIN SUCCESS: Closing auth modal');
           onClose();
         }
       } else {
