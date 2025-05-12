@@ -50,6 +50,32 @@ const AppLayout = ({ children }) => {
   const { setlistActions } = useSetlistActions();
   const { handleCreateSheet } = useSheetActions();
   
+  // Set up event listeners for import/export functionality
+  useEffect(() => {
+    console.log('Setting up event listeners in AppLayout');
+    
+    // Add event listeners with explicit debug logging
+    const importListener = eventBus.on('app:import', () => {
+      console.log('*** Import event received in AppLayout ***');
+      setImportModalOpen(true);
+    });
+
+    const exportListener = eventBus.on('app:export', () => {
+      console.log('*** Export event received in AppLayout ***');
+      setExportModalOpen(true);
+    });
+    
+    // Log all registered event listeners for debugging
+    console.log('Current event listeners:', eventBus.listeners);
+
+    // Clean up
+    return () => {
+      console.log('Cleaning up event listeners in AppLayout');
+      importListener();
+      exportListener();
+    };
+  }, []);
+
   // Set active tab based on current route and check if we're in the editor
   useEffect(() => {
     // Check if we're in the editor view (single sheet editor)
@@ -160,7 +186,12 @@ const AppLayout = ({ children }) => {
                 </button>
                 
                 <button
-                  onClick={() => setImportModalOpen(true)}
+                  onClick={() => {
+                    console.log('Import button clicked - emitting app:import event');
+                    // Emit event and log the result
+                    eventBus.emit('app:import');
+                    console.log('Event bus after import emit:', eventBus.listeners);
+                  }}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
                   title="Import Sheets"
                 >
@@ -169,7 +200,12 @@ const AppLayout = ({ children }) => {
                 </button>
                 
                 <button
-                  onClick={() => setExportModalOpen(true)}
+                  onClick={() => {
+                    console.log('Export button clicked - emitting app:export event');
+                    // Emit event and log the result
+                    eventBus.emit('app:export');
+                    console.log('Event bus after export emit:', eventBus.listeners);
+                  }}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
                   title="Export Sheets"
                 >
@@ -410,7 +446,11 @@ const AppLayout = ({ children }) => {
                 </button>
                 
                 <button
-                  onClick={() => setImportModalOpen(true)}
+                  onClick={() => {
+                    console.log('Mobile import button clicked - emitting app:import event');
+                    eventBus.emit('app:import');
+                    console.log('Event bus after mobile import emit:', eventBus.listeners);
+                  }}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
                   title="Import Sheets"
                 >
@@ -418,7 +458,11 @@ const AppLayout = ({ children }) => {
                 </button>
                 
                 <button
-                  onClick={() => setExportModalOpen(true)}
+                  onClick={() => {
+                    console.log('Mobile export button clicked - emitting app:export event');
+                    eventBus.emit('app:export');
+                    console.log('Event bus after mobile export emit:', eventBus.listeners);
+                  }}
                   className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
                   title="Export Sheets"
                 >

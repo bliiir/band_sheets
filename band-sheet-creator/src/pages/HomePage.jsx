@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { getAllSheets } from "../services/SheetStorageService";
 import { getAllSetlists } from "../services/SetlistStorageService";
+import eventBus from "../utils/EventBus";
 import logger from "../services/LoggingService";
 
 /**
@@ -180,6 +181,10 @@ const HomePage = () => {
               <Button
                 variant="outline"
                 className="h-auto py-6 flex flex-col items-center justify-center"
+                onClick={() => {
+                  console.log('HomePage: Import Sheet quick action clicked');
+                  eventBus.emit('app:import');
+                }}
               >
                 <FileTextIcon className="h-6 w-6 mb-2" />
                 <span>Import Sheet</span>
@@ -187,6 +192,10 @@ const HomePage = () => {
               <Button
                 variant="outline"
                 className="h-auto py-6 flex flex-col items-center justify-center"
+                onClick={() => {
+                  console.log('HomePage: Export All quick action clicked');
+                  eventBus.emit('app:export');
+                }}
               >
                 <FolderIcon className="h-6 w-6 mb-2" />
                 <span>Export All</span>
