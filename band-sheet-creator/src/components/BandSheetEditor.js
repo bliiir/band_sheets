@@ -37,10 +37,8 @@ export default function BandSheetEditor({
   externalSidebarOpen,
   externalSetSidebarOpen,
   externalSetlistsPanelOpen,
-  externalSetSetlistsPanelOpen,
-  // Modal control props
-  setImportModalOpen = () => {},
-  setExportModalOpen = () => {}
+  externalSetSetlistsPanelOpen
+  // Import/Export functionality moved to SheetsPage
 }) {
   const dispatch = useDispatch();
   const location = useLocation();
@@ -85,22 +83,13 @@ export default function BandSheetEditor({
       handleSave();
     });
     
-    const importUnsub = eventBus.on('editor:import', () => {
-      logger.debug('BandSheetEditor', 'Import event received');
-      setImportModalOpen(true);
-    });
-    
-    const exportUnsub = eventBus.on('editor:export', () => {
-      logger.debug('BandSheetEditor', 'Export event received');
-      setExportModalOpen(true);
-    });
+    // Import/Export functionality moved to SheetsPage
+    // Event handlers for import/export removed
     
     // Clean up event listeners
     return () => {
       newSheetUnsub();
       saveUnsub();
-      importUnsub();
-      exportUnsub();
     };
   }, []);
   
@@ -766,7 +755,9 @@ export default function BandSheetEditor({
             
             // Create new sheet
             createNewSheetData();
-            navigate('/');
+            
+            // Don't navigate away - the sheet data context will handle the URL update
+            // through the effect that syncs SheetDataContext with Redux and URL
             showNotification('New sheet created');
           } catch (error) {
             logger.error('BandSheetEditor', 'Error saving before new sheet:', error);
@@ -778,7 +769,9 @@ export default function BandSheetEditor({
         onCancel: () => {
           // Create new sheet without saving
           createNewSheetData();
-          navigate('/');
+          
+          // Stay in the editor with the new sheet
+          // The sheet context will update the URL automatically
           showNotification('New sheet created');
           setNewSheetConfirm({ isOpen: false, onConfirm: () => {}, onCancel: () => {} });
         }

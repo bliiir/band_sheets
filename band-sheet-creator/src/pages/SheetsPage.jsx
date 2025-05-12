@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FileTextIcon, PlusIcon, SearchIcon, MoreVertical, Edit, Copy, Trash, Share, Download, ListPlus } from "lucide-react";
+import { FileTextIcon, PlusIcon, SearchIcon, MoreVertical, Edit, Copy, Trash, Share, Download, ListPlus, FileInput, FileOutput } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -13,6 +13,8 @@ import { useSetlist } from "../contexts/SetlistContext";
 import { useSheetActions } from "../contexts/SheetActionsContext";
 import ConfirmModal from "../components/ConfirmModal";
 import SetlistModal from "../components/SetlistModal";
+import ImportModal from "../components/ImportModal";
+import ExportModal from "../components/ExportModal";
 
 /**
  * Page displaying all available sheets categorized by ownership
@@ -36,6 +38,8 @@ const SheetsPage = () => {
   const [exportStatus, setExportStatus] = useState({ message: '', error: '' });
   const [setlistModalOpen, setSetlistModalOpen] = useState(false);
   const [selectedSheetForSetlist, setSelectedSheetForSetlist] = useState(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const inputRef = useRef();
   
   // Get setlist context
@@ -620,15 +624,18 @@ const SheetsPage = () => {
     <div className="max-w-6xl mx-auto p-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Sheets</h1>
-        <div className="relative w-full max-w-sm ml-auto flex items-center">
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="Search sheets..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="flex items-center gap-2">
+          {/* Import/Export buttons moved to top menu */}
+          <div className="relative w-full max-w-sm ml-auto flex items-center">
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search sheets..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </div>
       
@@ -724,6 +731,33 @@ const SheetsPage = () => {
           onAddToSetlist={addSheetToSetlist}
         />
       )}
+      
+      {/* Import Modal */}
+      <ImportModal 
+        isOpen={importModalOpen} 
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => {
+          setImportModalOpen(false);
+          // Refresh the sheets list after successful import
+          getAllSheets().then(sheets => {
+            if (sheets) {
+              const processedSheets = sheets.map(sheet => ({
+                ...sheet,
+                bpm: sheet.bpm || (sheet.song?.bpm) || (sheet.songInfo?.bpm) || (sheet.sections?.[0]?.bpm) || null,
+                title: sheet.title || (sheet.song?.title) || 'Untitled',
+                artist: sheet.artist || (sheet.song?.artist) || 'Unknown Artist'
+              }));
+              setMySheets(processedSheets);
+            }
+          });
+        }}
+      />
+      
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={exportModalOpen} 
+        onClose={() => setExportModalOpen(false)}
+      />
     </div>
   );
 };

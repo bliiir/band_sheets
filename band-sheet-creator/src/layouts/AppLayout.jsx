@@ -2,20 +2,25 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import eventBus from "../utils/EventBus";
 import { 
-  FileTextIcon, 
-  FolderIcon, 
-  ListIcon, 
-  PrinterIcon, 
-  SettingsIcon, 
-  UserIcon,
-  FilePlusIcon,
-  SaveIcon,
-  ImportIcon,
-  UploadIcon,
-  FolderPlusIcon
+  FileText as FileTextIcon, 
+  Folder as FolderIcon, 
+  List as ListIcon, 
+  Printer as PrinterIcon, 
+  Settings as SettingsIcon, 
+  User as UserIcon,
+  FilePlus as FilePlusIcon,
+  Save as SaveIcon,
+  Import as ImportIcon,
+  Upload as UploadIcon,
+  FolderPlus as FolderPlusIcon,
+  ListPlus,
+  Edit,
+  ExternalLink
 } from "lucide-react";
 import SidebarButton from "../components/SidebarButton";
 import AuthModal from "../components/Auth/AuthModal";
+import ImportModal from "../components/ImportModal";
+import ExportModal from "../components/ExportModal";
 import { useAuth } from "../contexts/AuthContext";
 import { useSetlistActions } from "../contexts/SetlistActionsContext";
 import { useSheetActions } from "../contexts/SheetActionsContext";
@@ -53,8 +58,8 @@ const AppLayout = ({ children }) => {
     console.log('Current path:', location.pathname, 'isEditor:', isInEditor);
     setIsEditor(isInEditor);
     
-    // Check if we're in the setlists view
-    const inSetlists = location.pathname === "/setlists";
+    // Check if we're in the setlists view or viewing a specific setlist
+    const inSetlists = location.pathname === "/setlists" || (location.pathname.includes('/setlist/') && !location.pathname.includes('/setlists'));
     console.log('Current path:', location.pathname, 'isSetlists:', inSetlists);
     setIsSetlists(inSetlists);
     
@@ -116,24 +121,6 @@ const AppLayout = ({ children }) => {
                 </button>
                 
                 <button
-                  onClick={() => eventBus.emit('editor:import')}
-                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
-                  title="Import Sheet"
-                >
-                  <ImportIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">Import</span>
-                </button>
-                
-                <button
-                  onClick={() => eventBus.emit('editor:export')}
-                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
-                  title="Export Sheet"
-                >
-                  <UploadIcon className="w-5 h-5" />
-                  <span className="ml-1 text-sm hidden sm:inline">Export</span>
-                </button>
-                
-                <button
                   onClick={() => {
                     console.log('PDF button clicked');
                     const match = location.pathname.match(/\/sheet\/([a-zA-Z0-9_-]+)/);
@@ -171,6 +158,24 @@ const AppLayout = ({ children }) => {
                   <FilePlusIcon className="w-5 h-5" />
                   <span className="ml-1 text-sm hidden sm:inline">New Sheet</span>
                 </button>
+                
+                <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Import Sheets"
+                >
+                  <ImportIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Import</span>
+                </button>
+                
+                <button
+                  onClick={() => setExportModalOpen(true)}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Export Sheets"
+                >
+                  <UploadIcon className="w-5 h-5" />
+                  <span className="ml-1 text-sm hidden sm:inline">Export</span>
+                </button>
               </div>
             )}
             
@@ -191,6 +196,40 @@ const AppLayout = ({ children }) => {
                   <FolderPlusIcon className="w-5 h-5" />
                   <span className="ml-1 text-sm hidden sm:inline">New Setlist</span>
                 </button>
+                
+                {/* Create Setlist button is always visible */}
+                
+                {/* The following buttons are only shown when viewing a specific setlist */}
+                {location.pathname.match(/\/setlist\/[a-zA-Z0-9_-]+/) && (
+                  <>
+                    <button
+                      onClick={() => eventBus.emit('setlist:addSheet')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Add Sheet to Setlist"
+                    >
+                      <ListPlus className="w-5 h-5" />
+                      <span className="ml-1 text-sm hidden sm:inline">Add Sheet</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => eventBus.emit('setlist:toggleReorder')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Reorder Sheets"
+                    >
+                      <Edit className="w-5 h-5" />
+                      <span className="ml-1 text-sm hidden sm:inline">Reorder</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => eventBus.emit('setlist:openAll')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Open All Sheets"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                      <span className="ml-1 text-sm hidden sm:inline">Open All</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
             
@@ -369,6 +408,22 @@ const AppLayout = ({ children }) => {
                 >
                   <FilePlusIcon className="w-5 h-5" />
                 </button>
+                
+                <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Import Sheets"
+                >
+                  <ImportIcon className="w-5 h-5" />
+                </button>
+                
+                <button
+                  onClick={() => setExportModalOpen(true)}
+                  className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                  title="Export Sheets"
+                >
+                  <UploadIcon className="w-5 h-5" />
+                </button>
               </div>
             )}
             
@@ -389,6 +444,35 @@ const AppLayout = ({ children }) => {
                 >
                   <FolderPlusIcon className="w-5 h-5" />
                 </button>
+                
+                {/* Only show these buttons when viewing a specific setlist - mobile */}
+                {location.pathname.match(/\/setlist\/[a-zA-Z0-9_-]+/) && (
+                  <>
+                    <button
+                      onClick={() => eventBus.emit('setlist:addSheet')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Add Sheet to Setlist"
+                    >
+                      <ListPlus className="w-5 h-5" />
+                    </button>
+                    
+                    <button
+                      onClick={() => eventBus.emit('setlist:toggleReorder')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Reorder Sheets"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    
+                    <button
+                      onClick={() => eventBus.emit('setlist:openAll')}
+                      className="p-2 rounded-md flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition duration-150 ease-in-out"
+                      title="Open All Sheets"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -403,6 +487,23 @@ const AppLayout = ({ children }) => {
         
         {/* Auth Modal */}
         <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+        
+        {/* Import/Export Modals */}
+        <ImportModal 
+          isOpen={importModalOpen} 
+          onClose={() => setImportModalOpen(false)}
+          onSuccess={() => {
+            setImportModalOpen(false);
+            // Refresh sheet list after successful import
+            if (location.pathname === '/sheets') {
+              window.location.reload();
+            }
+          }}
+        />
+        <ExportModal 
+          isOpen={exportModalOpen} 
+          onClose={() => setExportModalOpen(false)} 
+        />
       </div>
     </div>
   );

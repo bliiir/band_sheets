@@ -162,6 +162,87 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
     }
   }, [isAuthenticated, setlist, setlistId]);
   
+  // Effect to check for pending favorite setlist ID after login
+  useEffect(() => {
+    // Check if we have a pending favorite setlist ID that we need to process
+    const checkPendingFavorite = async () => {
+      try {
+        const pendingId = await getPendingFavoriteSetlistId();
+        console.log('Checking for pending favorite setlist ID:', pendingId);
+        logger.debug('SharedSetlistView', 'Pending favorite setlist ID:', pendingId);
+        
+        if (pendingId && pendingId === setlistId && isAuthenticated) {
+          // User is now authenticated, try to favorite the pending setlist
+          console.log('Processing pending favorite for setlist:', pendingId);
+          logger.debug('SharedSetlistView', 'Processing pending favorite');
+          
+          // Clear the pending ID first to avoid loops
+          await clearPendingFavoriteSetlistId();
+          
+          // Now favorite the setlist
+          handleFavoriteSetlist();
+        }
+      } catch (error) {
+        logger.error('SharedSetlistView', 'Error checking pending favorite:', error);
+      }
+    };
+    
+    if (isAuthenticated && setlistId) {
+      checkPendingFavorite();
+    }
+  }, [isAuthenticated, setlistId]);
+  
+  // Effect to listen for events from the top menu buttons
+  useEffect(() => {
+    // Listen for events from the top menu buttons
+    const addSheetListener = eventBus.on('setlist:addSheet', () => {
+      if (setlist) {
+        console.log('Add sheet event received');
+        setShowAddSheetModal(true);
+        loadAvailableSheets();
+      }
+    });
+    
+    const toggleReorderListener = eventBus.on('setlist:toggleReorder', () => {
+      if (setlist) {
+        console.log('Toggle reorder event received');
+        setIsReordering(!isReordering);
+      }
+    });
+    
+    const openAllListener = eventBus.on('setlist:openAll', () => {
+      if (setlist && setlist.sheets && setlist.sheets.length > 0) {
+        console.log('Open all event received');
+        // Open all sheets in new tabs
+        setlist.sheets.forEach((sheet, index) => {
+          // Use setTimeout with increasing delay to avoid popup blockers
+          setTimeout(() => {
+            const sheetUrl = `${window.location.origin}/sheet/${sheet.id}?print=true`;
+            window.open(sheetUrl, `_sheet_${sheet.id}`);
+          }, 100 * index);
+        });
+        
+        // Show success notification
+        setNotification({
+          message: `Opening ${setlist.sheets.length} sheets in print preview`,
+          type: 'success'
+        });
+        
+        // Clear notification after 3 seconds
+        setTimeout(() => {
+          setNotification(null);
+        }, 3000);
+      }
+    });
+    
+    // Clean up the event listeners
+    return () => {
+      addSheetListener();
+      toggleReorderListener();
+      openAllListener();
+    };
+  }, [setlist, isReordering]); // Depend on setlist and isReordering to ensure we have the latest state
+  
   // Load available sheets for adding to setlist
   const loadAvailableSheets = async () => {
     try {
@@ -457,71 +538,7 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
             </div>
             
             <div className="flex space-x-2">
-              <button 
-                onClick={() => {
-                  setShowAddSheetModal(true);
-                  loadAvailableSheets();
-                }}
-                className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add Sheet
-              </button>
-              
-              <button 
-                onClick={() => setIsReordering(!isReordering)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out ${isReordering ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
-              >
-                {isReordering ? 'Done' : 'Reorder'}
-              </button>
-              
-              <button 
-                onClick={() => {
-                  // Open all sheets in new tabs
-                  if (setlist.sheets && setlist.sheets.length > 0) {
-                    setlist.sheets.forEach(sheet => {
-                      // Use setTimeout with increasing delay to avoid popup blockers
-                      setTimeout(() => {
-                        const sheetUrl = `${window.location.origin}/sheet/${sheet.id}?print=true`;
-                        window.open(sheetUrl, `_sheet_${sheet.id}`);
-                      }, 100);
-                    });
-                    
-                    // Show success notification
-                    setNotification({
-                      message: `Opening ${setlist.sheets.length} sheets in print preview`,
-                      type: 'success'
-                    });
-                    
-                    // Clear notification after 3 seconds
-                    setTimeout(() => {
-                      setNotification(null);
-                    }, 3000);
-                  } else {
-                    // Show notification if no sheets in setlist
-                    setNotification({
-                      message: 'No sheets in this setlist',
-                      type: 'warning'
-                    });
-                    
-                    // Clear notification after 3 seconds
-                    setTimeout(() => {
-                      setNotification(null);
-                    }, 3000);
-                  }
-                }}
-                className="px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out bg-gray-100 hover:bg-gray-200 text-gray-800 flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-                Open All
-              </button>
-
+              {/* Action buttons moved to top menu */}
               <button 
                 onClick={() => saveSetlistChanges(setlist)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out ${hasUnsavedChanges ? 'bg-black hover:bg-gray-800 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}

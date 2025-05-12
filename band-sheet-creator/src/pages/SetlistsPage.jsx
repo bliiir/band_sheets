@@ -161,35 +161,42 @@ const SetlistsPage = () => {
           const bandSetlistsArray = [];
           const otherSetlistsArray = [];
           
-          // Important: Always put setlists in at least one category while we debug
-          // Let's default to showing setlists in "My Setlists" for now
+          // Proper categorization logic for setlists based on ownership and authentication status
           setlists.forEach(setlist => {
             console.log('Processing setlist:', setlist.name);
             
-            // Force add all setlists to mySetlistsArray for now to ensure visibility
-            mySetlistsArray.push(setlist);
-            console.log(`Added "${setlist.name}" to MY setlists for visibility`);
+            // Get owner info from the setlist
+            const ownerObj = setlist.owner;
+            const ownerId = ownerObj?._id || (typeof ownerObj === 'string' ? ownerObj : null);
+            const ownerEmail = ownerObj?.email;
             
-            /* Original categorization logic preserved for reference
-            // Check if this setlist has an owner field with user ID or email
-            const ownerId = setlist.owner?._id || setlist.owner;
-            const ownerEmail = setlist.owner?.email;
-            console.log('Setlist owner details:', { ownerId, ownerEmail });
+            console.log(`Setlist owner details for "${setlist.name}":`, { 
+              ownerId, 
+              ownerEmail,
+              isAuthenticated
+            });
             
-            if (isAuthenticated && ownerId) { // Fixed: using isAuthenticated as property, not function
-              // This is my setlist if I'm the owner
+            // Categorize based on ownership and authentication
+            if (isAuthenticated && ownerObj) {
+              // This is my setlist
               mySetlistsArray.push(setlist);
-              console.log(`Categorized "${setlist.name}" as MY setlist`);
+              console.log(`Added "${setlist.name}" to MY setlists`);
+            } else if (isAuthenticated && setlist.sharedWith && 
+                      Array.isArray(setlist.sharedWith) && 
+                      setlist.sharedWith.length > 0) {
+              // This is a shared setlist - adding to band setlists if shared with me
+              bandSetlistsArray.push(setlist);
+              console.log(`Added "${setlist.name}" to BAND setlists (shared with me)`);
             } else if (setlist.isPublic) {
-              // This is an 'other' public setlist
+              // This is a public setlist - add to other setlists
               otherSetlistsArray.push(setlist);
-              console.log(`Categorized "${setlist.name}" as OTHER public setlist`);
+              console.log(`Added "${setlist.name}" to OTHER setlists (public)`);
             } else {
-              // For now, put any remaining setlists in 'other'
-              otherSetlistsArray.push(setlist);
-              console.log(`Categorized "${setlist.name}" as OTHER setlist (default)`);
+              // If we get here, we have an uncategorized setlist - add to my setlists for visibility
+              // This ensures all setlists are visible while we troubleshoot
+              mySetlistsArray.push(setlist);
+              console.log(`Added "${setlist.name}" to MY setlists (default fallback)`);
             }
-            */
           });
           
           console.log(`Categorized setlists: My(${mySetlistsArray.length}), Band(${bandSetlistsArray.length}), Other(${otherSetlistsArray.length})`);
