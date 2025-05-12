@@ -217,18 +217,34 @@ export const getAllSetlists = async (sortByNewest = true) => {
         }
       }
       
+      // Log the raw API response for debugging
+      console.log('RAW API RESPONSE:', JSON.stringify(data, null, 2));
+      
       // Handle different API response formats
       let setlistsArray = [];
       
-      if (data.setlists) {
+      if (data && data.setlists && Array.isArray(data.setlists)) {
         // Current API format
+        console.log('Using data.setlists format, count:', data.setlists.length);
         setlistsArray = data.setlists;
-      } else if (data.data) {
+      } else if (data && data.data && Array.isArray(data.data)) {
         // Legacy API format
+        console.log('Using data.data format, count:', data.data.length);
         setlistsArray = data.data;
       } else if (Array.isArray(data)) {
         // Direct array format
+        console.log('Using direct array format, count:', data.length);
         setlistsArray = data;
+      } else {
+        console.error('Unexpected API response format:', data);
+        // Try to extract any array we can find in the response
+        for (const key in data) {
+          if (Array.isArray(data[key]) && data[key].length > 0) {
+            console.log(`Found array in data.${key}, using that:`, data[key].length);
+            setlistsArray = data[key];
+            break;
+          }
+        }
       }
       
       logger.debug('SetlistStorageService', 'Extracted setlists array:', setlistsArray);

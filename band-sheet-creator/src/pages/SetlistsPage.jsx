@@ -111,10 +111,10 @@ const SetlistsPage = () => {
     const fetchSetlists = async () => {
       setIsLoading(true);
       try {
-        // Get current authentication status using centralized AuthUtils
+        // Get current authentication status - use the property from context, not the function
         const token = getAuthToken();
         logger.debug('SetlistsPage', 'Current auth state before fetching setlists:', {
-          isAuthenticated: isAuthenticated(),
+          isAuthenticatedProp: isAuthenticated, // Use the property from useAuth context
           tokenExists: !!token,
           tokenFirstChars: token ? token.substring(0, 10) + '...' : 'N/A'
         });
@@ -134,11 +134,76 @@ const SetlistsPage = () => {
           });
         }
         
-        // Now that we've fixed the API response format, we should get real setlists
+        // Now properly categorize the setlists based on ownership
         logger.debug('SetlistsPage', 'Using setlists from MongoDB');
-        setMySetlists(setlists || []);
-        setBandSetlists([]);
-        setOtherSetlists([]);
+        logger.debug('SetlistsPage', 'Current user details:', { 
+          isAuthenticated: isAuthenticated, // Using the context property
+          userId: isAuthenticated ? 'has-auth-token' : 'not-authenticated'
+        });
+        
+        if (setlists && setlists.length > 0) {
+          // Debug data structure of the first setlist if available
+          if (setlists.length > 0) {
+            console.log('DETAILED SETLIST INSPECTION:');
+            console.log('First setlist object:', JSON.stringify(setlists[0], null, 2));
+            
+            const firstSetlistOwner = setlists[0].owner;
+            console.log('Owner structure type:', typeof firstSetlistOwner);
+            if (firstSetlistOwner) {
+              console.log('Owner fields:', Object.keys(firstSetlistOwner));
+            }
+          }
+          
+          console.log('Current authenticated user status:', isAuthenticated); // Using the context property
+          
+          // Split setlists into categories
+          const mySetlistsArray = [];
+          const bandSetlistsArray = [];
+          const otherSetlistsArray = [];
+          
+          // Important: Always put setlists in at least one category while we debug
+          // Let's default to showing setlists in "My Setlists" for now
+          setlists.forEach(setlist => {
+            console.log('Processing setlist:', setlist.name);
+            
+            // Force add all setlists to mySetlistsArray for now to ensure visibility
+            mySetlistsArray.push(setlist);
+            console.log(`Added "${setlist.name}" to MY setlists for visibility`);
+            
+            /* Original categorization logic preserved for reference
+            // Check if this setlist has an owner field with user ID or email
+            const ownerId = setlist.owner?._id || setlist.owner;
+            const ownerEmail = setlist.owner?.email;
+            console.log('Setlist owner details:', { ownerId, ownerEmail });
+            
+            if (isAuthenticated && ownerId) { // Fixed: using isAuthenticated as property, not function
+              // This is my setlist if I'm the owner
+              mySetlistsArray.push(setlist);
+              console.log(`Categorized "${setlist.name}" as MY setlist`);
+            } else if (setlist.isPublic) {
+              // This is an 'other' public setlist
+              otherSetlistsArray.push(setlist);
+              console.log(`Categorized "${setlist.name}" as OTHER public setlist`);
+            } else {
+              // For now, put any remaining setlists in 'other'
+              otherSetlistsArray.push(setlist);
+              console.log(`Categorized "${setlist.name}" as OTHER setlist (default)`);
+            }
+            */
+          });
+          
+          console.log(`Categorized setlists: My(${mySetlistsArray.length}), Band(${bandSetlistsArray.length}), Other(${otherSetlistsArray.length})`);
+          
+          // Update state with categorized setlists
+          setMySetlists(mySetlistsArray);
+          setBandSetlists(bandSetlistsArray);
+          setOtherSetlists(otherSetlistsArray);
+        } else {
+          // No setlists found
+          setMySetlists([]);
+          setBandSetlists([]);
+          setOtherSetlists([]);
+        }
       } catch (error) {
         console.error('Error fetching setlists:', error);
         // Try to get more info about the error
