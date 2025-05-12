@@ -114,12 +114,12 @@ const HomePage = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row gap-8">
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="flex flex-col md:flex-row gap-10">
         {/* Left column */}
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Recent Sheets</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-semibold">Recent Sheets</h2>
             <Link to="/sheets">
               <Button variant="ghost" size="sm">
                 View all
@@ -149,7 +149,7 @@ const HomePage = () => {
                 <Link
                   key={sheet.id}
                   to={`/sheet/${sheet.id}`}
-                  className="flex items-center p-4 border border-border rounded-md hover:bg-muted/50"
+                  className="flex items-center p-5 border border-border rounded-md hover:bg-muted/50 transition-colors"
                 >
                   <div className="mr-4">
                     <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -167,38 +167,41 @@ const HomePage = () => {
               ))
             )}
 
-            <Link to="/sheet/new">
-              <Button className="w-full" onClick={handleCreateSheet}>
-                <PlusIcon className="h-4 w-4 mr-1" />
+            <Link to="/sheet/new" className="block mt-8">
+              <Button 
+                className="w-full py-6 h-auto text-base transition-colors" 
+                onClick={handleCreateSheet}
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
                 Create New Sheet
               </Button>
             </Link>
           </div>
 
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="mt-12">
+            <h2 className="text-2xl font-semibold mb-6">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <Button
                 variant="outline"
-                className="h-auto py-6 flex flex-col items-center justify-center"
+                className="h-auto py-8 flex flex-col items-center justify-center transition-colors hover:bg-muted/70"
                 onClick={() => {
                   console.log('HomePage: Import Sheet quick action clicked');
                   eventBus.emit('app:import');
                 }}
               >
-                <FileTextIcon className="h-6 w-6 mb-2" />
-                <span>Import Sheet</span>
+                <FileTextIcon className="h-7 w-7 mb-3" />
+                <span className="text-base">Import Sheet</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto py-6 flex flex-col items-center justify-center"
+                className="h-auto py-8 flex flex-col items-center justify-center transition-colors hover:bg-muted/70"
                 onClick={() => {
                   console.log('HomePage: Export All quick action clicked');
                   eventBus.emit('app:export');
                 }}
               >
-                <FolderIcon className="h-6 w-6 mb-2" />
-                <span>Export All</span>
+                <FolderIcon className="h-7 w-7 mb-3" />
+                <span className="text-base">Export All</span>
               </Button>
             </div>
           </div>
@@ -206,8 +209,8 @@ const HomePage = () => {
 
         {/* Right column */}
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Recent Setlists</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-semibold">Recent Setlists</h2>
             <Link to="/setlists">
               <Button variant="ghost" size="sm">
                 View all
