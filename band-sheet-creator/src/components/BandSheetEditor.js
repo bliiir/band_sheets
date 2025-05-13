@@ -901,6 +901,84 @@ export default function BandSheetEditor({
       <div className="print-view">
         <style>
           {`
+            /* Mobile styles for main sheet and chord progressions */
+            @media (max-width: 768px) {
+              /* Main sheet styles for mobile */
+              .print-view .part-row {
+                display: block !important;
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+              }
+              
+              /* Keep Part and Bars on the same row */
+              .print-view .part-row > div:nth-child(1),
+              .print-view .part-row > div:nth-child(2) {
+                display: inline-block !important;
+                width: 50%;
+                vertical-align: top;
+              }
+              
+              /* Other fields take full width */
+              .print-view .part-row > div:nth-child(3),
+              .print-view .part-row > div:nth-child(4),
+              .print-view .part-row > div:nth-child(5) {
+                display: block !important;
+                width: 100%;
+                padding-top: 5px;
+                clear: both;
+              }
+              
+              /* Show field labels except for lyrics */
+              .print-view .part-row > div:not([data-label="Lyrics:"]):before {
+                content: attr(data-label);
+                font-weight: bold;
+                display: inline-block;
+                width: 60px;
+                margin-right: 5px;
+              }
+              
+              /* Chord progressions table mobile styles */
+              .chord-progressions-table {
+                display: block !important;
+              }
+              
+              /* Hide header in mobile */
+              .chord-progressions-table .row.bg-gray-100 {
+                display: none !important;
+              }
+              
+              /* Make rows stack vertically */
+              .chord-progressions-table .row {
+                display: block !important;
+                border-bottom: 1px solid #ddd;
+                padding: 8px 0;
+              }
+              
+              /* Keep Part and Bars on same row */
+              .chord-progressions-table .row > div:nth-child(1),
+              .chord-progressions-table .row > div:nth-child(2) {
+                display: inline-block !important;
+                width: 50%;
+                border-right: none;
+              }
+              
+              /* Transposed chords take full width */
+              .chord-progressions-table .row > div:nth-child(3) {
+                display: block !important;
+                width: 100%;
+                border-right: none;
+                margin-top: 5px;
+              }
+              
+              /* Show field labels */
+              .chord-progressions-table .row > div:before {
+                content: attr(data-label);
+                font-weight: bold;
+                display: inline-block;
+                width: 60px;
+              }
+            }
+            
             @media print {
               .print-button {
                 display: none;
@@ -1095,26 +1173,22 @@ export default function BandSheetEditor({
         {includeChords && partsModule && partsModule.length > 0 && (
           <div className="page-break">
             <h2 className="text-xl font-bold mt-8 mb-4">Chord Progressions</h2>
-            <div className="border border-gray-300 rounded overflow-hidden chord-progressions-container" style={{ display: 'grid', gridTemplateColumns: 'min-content min-content 0fr 1fr' }}>
+            <div className="border border-gray-300 rounded overflow-hidden chord-progressions-table" style={{ display: 'grid', gridTemplateColumns: 'min-content min-content 1fr' }}>
               <div className="bg-gray-100 font-bold row" style={{ display: 'contents' }}>
                 <div className="p-2 border-r border-gray-300 whitespace-nowrap bg-gray-100">Part</div>
                 <div className="p-2 border-r border-gray-300 text-center whitespace-nowrap bg-gray-100">Bars</div>
-                <div className="p-0 w-0 overflow-hidden border-none bg-gray-100">Original Chords</div>
                 <div className="p-2 bg-gray-100">Transposed Chords</div>
               </div>
               
               {partsModule.map(part => (
                 <div key={part.id} className="row border-t border-gray-300" style={{ display: 'contents' }}>
-                  <div className="p-2 border-r border-gray-300 font-semibold whitespace-nowrap">
+                  <div className="p-2 border-r border-gray-300 font-semibold whitespace-nowrap" data-label="Part:">
                     {part.part}
                   </div>
-                  <div className="p-2 border-r border-gray-300 text-center whitespace-nowrap">
+                  <div className="p-2 border-r border-gray-300 text-center whitespace-nowrap" data-label="Bars:">
                     {part.bars || 4}
                   </div>
-                  <div className="p-0 w-0 overflow-hidden border-none">
-                    {part.chords || ''}
-                  </div>
-                  <div className="p-2 font-mono whitespace-pre-wrap">
+                  <div className="p-2 font-mono whitespace-pre-wrap" data-label="Chords:">
                     {transposeValue !== 0 && part.chords 
                       ? getTransposedChordsForPart(part.chords) 
                       : part.chords || ''}
