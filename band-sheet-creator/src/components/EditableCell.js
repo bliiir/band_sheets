@@ -112,7 +112,7 @@ const EditableCell = ({
   const renderDisplayMode = () => {
     if (type === 'textarea') {
       return (
-        <div className={`${contentType === 'lyrics' || contentType === 'chords' ? "whitespace-pre font-['Inconsolata']" : "whitespace-pre-line"}`}>
+        <div className={`${contentType === 'lyrics' || contentType === 'chords' ? "whitespace-pre-wrap font-['Inconsolata']" : "whitespace-pre-line"}`}>
           {value || (placeholder && <span className="text-muted-foreground italic">{placeholder}</span>)}
         </div>
       );
