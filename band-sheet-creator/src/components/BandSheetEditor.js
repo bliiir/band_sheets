@@ -1095,26 +1095,26 @@ export default function BandSheetEditor({
         {includeChords && partsModule && partsModule.length > 0 && (
           <div className="page-break">
             <h2 className="text-xl font-bold mt-8 mb-4">Chord Progressions</h2>
-            <div className="border border-gray-300 rounded overflow-hidden">
-              <div className="grid grid-cols-4 bg-gray-100 font-bold">
-                <div className="p-2 border-r border-gray-300">Part</div>
-                <div className="p-2 border-r border-gray-300">Bars</div>
-                <div className="p-2 border-r border-gray-300">Original Chords</div>
-                <div className="p-2">Transposed Chords</div>
+            <div className="border border-gray-300 rounded overflow-hidden chord-progressions-container" style={{ display: 'grid', gridTemplateColumns: 'min-content min-content 0fr 1fr' }}>
+              <div className="bg-gray-100 font-bold row" style={{ display: 'contents' }}>
+                <div className="p-2 border-r border-gray-300 whitespace-nowrap bg-gray-100">Part</div>
+                <div className="p-2 border-r border-gray-300 text-center whitespace-nowrap bg-gray-100">Bars</div>
+                <div className="p-0 w-0 overflow-hidden border-none bg-gray-100">Original Chords</div>
+                <div className="p-2 bg-gray-100">Transposed Chords</div>
               </div>
               
               {partsModule.map(part => (
-                <div key={part.id} className="grid grid-cols-4 border-t border-gray-300">
-                  <div className="p-2 border-r border-gray-300">
+                <div key={part.id} className="row border-t border-gray-300" style={{ display: 'contents' }}>
+                  <div className="p-2 border-r border-gray-300 font-semibold whitespace-nowrap">
                     {part.part}
                   </div>
-                  <div className="p-2 border-r border-gray-300">
-                    {part.bars}
+                  <div className="p-2 border-r border-gray-300 text-center whitespace-nowrap">
+                    {part.bars || 4}
                   </div>
-                  <div className="p-2 border-r border-gray-300 font-mono">
+                  <div className="p-0 w-0 overflow-hidden border-none">
                     {part.chords || ''}
                   </div>
-                  <div className="p-2 font-mono">
+                  <div className="p-2 font-mono whitespace-pre-wrap">
                     {transposeValue !== 0 && part.chords 
                       ? getTransposedChordsForPart(part.chords) 
                       : part.chords || ''}
