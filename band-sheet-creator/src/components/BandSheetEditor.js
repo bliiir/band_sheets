@@ -16,6 +16,7 @@ import ConfirmModal from './ConfirmModal';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { getTransposedChords } from '../services/ChordService';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllSheets, saveTemporaryDraft, loadTemporaryDraft, clearTemporaryDraft, hasTemporaryDraft } from '../services/SheetStorageService';
 import { generatePrintContent } from '../services/ExportService';
@@ -968,10 +969,12 @@ export default function BandSheetEditor({
                 width: 100%;
                 border-right: none;
                 margin-top: 5px;
+                font-size: 0.85em;
+                line-height: 1.3;
               }
               
-              /* Show field labels */
-              .chord-progressions-table .row > div:before {
+              /* Show field labels except for chords */
+              .chord-progressions-table .row > div:not([data-label="Chords:"]):before {
                 content: attr(data-label);
                 font-weight: bold;
                 display: inline-block;
@@ -1189,9 +1192,11 @@ export default function BandSheetEditor({
                     {part.bars || 4}
                   </div>
                   <div className="p-2 font-mono whitespace-pre-wrap" data-label="Chords:">
-                    {transposeValue !== 0 && part.chords 
-                      ? getTransposedChordsForPart(part.chords) 
-                      : part.chords || ''}
+                    {part.chords 
+                      ? (transposeValue === 0 ? part.chords : getTransposedChordsForPart(part.chords))
+                      : ''}
+                    {/* Add a debug comment of the current transpose value to help troubleshoot */}
+                    {/* Transpose value: {transposeValue} */}
                   </div>
                 </div>
               ))}
