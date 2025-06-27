@@ -27,7 +27,7 @@ exports.getSheets = async (req, res) => {
     }
     
     // Execute the query
-    const sheets = await Sheet.find(query).select('id title artist dateModified');
+    const sheets = await Sheet.find(query).select('id title artist dateModified status');
     
     console.log(`Found ${sheets.length} sheets matching query`);
     

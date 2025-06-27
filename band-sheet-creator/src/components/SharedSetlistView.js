@@ -619,9 +619,18 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
                         disabled={isReordering}
                       >
                         <div className="flex justify-between items-center">
-                          <div>
+                          <div className="flex-1">
                             <h3 className="text-lg font-medium text-gray-900">{sheet.title || 'Untitled Sheet'}</h3>
-                            <p className="text-sm text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-sm text-gray-600">{sheet.artist || 'Unknown Artist'}</p>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                sheet.status === 'Ready' 
+                                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                                  : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                              }`}>
+                                {sheet.status === 'Ready' ? '✓ Ready' : '⚠ WIP'}
+                              </span>
+                            </div>
                           </div>
                           <div className="text-sm font-medium text-gray-900">
                             {sheet.bpm && `${sheet.bpm} BPM`}

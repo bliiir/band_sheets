@@ -45,6 +45,8 @@ export const getSheetById = async (id) => {
       // Log key fields for debugging
       logger.debug('SheetStorageService', 'Loaded sheet ID:', loadedData.id);
       logger.debug('SheetStorageService', 'Loaded sheet title:', loadedData.title);
+      logger.debug('SheetStorageService', 'Loaded sheet status:', loadedData.status);
+      console.log('%c[LOADED SHEET STATUS]', 'color: orange; font-weight: bold', loadedData.status);
       if (loadedData.sections) {
         logger.debug('SheetStorageService', 'Loaded sheet has sections:', loadedData.sections.length);
       } else {
@@ -187,9 +189,14 @@ export const saveSheet = async (sheetData, isNewSave = false, explicitSource = n
         ...section,
         backgroundColor: section.backgroundColor || null
       })),
-      // Ensure title is explicitly set
-      title: updatedSheet.title || ''
+      // Ensure title and status are explicitly set
+      title: updatedSheet.title || '',
+      status: updatedSheet.status || 'WIP'
     }));
+    
+    // Debug log to confirm status is being sent
+    console.log('%c[SAVING SHEET STATUS]', 'color: green; font-weight: bold', sheetWithColors.status);
+    logger.debug('SheetStorageService', 'Saving sheet with status:', sheetWithColors.status);
     
     // Token has already been validated at the beginning of this function
     // No need to check again
@@ -297,6 +304,18 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
     
     const sheets = data.data || [];
     logger.info('SheetStorageService', `Loaded ${sheets.length} sheets from the API`);
+    
+    // Debug: Check status fields in loaded sheets
+    console.log('%c[LOADED SHEETS STATUS DEBUG]', 'color: purple; font-weight: bold');
+    sheets.slice(0, 3).forEach((sheet, i) => {
+      console.log(`Backend Sheet ${i + 1}:`, {
+        id: sheet.id,
+        title: sheet.title,
+        status: sheet.status,
+        hasStatus: 'status' in sheet,
+        allKeys: Object.keys(sheet)
+      });
+    });
     
     // Sort if needed
     if (sortByNewest && sheets.length > 0) {
@@ -414,6 +433,7 @@ export const createNewSheet = () => {
     title: '',
     artist: '',
     bpm: 120,
+    status: 'WIP',
     dateCreated: new Date(),
     dateModified: new Date(),
     transposeValue: 0,

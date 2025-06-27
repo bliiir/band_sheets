@@ -27,7 +27,7 @@ export function SheetDataProvider({ children }) {
 
   // Sheet data state
   const [sections, setSections] = useState([]);
-  const [songData, setSongData] = useState({ title: '', artist: '', bpm: 120 });
+  const [songData, setSongData] = useState({ title: '', artist: '', bpm: 120, status: 'WIP' });
   const [partsModule, setPartsModule] = useState([]);
   const [transposeValue, setTransposeValue] = useState(0);
   const [currentSheetId, setCurrentSheetId] = useState(null);
@@ -187,7 +187,7 @@ export function SheetDataProvider({ children }) {
     const newSheet = createNewSheet();
     
     // Update component state with the new sheet data
-    setSongData({ title: newSheet.title, artist: newSheet.artist, bpm: newSheet.bpm });
+    setSongData({ title: newSheet.title, artist: newSheet.artist, bpm: newSheet.bpm, status: newSheet.status || 'WIP' });
     setSections(newSheet.sections);
     setPartsModule(newSheet.partsModule);
     setTransposeValue(newSheet.transposeValue);
@@ -222,7 +222,8 @@ export function SheetDataProvider({ children }) {
     setSongData({ 
       title: sheet.title || '', 
       artist: sheet.artist || '', 
-      bpm: sheet.bpm || '' 
+      bpm: sheet.bpm || '',
+      status: sheet.status || 'WIP'
     });
     
     // Set sections or create default if none exist
@@ -347,6 +348,7 @@ export function SheetDataProvider({ children }) {
       console.log('%c[SHEET DATA FOR SAVE]', 'color: blue; font-weight: bold', {
         id: sheetData.id,
         title: sheetData.title,
+        status: sheetData.status,
         'sections count': sheetData.sections.length,
         'first section': sheetData.sections[0] || 'NO SECTIONS',
       });

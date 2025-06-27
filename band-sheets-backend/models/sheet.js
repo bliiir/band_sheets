@@ -39,6 +39,11 @@ const sheetSchema = new mongoose.Schema({
   },
   artist: String,
   bpm: Number,
+  status: {
+    type: String,
+    enum: ['WIP', 'Ready'],
+    default: 'WIP'
+  },
   dateCreated: Date,
   dateModified: Date,
   sections: [sectionSchema],

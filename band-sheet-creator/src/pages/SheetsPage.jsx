@@ -111,13 +111,28 @@ const SheetsPage = () => {
               // Ensure these properties are accessible for display
               bpm: songBpm,
               title: sheet.title || (sheet.song?.title) || 'Untitled',
-              artist: sheet.artist || (sheet.song?.artist) || 'Unknown Artist'
+              artist: sheet.artist || (sheet.song?.artist) || 'Unknown Artist',
+              status: sheet.status || 'WIP'
             };
           }
-          return sheet;
+          return {
+            ...sheet,
+            status: sheet.status || 'WIP'
+          };
         });
         
         logger.debug('SheetsPage', 'Processed sheets:', processedSheets.slice(0, 2)); // Log first 2 sheets
+        
+        // Debug: Check if status fields are present
+        console.log('%c[SHEETS PAGE DEBUG]', 'color: blue; font-weight: bold', 'Status fields in sheets:');
+        processedSheets.slice(0, 3).forEach((sheet, i) => {
+          console.log(`Sheet ${i + 1}:`, {
+            id: sheet.id,
+            title: sheet.title,
+            status: sheet.status,
+            hasStatus: 'status' in sheet
+          });
+        });
         
         // All sheets are now owned by the user, so put them all in mySheets
         setMySheets(processedSheets);
@@ -608,6 +623,17 @@ const SheetsPage = () => {
           </div>
         </div>
         <div className="text-sm text-muted-foreground truncate">{sheet.artist || 'Unknown Artist'}</div>
+        
+        {/* Status indicator */}
+        <div className="mt-2 flex items-center gap-2">
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            sheet.status === 'Ready' 
+              ? 'bg-green-100 text-green-800 border border-green-300' 
+              : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+          }`}>
+            {sheet.status === 'Ready' ? '✓ Ready' : '⚠ WIP'}
+          </span>
+        </div>
         
         {sheet.owner && <div className="mt-1 text-xs text-muted-foreground">Owner: {sheet.owner}</div>}
       </div>

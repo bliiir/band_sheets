@@ -1,14 +1,11 @@
 const mongoose = require('mongoose');
 
-// Sheet Reference Schema (for setlists)
+// Sheet Reference Schema (for setlists) - simplified to just store IDs
 const sheetReferenceSchema = new mongoose.Schema({
   id: { 
     type: String, 
     required: true 
-  },
-  title: String,
-  artist: String,
-  bpm: Number
+  }
 }, { _id: false });
 
 // Setlist Schema

@@ -88,9 +88,47 @@ exports.getSetlist = async (req, res) => {
       });
     }
     
+    // Populate sheet data by fetching each sheet from the database
+    const Sheet = require('../models/sheet');
+    const populatedSheets = [];
+    
+    for (const sheetRef of setlist.sheets) {
+      try {
+        const sheet = await Sheet.findOne({ id: sheetRef.id }).select('id title artist bpm status');
+        if (sheet) {
+          populatedSheets.push(sheet);
+        } else {
+          console.warn(`Sheet ${sheetRef.id} not found in database`);
+          // Keep the reference but mark as missing
+          populatedSheets.push({
+            id: sheetRef.id,
+            title: 'Sheet not found',
+            artist: 'Unknown',
+            bpm: null,
+            status: 'WIP'
+          });
+        }
+      } catch (sheetError) {
+        console.error(`Error fetching sheet ${sheetRef.id}:`, sheetError);
+        populatedSheets.push({
+          id: sheetRef.id,
+          title: 'Error loading sheet',
+          artist: 'Unknown',
+          bpm: null,
+          status: 'WIP'
+        });
+      }
+    }
+    
+    // Return setlist with populated sheet data
+    const setlistWithSheets = {
+      ...setlist.toObject(),
+      sheets: populatedSheets
+    };
+    
     res.status(200).json({
       success: true,
-      setlist
+      setlist: setlistWithSheets
     });
   } catch (error) {
     console.error('Error fetching setlist:', error);
@@ -304,16 +342,13 @@ exports.addSheetToSetlist = async (req, res) => {
       });
     }
     
-    // Add sheet to setlist
+    // Add sheet to setlist (only store the ID)
     setlist = await Setlist.findOneAndUpdate(
       { id: req.params.id },
       { 
         $push: { 
           sheets: {
-            id: sheet.id,
-            title: sheet.title,
-            artist: sheet.artist,
-            bpm: sheet.bpm
+            id: sheet.id
           } 
         } 
       },

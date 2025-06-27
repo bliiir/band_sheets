@@ -46,6 +46,24 @@ const SongInfoBar = ({ songData, setSongData }) => {
           </div>
           <span className="text-xs text-gray-500">bpm</span>
         </div>
+        
+        {/* Status toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+              songData.status === 'Ready' 
+                ? 'bg-green-100 text-green-800 border border-green-300' 
+                : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+            }`}
+            onClick={() => setSongData((prev) => ({ 
+              ...prev, 
+              status: prev.status === 'Ready' ? 'WIP' : 'Ready' 
+            }))}
+            aria-label={`Status: ${songData.status}. Click to toggle.`}
+          >
+            {songData.status === 'Ready' ? '✓ Ready' : '⚠ WIP'}
+          </button>
+        </div>
       </div>
     </div>
   );
