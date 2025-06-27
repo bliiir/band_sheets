@@ -716,6 +716,36 @@ export default function BandSheetEditor({
 
   // If we're in print mode, render the print-friendly version
   if (isPrintMode) {
+    // Set proper viewport for print mode
+    useEffect(() => {
+      const originalViewport = document.querySelector('meta[name="viewport"]');
+      const printViewport = document.createElement('meta');
+      printViewport.name = 'viewport';
+      printViewport.content = 'width=device-width, initial-scale=1.0, user-scalable=yes';
+      
+      if (originalViewport) {
+        originalViewport.replaceWith(printViewport);
+      } else {
+        document.head.appendChild(printViewport);
+      }
+      
+      // Add print-specific styles to body
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.fontFamily = 'Arial, sans-serif';
+      
+      return () => {
+        // Restore original viewport on cleanup
+        if (originalViewport) {
+          printViewport.replaceWith(originalViewport);
+        }
+        // Reset body styles
+        document.body.style.margin = '';
+        document.body.style.padding = '';
+        document.body.style.fontFamily = '';
+      };
+    }, []);
+    
     // Print view options
     const options = {
       includeChordProgressions: includeChords,
@@ -727,13 +757,30 @@ export default function BandSheetEditor({
       <div className="print-view">
         <style>
           {`
-            /* Mobile styles for main sheet and chord progressions */
-            @media (max-width: 768px) {
-              /* Main sheet styles for mobile */
+            /* Print and mobile styles for main sheet and chord progressions */
+            .print-view {
+              /* Force full width layout for print */
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 20px !important;
+            }
+            
+            /* Apply mobile-friendly styles both on mobile screens AND when printing */
+            @media (max-width: 768px), print {
+              .print-view {
+                /* Set a fixed width for print to ensure consistent scaling */
+                width: 210mm !important; /* A4 width minus margins */
+                max-width: none !important;
+                font-size: 12pt !important;
+              }
+              
+              /* Main sheet styles for mobile and print */
               .print-view .part-row {
                 display: block !important;
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
+                page-break-inside: avoid;
               }
               
               /* Keep Part and Bars on the same row */
@@ -807,12 +854,46 @@ export default function BandSheetEditor({
               }
             }
             
+            /* Dedicated print styles for proper paper scaling */
             @media print {
-              .print-button {
-                display: none;
+              /* Set page size and margins */
+              @page {
+                size: A4;
+                margin: 15mm;
               }
+              
+              /* Reset all viewport-dependent sizing for print */
+              * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              
+              .print-view {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-size: 11pt !important;
+                line-height: 1.2 !important;
+              }
+              
+              .print-button {
+                display: none !important;
+              }
+              
               .page-break {
                 page-break-before: always;
+              }
+              
+              /* Ensure text and elements scale properly */
+              h1, h2, h3, h4, h5, h6 {
+                font-size: 14pt !important;
+                page-break-after: avoid;
+              }
+              
+              /* Prevent content from being cut off */
+              .section-container, .chord-progressions-table {
+                page-break-inside: avoid;
               }
             }
             body {
