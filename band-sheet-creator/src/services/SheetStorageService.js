@@ -8,7 +8,7 @@
 import { fetchWithAuth, API_URL } from './ApiService';
 import eventBus from '../utils/EventBus';
 import logger from './LoggingService';
-import { isAuthenticated, getAuthToken, handleUnauthenticated } from '../utils/AuthUtils';
+import { isAuthenticated, handleUnauthenticated } from '../utils/AuthUtils';
 
 // Using the API_URL imported from ApiService.js for consistency
 
@@ -29,25 +29,9 @@ export const getSheetById = async (id) => {
   if (isAuthenticated()) {
     try {
       logger.debug('SheetStorageService', `Getting sheet ${formattedId} from MongoDB with authentication`);
-      const token = getAuthToken();
       
-      // Make the API request with full URL
-      const response = await fetch(`${API_URL}/sheets/${formattedId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      // Log the response status
-      logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      // Use fetchWithAuth for consistent API handling
+      const data = await fetchWithAuth(`${API_URL}/sheets/${formattedId}`);
       console.log('%c[LOAD RESPONSE]', 'color: purple; font-weight: bold', data);
       logger.info('SheetStorageService', `Successfully loaded sheet ${formattedId} from MongoDB`);
       
@@ -89,28 +73,8 @@ export const getSheetById = async (id) => {
       const apiUrl = `${API_URL}/sheets/${formattedId}`;
       logger.debug('SheetStorageService', 'API URL:', apiUrl);
       
-      // Make the API request with full URL but without token
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      // Log the response status and details
-      logger.debug('SheetStorageService', 'API response status for public access:', response.status, response.statusText);
-      logger.debug('SheetStorageService', 'API response headers count:', response.headers.size);
-      
-      // Don't clone the response or log its full content to reduce overhead
-      if (!response.ok) {
-        logger.warn('SheetStorageService', `API response not OK: ${response.status} ${response.statusText}`);
-      }
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      // Use fetchWithAuth for consistent API handling (works for public access too)
+      const data = await fetchWithAuth(apiUrl);
       logger.info('SheetStorageService', `Successfully loaded public sheet ${formattedId} from MongoDB`);
       return data.data;
     } catch (error) {
@@ -184,25 +148,8 @@ export const saveSheet = async (sheetData, isNewSave = false, explicitSource = n
   console.log(`%c[SAVE SOURCE: ${source}]`, 'color: red; font-weight: bold');
   console.log('[SAVE STACK]', new Error().stack);
   
-  // Get authentication token once at the start
-  const token = getAuthToken();
-  
-  // Enhanced authentication check with detailed logging
-  logger.debug('SheetStorageService', `[${source}] Checking authentication for save operation`);
-  logger.debug('SheetStorageService', `[${source}] Token exists: ${!!token}`);
-  
-  // Check if token is valid
-  if (!token) {
-    logger.debug('SheetStorageService', '[${source}] No authentication token found');
-    // This will throw an error and show the auth modal
-    handleUnauthenticated('Authentication required to save sheets');
-  }
-  
-  // Log token for debugging (safely)
-  if (token) {
-    logger.debug('SheetStorageService', `[${source}] Token length: ${token.length}`);
-    logger.debug('SheetStorageService', `[${source}] Using token for save operation (first 10 chars): ${token.substring(0, 10)}...`);
-  }
+  // Authentication will be handled automatically by fetchWithAuth
+  logger.debug('SheetStorageService', `[${source}] Starting save operation`);
 
   // Update modification date
   const updatedSheet = {
@@ -251,92 +198,49 @@ export const saveSheet = async (sheetData, isNewSave = false, explicitSource = n
     const shouldCreateNew = isNewSave === true || !sheetWithColors.id;
     
     if (shouldCreateNew) {
-      // Create new sheet with explicit token in header
-      const fullUrl = `${API_URL}/sheets`;
-      
-      const response = await fetch(fullUrl, {
+      // Create new sheet using fetchWithAuth
+      const data = await fetchWithAuth(`${API_URL}/sheets`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          // Add explicit CORS headers
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify(sheetWithColors)
       });
-      
-      // Check response status
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('SheetStorageService', `API error (${response.status}):`, errorText);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
       
       // Verify data structure
       if (!data || !data.data) {
         throw new Error('Invalid server response format - missing data field');
       }
       
-      const responseData = data.data;
-      
-      return responseData;
+      return data.data;
     } else {
-      // Update existing sheet with explicit token in header
-      const fullUrl = `${API_URL}/sheets/${sheetWithColors.id}`;
-      
-      const response = await fetch(fullUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          // Add explicit CORS headers
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(sheetWithColors)
-      });
-      
-      // Check response status
-      if (!response.ok) {
-        // If we get a 404 when trying to update, the sheet might not exist on the server
-        // Fall back to creating a new sheet instead of failing
-        if (response.status === 404) {
-          // Create new sheet instead
-          const createUrl = `${API_URL}/sheets`;
-          const createResponse = await fetch(createUrl, {
+      // Update existing sheet using fetchWithAuth
+      try {
+        const data = await fetchWithAuth(`${API_URL}/sheets/${sheetWithColors.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(sheetWithColors)
+        });
+        
+        if (!data || !data.data) {
+          throw new Error('Invalid server response format - missing data field');
+        }
+        
+        return data.data;
+      } catch (error) {
+        // If we get a 404 when trying to update, fall back to creating a new sheet
+        if (error.message && error.message.includes('404')) {
+          const createData = await fetchWithAuth(`${API_URL}/sheets`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json'
-            },
-            credentials: 'include',
             body: JSON.stringify(sheetWithColors)
           });
           
-          if (!createResponse.ok) {
-            throw new Error(`Failed to create sheet after 404: ${createResponse.status}`);
+          if (!createData || !createData.data) {
+            throw new Error('Invalid server response format - missing data field');
           }
           
-          return (await createResponse.json()).data;
+          return createData.data;
         } else {
-          // For other errors, throw normally
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
+          // For other errors, re-throw
+          throw error;
         }
       }
-      
-      const data = await response.json();
-      
-      if (!data || !data.data) {
-        throw new Error('Invalid server response format - missing data field');
-      }
-      
-      const savedData = data.data;
-      
-      return savedData;
     }
   } catch (error) {
     logger.error('SheetStorageService', 'Error saving sheet to API:', error);
@@ -358,45 +262,17 @@ export const deleteSheet = async (id) => {
     return false;
   }
   
-  // Get token for direct use
-  const token = getAuthToken();
-  logger.debug('SheetStorageService', 'Auth token exists:', !!token);
-  if (token) {
-    logger.debug('SheetStorageService', 'Auth token exists');
-  } else {
-    logger.error('SheetStorageService', 'No auth token found when trying to delete sheet');
-    return false;
-  }
+  // Authentication will be handled by fetchWithAuth
+  logger.debug('SheetStorageService', 'Attempting to delete sheet with authentication');
   
   try {
-    // Make a direct fetch call instead of using fetchWithAuth wrapper
-    const deleteUrl = `${API_URL}/sheets/${id}`;
-    logger.debug('SheetStorageService', `Making direct DELETE request to: ${deleteUrl}`);
-    
-    const response = await fetch(deleteUrl, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      mode: 'cors',
-      credentials: 'include'
+    // Use fetchWithAuth for consistent authentication handling
+    await fetchWithAuth(`${API_URL}/sheets/${id}`, {
+      method: 'DELETE'
     });
     
-    logger.debug('SheetStorageService', 'Delete response status:', response.status);
-    
-    // Log response details
-    const responseText = await response.text();
-    logger.debug('SheetStorageService', 'Response body:', responseText || '(empty response)');
-    
-    // Success is based on status code
-    if (response.status >= 200 && response.status < 300) {
-      logger.info('SheetStorageService', `Successfully deleted sheet ${id}`);
-      return true;
-    } else {
-      logger.error('SheetStorageService', `Server returned error status ${response.status} when deleting sheet ${id}`);
-      return false;
-    }
+    logger.info('SheetStorageService', `Successfully deleted sheet ${id}`);
+    return true;
   } catch (error) {
     logger.error('SheetStorageService', `Error deleting sheet ${id} from API:`, error);
     logger.error('SheetStorageService', 'Error details:', error.message);
@@ -415,34 +291,8 @@ export const getAllSheets = async (sortByNewest = true, skipUIRefresh = false) =
   try {
     logger.debug('SheetStorageService', 'Getting sheets from MongoDB using URL:', `${API_URL}/sheets`);
     
-    // Get the token if available (will be null for unauthenticated users)
-    const token = getAuthToken();
-    logger.debug('SheetStorageService', 'Using authentication token:', token ? 'Token exists' : 'No token found');
-    
-    // Prepare headers - include auth token only if it exists
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    
-    // Make the API request with full URL
-    const response = await fetch(`${API_URL}/sheets`, {
-      method: 'GET',
-      headers,
-      credentials: 'include' // Include cookies for alternative authentication
-    });
-    
-    // Log the response status
-    logger.debug('SheetStorageService', 'API response status:', response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
+    // Use fetchWithAuth for consistent authentication handling
+    const data = await fetchWithAuth(`${API_URL}/sheets`);
     logger.debug('SheetStorageService', 'API response data:', data);
     
     const sheets = data.data || [];

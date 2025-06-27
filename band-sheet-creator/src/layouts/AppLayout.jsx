@@ -22,8 +22,7 @@ import AuthModal from "../components/Auth/AuthModal";
 import ImportModal from "../components/ImportModal";
 import ExportModal from "../components/ExportModal";
 import { useAuth } from "../contexts/AuthContext";
-import { useSetlistActions } from "../contexts/SetlistActionsContext";
-import { useSheetActions } from "../contexts/SheetActionsContext";
+import { useSetlistActions, useSheetActions } from "../contexts/ActionsContext";
 
 /**
  * Main application layout with header and sidebar

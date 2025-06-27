@@ -5,9 +5,7 @@ import { SheetDataProvider } from './SheetDataContext';
 import { UIStateProvider } from './UIStateContext';
 import { SetlistProvider } from './SetlistContext';
 import { NavigationProvider } from './NavigationContext';
-import { EditorActionsProvider } from './EditorActionsContext';
-import { SetlistActionsProvider } from './SetlistActionsContext';
-import { SheetActionsProvider } from './SheetActionsContext';
+import { ActionsProvider } from './ActionsContext';
 import { NotificationProvider } from './NotificationContext';
 
 /**
@@ -26,19 +24,15 @@ const AppProviders = ({ children }) => {
             <SheetDataProvider>
               <SetlistProvider>
                 <EditingProvider>
-                  <EditorActionsProvider>
-                    <SetlistActionsProvider>
-                      <SheetActionsProvider>
-                        {children}
-                      </SheetActionsProvider>
-                  </SetlistActionsProvider>
-                </EditorActionsProvider>
-              </EditingProvider>
-            </SetlistProvider>
-          </SheetDataProvider>
-        </NavigationProvider>
-      </UIStateProvider>
-    </AuthProvider>
+                  <ActionsProvider>
+                    {children}
+                  </ActionsProvider>
+                </EditingProvider>
+              </SetlistProvider>
+            </SheetDataProvider>
+          </NavigationProvider>
+        </UIStateProvider>
+      </AuthProvider>
     </NotificationProvider>
   );
 };

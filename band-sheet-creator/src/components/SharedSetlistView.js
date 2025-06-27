@@ -7,16 +7,10 @@ import { getSheetById } from '../services/SheetStorageService';
 import logger from '../services/LoggingService';
 import { getAuthToken } from '../utils/AuthUtils';
 import { exportSetlistToPDF, exportSheetToPDF } from '../services/ExportService';
-import { 
-  setCurrentSheetId, 
-  setNavigationSource, 
-  setLoadedSheetId, 
-  setPreviousLocation,
-  setNavigationInProgress,
-  resetNavigation
-} from '../redux/slices/navigationSlice';
+// Navigation actions now handled by NavigationContext
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { useNavigation, NAV_SOURCE } from '../contexts/NavigationContext';
 import { ReactComponent as StarIcon } from '../assets/list_plus.svg';
 import { ReactComponent as BackIcon } from '../assets/arrow_left_from_line.svg';
 import { ReactComponent as PrintIcon } from '../assets/print.svg';
@@ -41,8 +35,10 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
   // Check what's actually in the URL to help with debugging
   console.log('Current path:', window.location.pathname);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  // TODO: Remove Redux dependency - navigation handled by NavigationContext
+  const dispatch = () => {}; // Stubbed
   const { isAuthenticated, loginSuccess } = useAuth();
+  const { navigateToSheet } = useNavigation();
   
   const [setlist, setSetlist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -300,16 +296,16 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
   };
   
   // Navigate to a sheet with simplified approach
-  const navigateToSheet = (sheetId) => {
+  const handleSheetClick = (sheetId) => {
     // Skip if reordering mode is active
     if (isReordering) return;
     
-    // Use direct navigation without complex state management
-    // This avoids potential issues with the routing system
-    window.location.href = `/sheet/${sheetId}`;
-    
-    // Note: This approach loses the back navigation state
-    // but provides more reliable sheet opening
+    // Use NavigationContext for proper sheet navigation
+    // This ensures consistent navigation state management
+    navigateToSheet(sheetId, { 
+      source: NAV_SOURCE.INTERNAL,
+      replace: false // Allow back navigation
+    });
   };
   
   // Move a sheet up or down in the setlist
@@ -618,7 +614,7 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
                       )}
                       
                       <button 
-                        onClick={() => navigateToSheet(sheet.id)}
+                        onClick={() => handleSheetClick(sheet.id)}
                         className="flex-grow text-left hover:bg-gray-50 p-2 rounded transition duration-150 ease-in-out"
                         disabled={isReordering}
                       >

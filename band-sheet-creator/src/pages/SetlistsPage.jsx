@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../contexts/AuthContext";
 import { useUIState } from "../contexts/UIStateContext";
-import { useSetlistActions } from "../contexts/SetlistActionsContext";
+import { useSetlistActions } from "../contexts/ActionsContext";
 import { useNotifications } from "../contexts/NotificationContext";
 import { getAllSetlists, deleteSetlist, updateSetlist } from "../services/SetlistStorageService";
 import ConfirmModal from "../components/ConfirmModal";

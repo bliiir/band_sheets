@@ -316,14 +316,20 @@ export function SheetDataProvider({ children }) {
         'From component stack': saveAsNew ? 'Creating NEW sheet' : 'Updating EXISTING sheet'
       });
       
+      // CRITICAL FIX: Auto-detect if this should be a new save
+      // If we don't have a valid currentSheetId, this must be a new sheet
+      const shouldSaveAsNew = saveAsNew || !currentSheetId || currentSheetId === 'new';
+      
       // COMPREHENSIVE FIX: Ensure we have a valid sheet ID if we're updating
       // This ensures proper ID propagation through the entire save flow
-      const effectiveId = saveAsNew ? null : (currentSheetId || songData.id);
+      const effectiveId = shouldSaveAsNew ? null : currentSheetId;
       console.log('%c[SHEET ID RESOLUTION]', 'color: purple; font-weight: bold', {
-        operation: saveAsNew ? 'Creating NEW sheet' : 'Updating EXISTING sheet',
+        operation: shouldSaveAsNew ? 'Creating NEW sheet' : 'Updating EXISTING sheet',
         currentSheetId,
         'songData.id': songData.id,
         effectiveId: effectiveId || 'NULL (will create new)',
+        shouldSaveAsNew,
+        'original saveAsNew': saveAsNew
       });
 
       // Prepare sheet data with explicitly set title and properly tracked ID
@@ -347,7 +353,7 @@ export function SheetDataProvider({ children }) {
       logger.debug('SheetDataContext', 'Final title value being sent to API:', sheetData.title);
       
       // Use service to save with source information
-      const savedSheet = await saveSheet(sheetData, saveAsNew, source);
+      const savedSheet = await saveSheet(sheetData, shouldSaveAsNew, source);
       setCurrentSheetId(savedSheet.id);
       
       endApiCall();

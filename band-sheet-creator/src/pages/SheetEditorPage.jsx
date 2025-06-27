@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import BandSheetEditor from '../components/BandSheetEditor';
-import { useEditorActions } from '../contexts/EditorActionsContext';
+import { useEditorActions } from '../contexts/ActionsContext';
 
 /**
  * Page component for editing a sheet.

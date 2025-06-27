@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FileTextIcon, PlusIcon, SearchIcon, MoreVertical, Edit, Copy, Trash, Share, Download, ListPlus, FileInput, FileOutput } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -10,7 +10,7 @@ import { getAllSheets, deleteSheet } from "../services/SheetStorageService";
 import { exportSingleSheet } from "../services/ExportService";
 import logger from "../services/LoggingService";
 import { useSetlist } from "../contexts/SetlistContext";
-import { useSheetActions } from "../contexts/SheetActionsContext";
+import { useSheetActions } from "../contexts/ActionsContext";
 import ConfirmModal from "../components/ConfirmModal";
 import SetlistModal from "../components/SetlistModal";
 import ImportModal from "../components/ImportModal";
@@ -383,24 +383,20 @@ const SheetsPage = () => {
     };
   }, [menuOpenId]);
   
-  const handleCreateSheet = () => {
+  const handleCreateSheet = useCallback(() => {
     if (!isAuthenticated) {
       showAuthModal();
       return;
     }
     navigate('/sheet/new');
-  };
+  }, [isAuthenticated, showAuthModal, navigate]);
   
   // Register the sheet actions with the context
   useEffect(() => {
-    if (setSheetActions) {
-      setSheetActions({
-        handleCreateSheet: () => {
-          handleCreateSheet();
-        }
-      });
-    }
-  }, [setSheetActions, navigate]);
+    setSheetActions({
+      handleCreateSheet
+    });
+  }, [setSheetActions, handleCreateSheet]);
 
   // Helper function to traverse the sheet object and find the BPM
   const getBpm = (sheet) => {

@@ -9,7 +9,7 @@ import BandSheetEditor from '../components/BandSheetEditor';
 const NewSheetPage = () => {
   return (
     <div className="max-w-full mx-auto -m-4">
-      <BandSheetEditor />
+      <BandSheetEditor initialSheetId="new" key="new-sheet" />
     </div>
   );
 };
