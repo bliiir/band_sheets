@@ -757,7 +757,7 @@ export default function BandSheetEditor({
     
     // Generate the print content directly in the component
     return (
-      <div className="print-view">
+      <div className="print-view print-mode">
         <style>
           {`
             /* Print and mobile styles for main sheet and chord progressions */
@@ -769,35 +769,34 @@ export default function BandSheetEditor({
               padding: 20px !important;
             }
             
-            /* Apply mobile-friendly styles both on mobile screens AND when printing */
-            @media (max-width: 768px), print {
-              .print-view {
-                /* Set a fixed width for print to ensure consistent scaling */
-                width: 210mm !important; /* A4 width minus margins */
+            /* Mobile-only styles (only for normal view, not print mode) */
+            @media (max-width: 768px) {
+              .print-view:not(.print-mode) {
+                /* Set a fixed width for mobile screens */
+                width: 100% !important;
                 max-width: none !important;
                 font-size: 12pt !important;
               }
               
-              /* Main sheet styles for mobile and print */
-              .print-view .part-row {
+              /* Main sheet styles for mobile only (not print mode) */
+              .print-view:not(.print-mode) .part-row {
                 display: block !important;
                 padding: 8px 0;
                 border-bottom: 1px solid #eee;
-                page-break-inside: avoid;
               }
               
               /* Keep Part and Bars on the same row */
-              .print-view .part-row > div:nth-child(1),
-              .print-view .part-row > div:nth-child(2) {
+              .print-view:not(.print-mode) .part-row > div:nth-child(1),
+              .print-view:not(.print-mode) .part-row > div:nth-child(2) {
                 display: inline-block !important;
                 width: 50%;
                 vertical-align: top;
               }
               
               /* Other fields take full width */
-              .print-view .part-row > div:nth-child(3),
-              .print-view .part-row > div:nth-child(4),
-              .print-view .part-row > div:nth-child(5) {
+              .print-view:not(.print-mode) .part-row > div:nth-child(3),
+              .print-view:not(.print-mode) .part-row > div:nth-child(4),
+              .print-view:not(.print-mode) .part-row > div:nth-child(5) {
                 display: block !important;
                 width: 100%;
                 padding-top: 5px;
@@ -805,7 +804,7 @@ export default function BandSheetEditor({
               }
               
               /* Show field labels except for lyrics */
-              .print-view .part-row > div:not([data-label="Lyrics:"]):before {
+              .print-view:not(.print-mode) .part-row > div:not([data-label="Lyrics:"]):before {
                 content: attr(data-label);
                 font-weight: bold;
                 display: inline-block;
@@ -814,32 +813,32 @@ export default function BandSheetEditor({
               }
               
               /* Chord progressions table mobile styles */
-              .chord-progressions-table {
+              .print-view:not(.print-mode) .chord-progressions-table {
                 display: block !important;
               }
               
               /* Hide header in mobile */
-              .chord-progressions-table .row.bg-gray-100 {
+              .print-view:not(.print-mode) .chord-progressions-table .row.bg-gray-100 {
                 display: none !important;
               }
               
               /* Make rows stack vertically */
-              .chord-progressions-table .row {
+              .print-view:not(.print-mode) .chord-progressions-table .row {
                 display: block !important;
                 border-bottom: 1px solid #ddd;
                 padding: 8px 0;
               }
               
               /* Keep Part and Bars on same row */
-              .chord-progressions-table .row > div:nth-child(1),
-              .chord-progressions-table .row > div:nth-child(2) {
+              .print-view:not(.print-mode) .chord-progressions-table .row > div:nth-child(1),
+              .print-view:not(.print-mode) .chord-progressions-table .row > div:nth-child(2) {
                 display: inline-block !important;
                 width: 50%;
                 border-right: none;
               }
               
               /* Transposed chords take full width */
-              .chord-progressions-table .row > div:nth-child(3) {
+              .print-view:not(.print-mode) .chord-progressions-table .row > div:nth-child(3) {
                 display: block !important;
                 width: 100%;
                 border-right: none;
@@ -849,12 +848,101 @@ export default function BandSheetEditor({
               }
               
               /* Show field labels except for chords */
-              .chord-progressions-table .row > div:not([data-label="Chords:"]):before {
+              .print-view:not(.print-mode) .chord-progressions-table .row > div:not([data-label="Chords:"]):before {
                 content: attr(data-label);
                 font-weight: bold;
                 display: inline-block;
                 width: 60px;
               }
+            }
+            
+            /* Force desktop layout when in print mode (URL with ?print=true) */
+            .print-view .part-row {
+              display: grid !important;
+              grid-template-columns: 48px 48px 1fr 12.5% auto !important;
+              gap: 10px !important;
+              padding: 5px 16px !important;
+              border-bottom: 1px solid #eee !important;
+              align-items: center !important;
+              min-height: auto !important;
+            }
+            
+            /* Mobile-specific styles for print view URLs */
+            @media (max-width: 767px) {
+              .print-view .part-row {
+                grid-template-columns: 40px 40px 1fr 60px auto !important;
+                gap: 6px !important;
+                padding: 5px 8px !important;
+                font-size: 12px !important;
+              }
+              
+              .print-view .lyrics {
+                white-space: pre !important;
+                overflow-x: auto !important;
+                font-size: 11px !important;
+              }
+              
+              .print-view .notes {
+                font-size: 10px !important;
+              }
+              
+              .print-view {
+                font-size: 12px !important;
+                padding: 5px !important;
+              }
+              
+              .print-view .meta {
+                font-size: 12px !important;
+                gap: 8px !important;
+              }
+              
+              .print-view .meta h1 {
+                font-size: 16px !important;
+              }
+              
+              .print-view .sheet-container {
+                overflow-x: auto !important;
+              }
+            }
+            
+            /* Reset any mobile field styling for print view */
+            .print-view .part-row > div:before {
+              content: none !important;
+            }
+            
+            .print-view .part-row > div {
+              display: block !important;
+              width: auto !important;
+              padding-top: 0 !important;
+              clear: none !important;
+            }
+            
+            /* Force chord progressions to use desktop table layout in print view */
+            .print-view .chord-progressions-table {
+              display: grid !important;
+              grid-template-columns: min-content min-content 1fr !important;
+            }
+            
+            .print-view .chord-progressions-table .row.bg-gray-100 {
+              display: contents !important;
+            }
+            
+            .print-view .chord-progressions-table .row {
+              display: contents !important;
+              border-bottom: none !important;
+              padding: 0 !important;
+            }
+            
+            .print-view .chord-progressions-table .row > div {
+              display: block !important;
+              width: auto !important;
+              border-right: 1px solid #ddd !important;
+              margin-top: 0 !important;
+              padding: 8px !important;
+            }
+            
+            .print-view .chord-progressions-table .row > div:before {
+              content: none !important;
             }
             
             /* Dedicated print styles for proper paper scaling */
@@ -892,6 +980,62 @@ export default function BandSheetEditor({
               h1, h2, h3, h4, h5, h6 {
                 font-size: 14pt !important;
                 page-break-after: avoid;
+              }
+              
+              /* FORCE DESKTOP TABLE LAYOUT FOR PRINT - Override mobile styles */
+              .print-view .part-row {
+                display: grid !important;
+                grid-template-columns: 48px 48px 1fr 12.5% auto !important;
+                gap: 10px !important;
+                padding: 5px 16px !important;
+                border-bottom: 1px solid #eee !important;
+                align-items: center !important;
+                min-height: auto !important;
+              }
+              
+              /* Reset mobile field label styles for print */
+              .print-view .part-row > div:before {
+                content: none !important;
+              }
+              
+              /* Reset mobile field widths for print */
+              .print-view .part-row > div {
+                display: block !important;
+                width: auto !important;
+                padding-top: 0 !important;
+                clear: none !important;
+              }
+              
+              /* Force chord progressions table to use desktop layout */
+              .chord-progressions-table {
+                display: grid !important;
+                grid-template-columns: min-content min-content 1fr !important;
+              }
+              
+              /* Show header in print */
+              .chord-progressions-table .row.bg-gray-100 {
+                display: contents !important;
+              }
+              
+              /* Make chord progression rows use grid layout */
+              .chord-progressions-table .row {
+                display: contents !important;
+                border-bottom: none !important;
+                padding: 0 !important;
+              }
+              
+              /* Reset chord progression field layouts */
+              .chord-progressions-table .row > div {
+                display: block !important;
+                width: auto !important;
+                border-right: 1px solid #ddd !important;
+                margin-top: 0 !important;
+                padding: 8px !important;
+              }
+              
+              /* Remove field labels from chord progressions in print */
+              .chord-progressions-table .row > div:before {
+                content: none !important;
               }
               
               /* Prevent content from being cut off */
