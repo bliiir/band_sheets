@@ -30,7 +30,6 @@ import { useSheetActions } from "../contexts/SheetActionsContext";
  * @param {Object} props Component props
  * @param {React.ReactNode} props.children Child components
  * @param {Function} [props.handleNewSheet] Function to create a new sheet
- * @param {Function} [props.handleSave] Function to save the current sheet
  * @param {Function} [props.handleImport] Function to import sheets
  * @param {Function} [props.handleExport] Function to export sheets
  */

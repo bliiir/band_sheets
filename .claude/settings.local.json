@@ -1,8 +1,9 @@
 {
-  "enableAllProjectMcpServers": false,
   "permissions": {
     "allow": [
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(rg:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

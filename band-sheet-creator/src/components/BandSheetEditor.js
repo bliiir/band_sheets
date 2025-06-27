@@ -5,7 +5,6 @@ import logger from '../services/LoggingService';
 import { getAuthToken, handleUnauthenticated, isAuthenticated } from '../utils/AuthUtils';
 import ColorPicker from './ColorPicker';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-// Removed Toolbar import
 import SongInfoBar from './SongInfoBar';
 import SheetHeader from './SheetHeader';
 import Section from './Section';
@@ -60,27 +59,7 @@ export default function BandSheetEditor({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // Add event listeners for editor actions - we'll add the PDF handler later after exportSheet is defined
-  useEffect(() => {
-    // Listen for editor events from the AppLayout
-    const newSheetUnsub = eventBus.on('editor:new', () => {
-      logger.debug('BandSheetEditor', 'New sheet event received');
-      handleNewSheet();
-    });
-    
-    const saveUnsub = eventBus.on('editor:save', () => {
-      handleSave();
-    });
-    
-    // Import/Export functionality moved to SheetsPage
-    // Event handlers for import/export removed
-    
-    // Clean up event listeners
-    return () => {
-      newSheetUnsub();
-      saveUnsub();
-    };
-  }, []);
+  // Event listeners will be added after function declarations
   
   // State for setlists panel - use external state if provided
   const [internalSetlistsPanelOpen, setInternalSetlistsPanelOpen] = useState(false);
@@ -796,47 +775,24 @@ export default function BandSheetEditor({
     }
   } // End of handleSave function
   
-  // Enhanced save as functionality with proper ID handling
-  const handleSaveAs = async () => {
-    try {
-      console.log('%c[SAVE AS OPERATION]', 'color: orange; font-weight: bold');
-      
-      // Authentication check
-      if (!isAuthenticated()) {
-        showNotification('Please log in to save your sheet', 'error');
-        return null;
-      }
-      
-      console.log('[SAVE AS] Creating new sheet from current data');
-      // Always pass true to saveCurrentSheet to create a new sheet
-      const savedSheet = await saveCurrentSheet(true);
-      
-      console.log('[SAVE AS] New sheet created successfully:', savedSheet);
-      
-      // Update the URL to the new sheet ID
-      if (savedSheet && savedSheet.id) {
-        console.log(`[SAVE AS] Updating URL to new sheet ID: ${savedSheet.id}`);
-        navigate(`/?id=${savedSheet.id}`, { replace: true });
-      }
-      
-      // Show success notification and clean up
-      showNotification('Sheet saved as new copy');
-      clearTemporaryDraft();
-      
-      // Refresh saved sheets list
-      await refreshSavedSheets();
-      
-      return savedSheet;
-    } catch (error) {
-      console.error('[SAVE AS] Operation failed:', error);
-      
-      // Only show non-auth errors (auth errors are handled by handleUnauthenticated)
-      if (!error.message.includes('Authentication')) {
-        showNotification(`Error saving sheet: ${error.message}`, 'error');
-      }
-      throw error;
-    }
-  };
+  // Add event listeners for editor actions now that functions are declared
+  useEffect(() => {
+    // Listen for editor events from the AppLayout
+    const newSheetUnsub = eventBus.on('editor:new', () => {
+      logger.debug('BandSheetEditor', 'New sheet event received');
+      handleNewSheet();
+    });
+    
+    const saveUnsub = eventBus.on('editor:save', () => {
+      handleSave();
+    });
+    
+    // Clean up event listeners
+    return () => {
+      newSheetUnsub();
+      saveUnsub();
+    };
+  }, [handleSave, handleNewSheet]);
   
   // Handle print button click with BPM and capo options
   const handlePrintClick = () => {

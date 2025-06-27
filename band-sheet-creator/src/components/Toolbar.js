@@ -29,7 +29,6 @@ const Toolbar = ({
   sidebarOpen, 
   setSidebarOpen, 
   handleNewSheet, 
-  handleSave, // This is the standard save function from BandSheetEditor that matches Cmd+S
   handleExport,
   isMobile,
   setlistsPanelOpen,
@@ -120,7 +119,6 @@ const Toolbar = ({
     }
   };
   
-  // Save As and Save All functionality has been removed
 
   return (
     <div className={`bg-card shadow-md z-50 flex items-center ${isMobile ? 'w-full fixed top-[48px] left-0 right-0 px-2 py-1 flex-row justify-around' : 'w-16 fixed left-0 top-[60px] bottom-0 flex-col pt-8 pb-4 border-r border-border'}`}>

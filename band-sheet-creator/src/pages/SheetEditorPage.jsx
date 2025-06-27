@@ -28,8 +28,7 @@ const SheetEditorPage = () => {
         // Extract the editor action methods once they're available
         if (editorRef.current) {
           const actions = {
-            handleNewSheet: () => editorRef.current.handleNewSheet(),
-            handleSave: () => editorRef.current.handleSave()
+            handleNewSheet: () => editorRef.current.handleNewSheet()
             // Import/Export functionality moved to SheetsPage
           };
           

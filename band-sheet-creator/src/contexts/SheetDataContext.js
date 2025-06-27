@@ -279,23 +279,11 @@ export function SheetDataProvider({ children }) {
   const saveCurrentSheet = useCallback(async (saveAsNew = false, forceUpdate = false, source = 'UNKNOWN') => {
     beginApiCall();
     try {
-      // Get the latest title value directly from the DOM to ensure it's current
-      const titleInput = document.querySelector('input[aria-label="Song Title"]');
-      const currentTitle = titleInput ? titleInput.value : songData.title;
-      
-      // Ensure we have the latest title value by updating songData first
-      if (titleInput && currentTitle !== songData.title) {
-        logger.debug('SheetDataContext', `Updating title from DOM before save: ${currentTitle}`);
-        setSongData(prev => ({ ...prev, title: currentTitle }));
-      }
-      
-      // Use the current title for validation
-      const titleToUse = currentTitle || songData.title;
+      // Use the current title from state for validation
+      const titleToUse = songData.title;
       
       // Debugging
       logger.debug('SheetDataContext', 'Song data before save:', songData);
-      logger.debug('SheetDataContext', `Title value from state: ${songData.title}`);
-      logger.debug('SheetDataContext', `Title value from DOM: ${currentTitle}`);
       logger.debug('SheetDataContext', `Title value to use: ${titleToUse}`);
       
       // Check authentication before saving using our centralized authentication handler
