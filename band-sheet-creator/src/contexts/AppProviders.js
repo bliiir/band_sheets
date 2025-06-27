@@ -8,6 +8,7 @@ import { NavigationProvider } from './NavigationContext';
 import { EditorActionsProvider } from './EditorActionsContext';
 import { SetlistActionsProvider } from './SetlistActionsContext';
 import { SheetActionsProvider } from './SheetActionsContext';
+import { NotificationProvider } from './NotificationContext';
 
 /**
  * AppProviders component that wraps the application with all context providers
@@ -18,17 +19,18 @@ import { SheetActionsProvider } from './SheetActionsContext';
  */
 const AppProviders = ({ children }) => {
   return (
-    <AuthProvider>
-      <UIStateProvider>
-        <NavigationProvider>
-          <SheetDataProvider>
-            <SetlistProvider>
-              <EditingProvider>
-                <EditorActionsProvider>
-                  <SetlistActionsProvider>
-                    <SheetActionsProvider>
-                      {children}
-                    </SheetActionsProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <UIStateProvider>
+          <NavigationProvider>
+            <SheetDataProvider>
+              <SetlistProvider>
+                <EditingProvider>
+                  <EditorActionsProvider>
+                    <SetlistActionsProvider>
+                      <SheetActionsProvider>
+                        {children}
+                      </SheetActionsProvider>
                   </SetlistActionsProvider>
                 </EditorActionsProvider>
               </EditingProvider>
@@ -37,6 +39,7 @@ const AppProviders = ({ children }) => {
         </NavigationProvider>
       </UIStateProvider>
     </AuthProvider>
+    </NotificationProvider>
   );
 };
 

@@ -13,6 +13,7 @@ import SetlistViewPage from './pages/SetlistViewPage';
 import BandSheetEditor from './components/BandSheetEditor';
 import SharedSetlistView from './components/SharedSetlistView';
 import GlobalAuthModal from './components/Auth/GlobalAuthModal';
+import Notification from './components/Notification';
 
 // SheetEditor component with ID parameter
 // Using a key based on sheetId forces component to remount when sheet changes
@@ -37,6 +38,7 @@ function App() {
           <Route path="/sheet/:sheetId" element={<SheetEditorWithId />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Notification />
       </AppProviders>
     );
   }
@@ -47,6 +49,7 @@ function App() {
       {/* Add GlobalAuthModal outside of Routes but inside AppProviders 
           to ensure it can be triggered from anywhere */}
       <GlobalAuthModal />
+      <Notification />
       
       <Routes>
         <Route path="/" element={<AppLayout><HomePage /></AppLayout>} />

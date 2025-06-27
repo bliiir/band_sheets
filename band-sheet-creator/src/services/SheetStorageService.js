@@ -48,8 +48,26 @@ export const getSheetById = async (id) => {
       }
       
       const data = await response.json();
+      console.log('%c[LOAD RESPONSE]', 'color: purple; font-weight: bold', data);
       logger.info('SheetStorageService', `Successfully loaded sheet ${formattedId} from MongoDB`);
-      return data.data;
+      
+      // Add detailed validation of the retrieved data
+      const loadedData = data.data;
+      if (!loadedData) {
+        logger.error('SheetStorageService', 'API returned success but no data field found in response');
+        throw new Error('Invalid server response format - missing data field');
+      }
+      
+      // Log key fields for debugging
+      logger.debug('SheetStorageService', 'Loaded sheet ID:', loadedData.id);
+      logger.debug('SheetStorageService', 'Loaded sheet title:', loadedData.title);
+      if (loadedData.sections) {
+        logger.debug('SheetStorageService', 'Loaded sheet has sections:', loadedData.sections.length);
+      } else {
+        logger.warn('SheetStorageService', 'Loaded sheet has no sections array!');
+      }
+      
+      return loadedData;
     } catch (error) {
       logger.error('SheetStorageService', `Error fetching sheet ${formattedId} from MongoDB:`, error);
       // Fall through to try public access
@@ -151,17 +169,40 @@ export const clearTemporaryDraft = () => {
  * Save a sheet to storage
  * @param {Object} sheetData - The sheet data to save
  * @param {boolean} isNewSave - Whether to save as a new sheet (with new ID)
+ * @param {string} explicitSource - Explicitly provided source of the save operation
  * @returns {Object} The saved sheet with its ID
  */
-export const saveSheet = async (sheetData, isNewSave = false) => {
-  // Check authentication status
-  if (!isAuthenticated()) {
+export const saveSheet = async (sheetData, isNewSave = false, explicitSource = null) => {
+  // Determine the source of the save operation
+  let source = explicitSource || 'UNKNOWN';
+  
+  // Force source to TOOLBAR_BUTTON if explicitly passed with that value
+  if (explicitSource === 'TOOLBAR_BUTTON') {
+    source = 'TOOLBAR_BUTTON';
+  }
+  
+  console.log(`%c[SAVE SOURCE: ${source}]`, 'color: red; font-weight: bold');
+  console.log('[SAVE STACK]', new Error().stack);
+  
+  // Get authentication token once at the start
+  const token = getAuthToken();
+  
+  // Enhanced authentication check with detailed logging
+  logger.debug('SheetStorageService', `[${source}] Checking authentication for save operation`);
+  logger.debug('SheetStorageService', `[${source}] Token exists: ${!!token}`);
+  
+  // Check if token is valid
+  if (!token) {
+    logger.debug('SheetStorageService', '[${source}] No authentication token found');
+    // This will throw an error and show the auth modal
     handleUnauthenticated('Authentication required to save sheets');
   }
-
-  // Get token directly for debugging
-  const token = getAuthToken();
-  console.log('Using token for save operation (first 10 chars):', token.substring(0, 10) + '...');
+  
+  // Log token for debugging (safely)
+  if (token) {
+    logger.debug('SheetStorageService', `[${source}] Token length: ${token.length}`);
+    logger.debug('SheetStorageService', `[${source}] Using token for save operation (first 10 chars): ${token.substring(0, 10)}...`);
+  }
 
   // Update modification date
   const updatedSheet = {
@@ -169,18 +210,31 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
     dateModified: new Date()
   };
   
-  // Generate ID if needed
-  if (isNewSave || !updatedSheet.id) {
+  // CRITICAL FIX: Handle ID generation with improved logic
+  // Only generate a new ID if explicitly saving as new or if there's definitely no ID
+  if (isNewSave === true) {
+    // For explicit saveAsNew operations, always generate a new ID
+    logger.debug('SheetStorageService', `[${source}] Explicitly saving as new sheet`);
     updatedSheet.id = `sheet_${Date.now()}`;
+  } else if (!updatedSheet.id) {
+    // Only generate ID if truly missing
+    logger.debug('SheetStorageService', `[${source}] No ID found, generating new ID`);
+    updatedSheet.id = `sheet_${Date.now()}`;
+  } else {
+    // Otherwise, keep the existing ID
+    logger.debug('SheetStorageService', `[${source}] Using existing ID: ${updatedSheet.id}`);
+    
+    // BUGFIX: Ensure ID format is clean for API call
+    // Sometimes IDs might have extra characters or whitespace that cause 404s
+    if (typeof updatedSheet.id === 'string') {
+      // Trim any whitespace that might cause URL issues
+      updatedSheet.id = updatedSheet.id.trim();
+    }
   }
   
   try {
-    // Debug check for title field
-    logger.debug('SheetStorageService', 'Sheet before save:', updatedSheet);
-    logger.debug('SheetStorageService', 'Title field value:', updatedSheet.title);
-    
-    // Ensure section background colors are properly saved
-    const sheetWithColors = {
+    // Always make a fresh copy to avoid mutation issues
+    const sheetWithColors = JSON.parse(JSON.stringify({
       ...updatedSheet,
       sections: updatedSheet.sections.map(section => ({
         ...section,
@@ -188,26 +242,17 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       })),
       // Ensure title is explicitly set
       title: updatedSheet.title || ''
-    };
+    }));
     
-    logger.debug('SheetStorageService', 'Sheet after preparation:', sheetWithColors);
-    logger.debug('SheetStorageService', 'Title field after preparation:', sheetWithColors.title);
+    // Token has already been validated at the beginning of this function
+    // No need to check again
 
-    // Ensure we have the token before making the API call
-    const token = getAuthToken();
-    if (!token) {
-      handleUnauthenticated('Authentication required to save sheets - token not found');
-    }
-
-    // Make API call with explicit headers - ensure we're using the correct API URL
-    // Log the complete URL we're about to call for debugging
-    logger.debug('SheetStorageService', 'API URL being used:', API_URL);
+    // Decide whether to create a new sheet or update an existing one
+    const shouldCreateNew = isNewSave === true || !sheetWithColors.id;
     
-    if (isNewSave || !sheetData.id) {
+    if (shouldCreateNew) {
       // Create new sheet with explicit token in header
-      logger.debug('SheetStorageService', 'Creating new sheet');
       const fullUrl = `${API_URL}/sheets`;
-      logger.debug('SheetStorageService', 'Full API URL for creating sheet:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'POST',
@@ -229,16 +274,18 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       }
       
       const data = await response.json();
-      logger.debug('SheetStorageService', 'Response from API:', data);
-      return data.data;
+      
+      // Verify data structure
+      if (!data || !data.data) {
+        throw new Error('Invalid server response format - missing data field');
+      }
+      
+      const responseData = data.data;
+      
+      return responseData;
     } else {
       // Update existing sheet with explicit token in header
-      logger.debug('SheetStorageService', 'Updating sheet with ID:', sheetWithColors.id);
-      logger.debug('SheetStorageService', 'Updating sheet data');
-      
-      // Construct the full URL - this was a previous issue
       const fullUrl = `${API_URL}/sheets/${sheetWithColors.id}`;
-      logger.debug('SheetStorageService', 'Full API URL for updating sheet:', fullUrl);
       
       const response = await fetch(fullUrl, {
         method: 'PUT',
@@ -254,14 +301,42 @@ export const saveSheet = async (sheetData, isNewSave = false) => {
       
       // Check response status
       if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('SheetStorageService', `API error (${response.status}):`, errorText);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        // If we get a 404 when trying to update, the sheet might not exist on the server
+        // Fall back to creating a new sheet instead of failing
+        if (response.status === 404) {
+          // Create new sheet instead
+          const createUrl = `${API_URL}/sheets`;
+          const createResponse = await fetch(createUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(sheetWithColors)
+          });
+          
+          if (!createResponse.ok) {
+            throw new Error(`Failed to create sheet after 404: ${createResponse.status}`);
+          }
+          
+          return (await createResponse.json()).data;
+        } else {
+          // For other errors, throw normally
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
       }
       
       const data = await response.json();
-      logger.debug('SheetStorageService', 'Response from update API:', data);
-      return data.data;
+      
+      if (!data || !data.data) {
+        throw new Error('Invalid server response format - missing data field');
+      }
+      
+      const savedData = data.data;
+      
+      return savedData;
     }
   } catch (error) {
     logger.error('SheetStorageService', 'Error saving sheet to API:', error);

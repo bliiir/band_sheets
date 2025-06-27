@@ -16,6 +16,7 @@ import {
   resetNavigation
 } from '../redux/slices/navigationSlice';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { ReactComponent as StarIcon } from '../assets/list_plus.svg';
 import { ReactComponent as BackIcon } from '../assets/arrow_left_from_line.svg';
 import { ReactComponent as PrintIcon } from '../assets/print.svg';
@@ -67,7 +68,7 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
-  const [notification, setNotification] = useState(null);
+  const { showNotification } = useNotifications();
   const [editedDescription, setEditedDescription] = useState('');
   
   // Effect to load the setlist (or use pre-loaded data if available)
@@ -222,16 +223,8 @@ const SharedSetlistView = ({ id: propId, setlistData }) => {
           }, 100 * index);
         });
         
-        // Show success notification
-        setNotification({
-          message: `Opening ${setlist.sheets.length} sheets in print preview`,
-          type: 'success'
-        });
-        
-        // Clear notification after 3 seconds
-        setTimeout(() => {
-          setNotification(null);
-        }, 3000);
+        // Show success notification using centralized system
+        showNotification(`Opening ${setlist.sheets.length} sheets in print preview`, 'success');
       }
     });
     

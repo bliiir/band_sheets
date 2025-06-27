@@ -51,8 +51,8 @@ export default function useSheetNavigation({
       // Update loaded sheet ID
       setLoadedSheetId(sheetId);
       
-      // Show notification
-      showNotification('Sheet loaded successfully');
+      // Success notifications are now handled centrally in BandSheetEditor
+      // to prevent duplicate notifications
       
       // Clear any temporary draft
       if (clearTemporaryDraft) {
@@ -96,7 +96,8 @@ export default function useSheetNavigation({
         loadSheet(urlSheetId)
           .then(() => {
             setLoadedSheetId(urlSheetId);
-            showNotification('Sheet loaded successfully');
+            // Success notifications are now handled centrally in BandSheetEditor
+            // to prevent duplicate notifications
           })
           .catch(error => {
             console.error('useSheetNavigation: Error loading sheet from history:', error);

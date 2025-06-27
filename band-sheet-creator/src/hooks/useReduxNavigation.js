@@ -41,10 +41,8 @@ export default function useReduxNavigation({ initialSheetId, showNotification })
       // Dispatch the loadSheet action with URL source
       await dispatch(loadSheet({ sheetId, source: 'url' })).unwrap();
       
-      // Show success notification
-      if (showNotification) {
-        showNotification('Sheet loaded successfully');
-      }
+      // Success notifications are now handled centrally in BandSheetEditor
+      // to prevent duplicate notifications
       
       return true;
     } catch (error) {
@@ -104,9 +102,8 @@ export default function useReduxNavigation({ initialSheetId, showNotification })
         dispatch(loadSheet({ sheetId: urlSheetId, source: 'history' }))
           .unwrap()
           .then(() => {
-            if (showNotification) {
-              showNotification('Sheet loaded successfully');
-            }
+            // Success notifications are now handled centrally in BandSheetEditor
+            // to prevent duplicate notifications
           })
           .catch((error) => {
             console.error('useReduxNavigation: History navigation error:', error);

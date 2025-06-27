@@ -51,10 +51,16 @@ const makeRequest = async (url, options = {}) => {
     
     // Get token if available using our centralized AuthUtils
     const token = getAuthToken();
+    
+    // Log authentication status for each request
+    logger.debug('ApiService', `Making request to: ${url}`);
+    logger.debug('ApiService', `Auth token exists: ${!!token}`);
+    
     if (token) {
       // User is authenticated, add token to all requests
       headers.Authorization = `Bearer ${token}`;
-      console.log('Using authentication token for request');
+      // Add token length info for debugging without exposing the actual token
+      logger.debug('ApiService', `Using auth token (length: ${token.length}) for request`);
     } else if (!isAuthEndpoint) {
       // User is not authenticated
       
@@ -90,20 +96,19 @@ const makeRequest = async (url, options = {}) => {
       } else {
         // For all other endpoints without auth, we'll let the request proceed
         // But the backend will determine what data to return based on authentication status
-        console.log('Proceeding without authentication token');
+        logger.debug('ApiService', 'Proceeding without authentication token');
       }
     }
     
     // Add debugging for request details
-    console.log('Making API request to:', url);
-    console.log('With options:', { ...options, headers: '[redacted for privacy]' });
+    logger.debug('ApiService', `Making API request to: ${url}`);
+    logger.debug('ApiService', 'With options:', { ...options, headers: '[redacted for privacy]' });
     
-    // Make the request with all needed options set
+    // Make the request with all needed options set - ensure credentials are included
     const response = await fetch(url, {
       ...options,
       headers,
-      mode: 'cors',
-      credentials: 'include'
+      credentials: 'include'  // Critical: Always include credentials for cross-domain requests
     }).catch(err => {
       console.error('Network error during fetch:', err);
       throw new Error(`Network error: ${err.message}`);
@@ -225,10 +230,26 @@ export const loginUser = async (credentials) => {
     const data = await response.json();
 
     
-    // Save token to localStorage
+    // Save token using the centralized auth utility and ensure it's properly stored
     if (data.token) {
-      localStorage.setItem('token', data.token);
-
+      // Store the token
+      setAuthToken(data.token);
+      
+      // Log detailed auth information for debugging
+      logger.debug('ApiService', 'Auth token stored via centralized utility');
+      logger.debug('ApiService', `Token exists after storage: ${!!getAuthToken()}`);
+      logger.debug('ApiService', `Token length: ${getAuthToken()?.length || 0}`);
+      
+      // Also store user info for backup authentication check
+      if (data.user && data.user.id) {
+        try {
+          localStorage.setItem('user_id', data.user.id);
+          localStorage.setItem('auth_timestamp', Date.now().toString());
+          logger.debug('ApiService', 'Stored user ID and timestamp for backup auth check');
+        } catch (err) {
+          logger.error('ApiService', 'Error storing user data:', err);
+        }
+      }
     }
     
     // Return the user object - backend returns it in data.user
@@ -248,12 +269,16 @@ export const loginUser = async (credentials) => {
  */
 export const logoutUser = async () => {
   try {
-    // Direct implementation without using the helper
-    const token = localStorage.getItem('token');
+    // Use the centralized token management system
+    logger.debug('ApiService', 'Logging out user');
+    const token = getAuthToken();
     const headers = {};
     
     if (token) {
       headers.Authorization = `Bearer ${token}`;
+      logger.debug('ApiService', 'Token found, adding to logout request');
+    } else {
+      logger.debug('ApiService', 'No token found for logout request');
     }
     
     await fetch(`${API_URL}/auth/logout`, {
@@ -278,27 +303,55 @@ export const logoutUser = async () => {
  */
 export const getCurrentUser = async () => {
   try {
+    // Get token and log detailed debugging info
     const token = getAuthToken();
-    if (!token) return null;
+    logger.debug('ApiService', `getCurrentUser - token exists: ${!!token}`);
+    
+    if (!token) {
+      logger.debug('ApiService', 'No token available, returning null');
+      return null;
+    }
+    
+    logger.debug('ApiService', `Making auth validation request to ${API_URL}/auth/me`);
     
     // Direct implementation without using the helper
     const response = await fetch(`${API_URL}/auth/me`, {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       mode: 'cors',
       credentials: 'include'
     });
     
+    logger.debug('ApiService', `Auth validation response status: ${response.status}`);
+    
     if (!response.ok) {
+      logger.warn('ApiService', `Failed to validate token: ${response.status}`);
       throw new Error(`Failed to get user: ${response.status}`);
     }
     
     const data = await response.json();
+    logger.debug('ApiService', 'Token validated successfully, user data retrieved');
+    
+    // Ensure we're getting the expected response structure
+    if (!data.data && data.user) {
+      // Handle different response formats
+      logger.debug('ApiService', 'Using alternate response format');
+      return data.user;
+    }
+    
     return data.data;
   } catch (error) {
     logger.error('ApiService', 'Get current user error:', error);
-    removeAuthToken();
+    // Only remove the token if it's an auth error (401/403)
+    // Other errors might be temporary network issues
+    if (error.message && (error.message.includes('401') || error.message.includes('403'))) {
+      logger.debug('ApiService', 'Removing invalid token');
+      removeAuthToken();
+    }
     return null;
   }
 };

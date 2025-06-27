@@ -5,7 +5,7 @@ import { getTransposedChords } from '../services/ChordService';
 import ExportOptionsModal from '../components/ExportOptionsModal';
 import { useUIState } from './UIStateContext';
 import { useAuth } from './AuthContext';
-import { handleUnauthenticated } from '../utils/AuthUtils';
+import { handleUnauthenticated, isAuthenticated as isAuthenticatedFunc } from '../utils/AuthUtils';
 import logger from '../services/LoggingService';
 
 // Create the SheetDataContext
@@ -23,7 +23,7 @@ export function SheetDataProvider({ children }) {
   const { beginApiCall, endApiCall } = useUIState();
   
   // Access authentication state - get the current authenticated status
-  const { isAuthenticated, currentUser } = useAuth();
+  const { isAuthenticated: isUserAuthenticated, currentUser } = useAuth();
 
   // Sheet data state
   const [sections, setSections] = useState([]);
@@ -272,9 +272,11 @@ export function SheetDataProvider({ children }) {
   /**
    * Save the current sheet
    * @param {boolean} saveAsNew - Whether to save as a new sheet
+   * @param {boolean} forceUpdate - Force update the sheet regardless of changes
+   * @param {string} source - Source of the save operation (KEYBOARD_SHORTCUT, TOOLBAR_BUTTON, etc.)
    * @returns {Promise<Object>} - The saved sheet data
    */
-  const saveCurrentSheet = useCallback(async (saveAsNew = false) => {
+  const saveCurrentSheet = useCallback(async (saveAsNew = false, forceUpdate = false, source = 'UNKNOWN') => {
     beginApiCall();
     try {
       // Get the latest title value directly from the DOM to ensure it's current
@@ -297,7 +299,8 @@ export function SheetDataProvider({ children }) {
       logger.debug('SheetDataContext', `Title value to use: ${titleToUse}`);
       
       // Check authentication before saving using our centralized authentication handler
-      if (!isAuthenticated) {
+      // Check authentication directly with isAuthenticatedFunc
+      if (!isAuthenticatedFunc()) {
         logger.warn('SheetDataContext', 'Authentication required to save sheets');
         endApiCall();
         // This will show the auth modal and throw a standardized error
@@ -316,22 +319,47 @@ export function SheetDataProvider({ children }) {
         throw error;
       }
       
-      // Prepare sheet data with explicitly set title to ensure it's included
+      // CRITICAL DEBUGGING FOR SHEET ID ISSUES
+      console.log('%c[SHEET ID DEBUG]', 'color: red; font-weight: bold', {
+        currentSheetId,
+        saveAsNew,
+        'songData.id': songData.id,
+        'Will use ID': saveAsNew ? null : currentSheetId,
+        'From component stack': saveAsNew ? 'Creating NEW sheet' : 'Updating EXISTING sheet'
+      });
+      
+      // COMPREHENSIVE FIX: Ensure we have a valid sheet ID if we're updating
+      // This ensures proper ID propagation through the entire save flow
+      const effectiveId = saveAsNew ? null : (currentSheetId || songData.id);
+      console.log('%c[SHEET ID RESOLUTION]', 'color: purple; font-weight: bold', {
+        operation: saveAsNew ? 'Creating NEW sheet' : 'Updating EXISTING sheet',
+        currentSheetId,
+        'songData.id': songData.id,
+        effectiveId: effectiveId || 'NULL (will create new)',
+      });
+
+      // Prepare sheet data with explicitly set title and properly tracked ID
       const sheetData = { 
         ...songData,
         title: titleToUse, // Explicitly use the captured title
         sections, 
         partsModule, 
         transposeValue, 
-        id: saveAsNew ? null : currentSheetId
+        id: effectiveId // Use our resolved effective ID
       };
       
       // Double-check that title is present before sending to API
       logger.debug('SheetDataContext', 'Final sheet data for save:', sheetData);
+      console.log('%c[SHEET DATA FOR SAVE]', 'color: blue; font-weight: bold', {
+        id: sheetData.id,
+        title: sheetData.title,
+        'sections count': sheetData.sections.length,
+        'first section': sheetData.sections[0] || 'NO SECTIONS',
+      });
       logger.debug('SheetDataContext', 'Final title value being sent to API:', sheetData.title);
       
-      // Use service to save
-      const savedSheet = await saveSheet(sheetData, saveAsNew);
+      // Use service to save with source information
+      const savedSheet = await saveSheet(sheetData, saveAsNew, source);
       setCurrentSheetId(savedSheet.id);
       
       endApiCall();
@@ -341,7 +369,7 @@ export function SheetDataProvider({ children }) {
       endApiCall(error);
       throw error;
     }
-  }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId, isAuthenticated]);
+  }, [songData, sections, partsModule, transposeValue, currentSheetId, beginApiCall, endApiCall, setCurrentSheetId]);
   
   /**
    * Get the direct print URL for the current sheet with query parameters
@@ -353,7 +381,27 @@ export function SheetDataProvider({ children }) {
   const getPrintUrl = useCallback((options = {}) => {
     if (!currentSheetId) return null;
     
-    const { includeChordProgressions = true, includeSectionColors = true } = options;
+    // Read default preferences from localStorage if they exist
+    let defaultIncludeChords = true;
+    let defaultIncludeColors = true;
+    
+    // Check if we have saved preferences in localStorage
+    const savedChordsPreference = localStorage.getItem('includeChordProgressions');
+    const savedColorsPreference = localStorage.getItem('includeSectionColors');
+    
+    if (savedChordsPreference !== null) {
+      defaultIncludeChords = savedChordsPreference === 'true';
+    }
+    
+    if (savedColorsPreference !== null) {
+      defaultIncludeColors = savedColorsPreference === 'true';
+    }
+    
+    // Allow options to override defaults
+    const { 
+      includeChordProgressions = defaultIncludeChords, 
+      includeSectionColors = defaultIncludeColors 
+    } = options;
     
     // Get the base URL (protocol + host)
     const baseUrl = window.location.origin;

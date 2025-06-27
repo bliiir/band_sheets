@@ -5,7 +5,7 @@ import logger from '../services/LoggingService';
 import { getAuthToken, handleUnauthenticated, isAuthenticated } from '../utils/AuthUtils';
 import ColorPicker from './ColorPicker';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import Toolbar from './Toolbar';
+// Removed Toolbar import
 import SongInfoBar from './SongInfoBar';
 import SheetHeader from './SheetHeader';
 import Section from './Section';
@@ -16,6 +16,7 @@ import ConfirmModal from './ConfirmModal';
 import { useEditing } from '../contexts/EditingContext';
 import { useSheetData } from '../contexts/SheetDataContext';
 import { useUIState } from '../contexts/UIStateContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { getTransposedChords } from '../services/ChordService';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllSheets, saveTemporaryDraft, loadTemporaryDraft, clearTemporaryDraft, hasTemporaryDraft } from '../services/SheetStorageService';
@@ -68,19 +69,6 @@ export default function BandSheetEditor({
     });
     
     const saveUnsub = eventBus.on('editor:save', () => {
-      logger.debug('BandSheetEditor', 'Save event received');
-      // Debug the current state of songData directly from context
-      logger.debug('BandSheetEditor', 'Title in UI before save (from context):', songData.title);
-      logger.debug('BandSheetEditor', 'Full song data at save time:', songData);
-      
-      // Debug authentication state
-      logger.debug('BandSheetEditor', 'Authentication state:', isAuthenticated);
-      logger.debug('BandSheetEditor', 'Token exists:', !!getAuthToken());
-      
-      // Get the title from the DOM as well to compare
-      const titleInputValue = document.querySelector('input[aria-label="Song Title"]')?.value;
-      logger.debug('BandSheetEditor', 'Title in DOM element:', titleInputValue);
-      
       handleSave();
     });
     
@@ -100,8 +88,8 @@ export default function BandSheetEditor({
   // Use external state if provided, otherwise use internal state
   const setlistsPanelOpen = useExternalToolbar ? externalSetlistsPanelOpen : internalSetlistsPanelOpen;
   const setSetlistsPanelOpen = useExternalToolbar ? externalSetSetlistsPanelOpen : setInternalSetlistsPanelOpen;
-  // State for save notification
-  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+  // Use centralized notification system instead of local state
+  const { showNotification } = useNotifications();
   
   // State for new sheet confirmation dialog
   const [newSheetConfirm, setNewSheetConfirm] = useState({
@@ -126,14 +114,7 @@ export default function BandSheetEditor({
   // State to track if we've loaded a draft
   const [draftLoaded, setDraftLoaded] = useState(false);
   
-  // Function to show a notification
-  const showNotification = useCallback((message, type = 'success') => {
-    setNotification({ show: true, message, type });
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-      setNotification({ show: false, message: '', type: 'success' });
-    }, 3000);
-  }, []);
+  // We're now using the centralized notification system via useNotifications hook
   
   // Navigation hooks for URL management
   const navigate = useNavigate();
@@ -233,8 +214,12 @@ export default function BandSheetEditor({
             loadedSheetIdRef.current = reduxCurrentSheetId;
             logger.debug('BandSheetEditor', `Updated reference to: ${loadedSheetIdRef.current}`);
             
-            // Show success notification to user
-            showNotification('Sheet loaded successfully');
+            // Only show notification for user-initiated actions, not on auto-load or refresh
+            // This prevents duplicate notifications when multiple components detect the load
+            const isUserInitiatedAction = navSource !== 'url' || !document.referrer.includes(window.location.origin);
+            if (isUserInitiatedAction) {
+              showNotification('Sheet loaded successfully');
+            }
             
             // Clear temporary draft (if any) since we loaded a real sheet
             clearTemporaryDraft();
@@ -788,83 +773,104 @@ export default function BandSheetEditor({
 
 
 
-  // Handle save button click
+  // Simple implementation of save that matches EXACTLY what the keyboard shortcut does
   const handleSave = async () => {
+    console.log('%c[SAVE] Using exact keyboard shortcut implementation', 'color: blue; font-weight: bold');
+    
+    if (isAuthenticated()) {
+      try {
+        // Call saveCurrentSheet without any parameters - exactly like the keyboard shortcut
+        const savedSheet = await saveCurrentSheet();
+        showNotification('Sheet saved successfully');
+        clearTemporaryDraft();
+        return savedSheet;
+      } catch (error) {
+        console.error('[SAVE] Save failed:', error);
+        showNotification('Error saving sheet: ' + error.message, 'error');
+        throw error;
+      }
+    } else {
+      console.log('[SAVE] User is not authenticated');
+      showNotification('Please log in to save your sheet', 'error');
+      return null;
+    }
+  } // End of handleSave function
+  
+  // Enhanced save as functionality with proper ID handling
+  const handleSaveAs = async () => {
     try {
-      // Use centralized AuthUtils for authentication status checks
-      const tokenExists = !!getAuthToken();
-      const authStatus = isAuthenticated();
+      console.log('%c[SAVE AS OPERATION]', 'color: orange; font-weight: bold');
       
-      logger.debug('BandSheetEditor', 'Save button clicked - Authentication:', { isAuthenticated: authStatus, tokenExists });
-      
-      // Check authentication using our centralized approach
-      if (!authStatus) {
-        logger.info('BandSheetEditor', 'No authentication token found or token invalid');
-        // Show a clear error message
+      // Authentication check
+      if (!isAuthenticated()) {
         showNotification('Please log in to save your sheet', 'error');
-        // Use our centralized handleUnauthenticated which will show the auth modal and throw a standardized error
-        handleUnauthenticated('Authentication required to save sheet');
+        return null;
       }
       
-      // Save the sheet using the API
-      const savedSheet = await saveCurrentSheet();
-      showNotification(`Sheet saved successfully`);
+      console.log('[SAVE AS] Creating new sheet from current data');
+      // Always pass true to saveCurrentSheet to create a new sheet
+      const savedSheet = await saveCurrentSheet(true);
       
-      // Clear temporary draft after successful save
+      console.log('[SAVE AS] New sheet created successfully:', savedSheet);
+      
+      // Update the URL to the new sheet ID
+      if (savedSheet && savedSheet.id) {
+        console.log(`[SAVE AS] Updating URL to new sheet ID: ${savedSheet.id}`);
+        navigate(`/?id=${savedSheet.id}`, { replace: true });
+      }
+      
+      // Show success notification and clean up
+      showNotification('Sheet saved as new copy');
       clearTemporaryDraft();
       
-      // Refresh saved sheets list after saving
+      // Refresh saved sheets list
       await refreshSavedSheets();
       
       return savedSheet;
     } catch (error) {
-      logger.error('BandSheetEditor', 'Error saving sheet:', error);
+      console.error('[SAVE AS] Operation failed:', error);
       
-      // The AuthUtils.handleUnauthenticated already shows the auth modal for auth errors
-      // We only need to handle non-auth errors here
+      // Only show non-auth errors (auth errors are handled by handleUnauthenticated)
       if (!error.message.includes('Authentication')) {
         showNotification(`Error saving sheet: ${error.message}`, 'error');
       }
+      throw error;
     }
   };
-
-  // Handle save as button click
-  const handleSaveAs = async () => {
+  
+  // Handle print button click with BPM and capo options
+  const handlePrintClick = () => {
     try {
-      // Use centralized AuthUtils for authentication status checks
-      const tokenExists = !!getAuthToken();
-      const authStatus = isAuthenticated();
+      console.log('[PRINT] Starting print operation');
+      const printWindow = window.open('', '_blank');
       
-      logger.debug('BandSheetEditor', 'Save As button clicked - Authentication:', { isAuthenticated: authStatus, tokenExists });
+      // Generate content with appropriate options
+      const printContent = generatePrintContent({
+        songData,
+        sections,
+        partsModule,
+        transposeValue,
+        includeBpm: true,
+        includeChords: true,
+        includeColors: true
+      });
       
-      // Check authentication using our centralized approach
-      if (!authStatus) {
-        logger.info('BandSheetEditor', 'No authentication token found or token invalid');
-        // Show a clear error message
-        showNotification('Please log in to save your sheet as new', 'error');
-        // Use our centralized handleUnauthenticated which will show the auth modal and throw a standardized error
-        handleUnauthenticated('Authentication required to save sheet as new');
+      // Set up the print window
+      if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        printWindow.focus();
+        
+        // Slight delay to ensure content is fully loaded
+        setTimeout(() => {
+          printWindow.print();
+        }, 300);
+      } else {
+        showNotification('Unable to open print window. Please check your popup settings.', 'error');
       }
-      
-      // Save the sheet as new using the API
-      const savedSheet = await saveCurrentSheet(true);
-      showNotification(`Sheet saved as new sheet with ID: ${savedSheet.id}`);
-      
-      // Clear temporary draft after successful save
-      clearTemporaryDraft();
-      
-      // Refresh saved sheets list after saving as new
-      await refreshSavedSheets();
-      
-      return savedSheet;
     } catch (error) {
-      logger.error('BandSheetEditor', 'Error saving sheet as new:', error);
-      
-      // The AuthUtils.handleUnauthenticated already shows the auth modal for auth errors
-      // We only need to handle non-auth errors here
-      if (!error.message.includes('Authentication')) {
-        showNotification(`Error saving sheet as new: ${error.message}`, 'error');
-      }
+      console.error('[PRINT] Error generating print view:', error);
+      showNotification(`Error printing: ${error.message}`, 'error');
     }
   };
 
@@ -1210,24 +1216,10 @@ export default function BandSheetEditor({
   // Regular editor view
   return (
     <div className="flex h-full min-h-screen bg-background relative">
-      {/* Only show the internal toolbar when not using external toolbar */}
-      {!useExternalToolbar && (
-        <Toolbar
-          sidebarOpen={sidebarOpen || false}
-          setSidebarOpen={setSidebarOpen || (() => {})}
-          handleNewSheet={handleNewSheet}
-          handleSave={handleSave}
-          handleSaveAs={handleSaveAs}
-          handleExport={handleExport}
-          isMobile={isMobile}
-          setlistsPanelOpen={setlistsPanelOpen || false}
-          setSetlistsPanelOpen={setSetlistsPanelOpen || (() => {})}
-        />
-      )}
+      {/* Left toolbar has been completely removed */}
       
-      {/* Sidebar and setlists panel have been removed */}
-      {/* Main content area - adjust margins based on toolbar visibility */}
-      <div className={`flex-1 w-full flex flex-col ${isMobile ? 'mt-10' : useExternalToolbar ? 'ml-0' : 'ml-16'} overflow-y-auto`}>
+      {/* Main content area - no more left margin needed */}
+      <div className={`flex-1 w-full flex flex-col ${isMobile ? 'mt-10' : 'ml-0'} overflow-y-auto`}>
         <div className="w-full px-2 max-w-none">
           {/* Song info bar - positioned above the sheet in the visual stack */}
           <div className="mt-4 w-full">
@@ -1323,12 +1315,7 @@ export default function BandSheetEditor({
         }}
       />
       
-      {/* Notification */}
-      {notification.show && (
-        <div className={`fixed top-4 right-4 p-4 rounded shadow-lg z-50 ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-          {notification.message}
-        </div>
-      )}
+      {/* Notifications are now rendered via the centralized Notification component */}
       
       {/* Mobile sidebar button removed */}
     </div>

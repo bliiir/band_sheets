@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useAuth } from "../contexts/AuthContext";
 import { useUIState } from "../contexts/UIStateContext";
 import { useSetlistActions } from "../contexts/SetlistActionsContext";
+import { useNotifications } from "../contexts/NotificationContext";
 import { getAllSetlists, deleteSetlist, updateSetlist } from "../services/SetlistStorageService";
 import ConfirmModal from "../components/ConfirmModal";
 import { getAuthToken, isAuthenticated } from "../utils/AuthUtils";
@@ -72,6 +73,7 @@ const EditableSetlistName = ({ name, isEditing, onSubmit, onCancel }) => {
 
 const SetlistsPage = () => {
   const navigate = useNavigate();
+  const { showNotification } = useNotifications();
   const [searchTerm, setSearchTerm] = useState("");
   const { isAuthenticated, showAuthModal, authChangeCounter } = useAuth();
   const { handleContextMenu: uiHandleContextMenu } = useUIState();
@@ -503,16 +505,8 @@ const SetlistsPage = () => {
                     // Copy to clipboard
                     navigator.clipboard.writeText(shareUrl)
                       .then(() => {
-                        // Show success notification
-                        const notification = document.createElement('div');
-                        notification.className = 'fixed right-4 top-20 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
-                        notification.innerHTML = `<p>Setlist link copied to clipboard!</p>`;
-                        document.body.appendChild(notification);
-                        
-                        // Remove after 3 seconds
-                        setTimeout(() => {
-                          notification.remove();
-                        }, 3000);
+                        // Show success notification using centralized system
+                        showNotification('Setlist link copied to clipboard!', 'success');
                       })
                       .catch((err) => {
                         console.error('Could not copy text: ', err);
@@ -542,27 +536,11 @@ const SetlistsPage = () => {
                         }, 100);
                       });
                       
-                      // Show success notification
-                      const notification = document.createElement('div');
-                      notification.className = 'fixed right-4 top-20 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
-                      notification.innerHTML = `<p>Opening ${setlist.sheets.length} sheets in print preview</p>`;
-                      document.body.appendChild(notification);
-                      
-                      // Remove notification after 3 seconds
-                      setTimeout(() => {
-                        notification.remove();
-                      }, 3000);
+                      // Show success notification using centralized system
+                      showNotification(`Opening ${setlist.sheets.length} sheets in print preview`, 'success');
                     } else {
-                      // Show notification if no sheets in setlist
-                      const notification = document.createElement('div');
-                      notification.className = 'fixed right-4 top-20 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded z-50';
-                      notification.innerHTML = `<p>No sheets in this setlist</p>`;
-                      document.body.appendChild(notification);
-                      
-                      // Remove notification after 3 seconds
-                      setTimeout(() => {
-                        notification.remove();
-                      }, 3000);
+                      // Show notification if no sheets in setlist using centralized system
+                      showNotification('No sheets in this setlist', 'warning');
                     }
                   }}
                   onMouseDown={(e) => e.stopPropagation()}

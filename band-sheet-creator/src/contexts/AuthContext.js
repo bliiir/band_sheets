@@ -35,19 +35,67 @@ export function AuthProviderWithoutNav({ children, navigate }) {
   const [authChangeCounter, setAuthChangeCounter] = useState(0);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Check if user is logged in on app load
+  // Enhanced authentication check on app load with retry and fallback
   useEffect(() => {
     const checkLoggedIn = async () => {
       try {
+        // Log detailed auth state on app initialization
+        logger.debug('AuthContext', 'Checking authentication state on app load');
+        
         // Check for token using our centralized AuthUtils
         const token = getAuthToken();
+        logger.debug('AuthContext', `Token exists: ${!!token}`);
+        
         if (token) {
-          const user = await getCurrentUser();
-          if (user) {
-            setCurrentUser(user);
-          } else {
-            // Token is invalid, remove it
-            removeAuthToken();
+          logger.debug('AuthContext', `Token length: ${token.length}`);
+          logger.debug('AuthContext', 'Attempting to validate token with server...');
+          
+          try {
+            // Try to get the current user with the token
+            const user = await getCurrentUser();
+            
+            if (user) {
+              logger.debug('AuthContext', 'Token validated successfully, user authenticated');
+              setCurrentUser(user);
+              
+              // Refresh the token to extend session (optional improvement)
+              if (user.id) {
+                logger.debug('AuthContext', 'Storing user ID as fallback authentication reference');
+                localStorage.setItem('user_id', user.id);
+                localStorage.setItem('auth_timestamp', Date.now().toString());
+              }
+            } else {
+              logger.debug('AuthContext', 'Server returned no user data, token may be invalid');
+              // Only remove if we're sure it's invalid
+              removeAuthToken();
+            }
+          } catch (validationError) {
+            logger.error('AuthContext', 'Token validation error:', validationError);
+            
+            // Check if it's a network error vs. authentication error
+            if (validationError.message && validationError.message.includes('Failed to fetch')) {
+              logger.debug('AuthContext', 'Network error, keeping token for retry');
+              // Keep the token on network errors - might just be temporary
+            } else {
+              logger.debug('AuthContext', 'Authentication error, removing invalid token');
+              removeAuthToken();
+            }
+          }
+        } else {
+          // Log the lack of token
+          logger.debug('AuthContext', 'No authentication token found');
+          
+          // Check if we have a fallback user ID that might help with recovery
+          const fallbackUserId = localStorage.getItem('user_id');
+          const authTimestamp = localStorage.getItem('auth_timestamp');
+          
+          if (fallbackUserId && authTimestamp) {
+            const timestamp = parseInt(authTimestamp);
+            const hoursSinceAuth = (Date.now() - timestamp) / (1000 * 60 * 60);
+            
+            logger.debug('AuthContext', `Found fallback user ID (${fallbackUserId}) from ${hoursSinceAuth.toFixed(1)} hours ago`);
+            
+            // We could attempt recovery here if needed
           }
         }
       } catch (err) {
