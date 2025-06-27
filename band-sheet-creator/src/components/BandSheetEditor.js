@@ -714,10 +714,9 @@ export default function BandSheetEditor({
   // Make the PDF function globally accessible for direct access
   window.handleSheetExport = handleExport;
 
-  // If we're in print mode, render the print-friendly version
-  if (isPrintMode) {
-    // Set proper viewport for print mode
-    useEffect(() => {
+  // Set proper viewport for print mode - must be outside conditional for React Hooks rules
+  useEffect(() => {
+    if (isPrintMode) {
       const originalViewport = document.querySelector('meta[name="viewport"]');
       const printViewport = document.createElement('meta');
       printViewport.name = 'viewport';
@@ -744,7 +743,11 @@ export default function BandSheetEditor({
         document.body.style.padding = '';
         document.body.style.fontFamily = '';
       };
-    }, []);
+    }
+  }, [isPrintMode]);
+
+  // If we're in print mode, render the print-friendly version
+  if (isPrintMode) {
     
     // Print view options
     const options = {
