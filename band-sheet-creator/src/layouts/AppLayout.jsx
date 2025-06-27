@@ -23,6 +23,7 @@ import ImportModal from "../components/ImportModal";
 import ExportModal from "../components/ExportModal";
 import { useAuth } from "../contexts/AuthContext";
 import { useSetlistActions, useSheetActions } from "../contexts/ActionsContext";
+import logo from "../assets/logo.png";
 
 /**
  * Main application layout with header and sidebar
@@ -119,7 +120,10 @@ const AppLayout = ({ children }) => {
         {/* Main header row */}
         <header className="h-14 flex items-center justify-between px-4 w-full">
           <div className="flex items-center">
-            <Link to="/" className="text-primary text-xl font-bold">Band Sheets</Link>
+            <Link to="/" className="flex items-center space-x-2">
+              <img src={logo} alt="Band Sheets" className="h-8 w-auto" />
+              <span className="text-primary text-xl font-bold">Band Sheets</span>
+            </Link>
           </div>
 
           <div className="flex items-center space-x-2">
